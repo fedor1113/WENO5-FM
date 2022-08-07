@@ -4,7 +4,7 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 SOURCES += \
-        WENO5-ZM.h \
+        WENO5-FM.h \
         _vector4.cpp \
         main.cpp
 
