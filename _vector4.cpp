@@ -4,11 +4,12 @@ Adapted from Ogre3D
 -----------------------------------------------------------------------------
 */
 
-#include <array>
-
 #include "_vector4.h"
 
+#include <array>
+
 template class Vector4<double>;
+template class Vector4<long double>;
 
 template<>
 const Vector4<int> Vector4<int>::ZERO( 0, 0, 0, 0 );

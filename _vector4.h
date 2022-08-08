@@ -7,15 +7,27 @@ Adapted from Ogre3D
 #ifndef __Vector4_H__
 #define __Vector4_H__
 
+#include <assert.h>
+// #include <concepts>
+// #include <cstddef>
 #include <iostream>
 #include <cmath>
 #include <valarray>
 #include <vector>
-#include <assert.h>
 
 /** 4-dimensional homogeneous vector.
 */
+
+
+
+//template<class N>
+//concept SignedNumber = std::is_signed_v<N>
+//	&& std::is_arithmetic<N>
+//	&& std::is_floating_point<N>;
+
+
 template <typename N>
+//requires SignedNumber<N>
 class Vector4
 {
 public:
@@ -50,14 +62,14 @@ public:
 		return x*x + y*y + z*z + w*w;
 	}
 
-	inline N operator [] ( const size_t i ) const
+	inline N operator [] ( const std::size_t i ) const
     {
         assert( i < 4 );
 
         return *(&x+i);
     }
 
-	inline N& operator [] ( const size_t i )
+	inline N& operator [] ( const std::size_t i )
     {
         assert( i < 4 );
 

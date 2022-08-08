@@ -7,16 +7,17 @@
 #include <numeric>
 #include <ranges>
 #include <span>
-#include <type_traits>
+// #include <type_traits>
+#include <utility>
 #include <valarray>
 #include <vector>
 #include <algorithm>
 
 #include "_vector4.h"
 
-template class Vector4<double>;
+// template class Vector4<double>;
 
-using Vec4 = Vector4<double>;
+// using Vec4 = Vector4<double>;
 
 // const double GAMMA = 1.4;
 
@@ -87,8 +88,8 @@ std::array<std::array<const double, 6>, 6> plus_coefs[] = {
 	WmAp0, WmAp1, WmAp2
 };
 
-
-//double gete(double rho, double p) {
+//template <typename T>
+//T gete(T rho, T p) {
 //	if (rho != 0.)
 //		return p / (GAMMA-1.) / rho;
 
@@ -96,95 +97,102 @@ std::array<std::array<const double, 6>, 6> plus_coefs[] = {
 //}
 
 
-//double getp(double rho, double e) {
+//template <typename T>
+//T getp(T rho, T e) {
 //	return (GAMMA-1.) * rho * e;
 //}
 
 
-//double eFromConservative(double rho, double j, double rhoE) {
+//template <typename T>
+//T eFromConservative(T rho, T j, T rhoE) {
 //	return (rhoE - 0.5 * j*j / rho) / rho;
 //}
 
 
-//Vec4 calcPhysicalFlux(double rho, double u, double p, double last) {
-//	if (rho == 0) return Vec4::ZERO;
+//template <typename T>
+//Vector4<T> calcPhysicalFlux(T rho, T u, T p, T last) {
+//	if (rho == 0) return Vector4<T>::ZERO;
 
 
-//	double e = gete(rho, p);
-//	return Vec4(rho * u, p + rho*u*u,
+//	T e = gete(rho, p);
+//	return Vector4<T>(rho * u, p + rho*u*u,
 //				u*(p + rho*(e + 0.5*u*u)),
 //				u*last);
 //}
 
 
-//Vec4 conservativeToPrimitive(Vec4 q) {
+//template <typename T>
+//Vector4<T> conservativeToPrimitive(Vector4<T> q) {
 //	// Primitive variables
-//	double rho = q[0];
-//	double u = q[1] / rho;
-//	double E = q[2] / rho;
-//	double p = (GAMMA - 1.) * rho * (E - 0.5*u*u);
+//	T rho = q[0];
+//	T u = q[1] / rho;
+//	T E = q[2] / rho;
+//	T p = (GAMMA - 1.) * rho * (E - 0.5*u*u);
 
-//	return Vec4(rho, u, p, q[3]);
+//	return Vector4<T>(rho, u, p, q[3]);
 //}
 
 
-//Vec4 calcPhysicalFluxFromConservativeVec(Vec4 u) {
+//template <typename T>
+//Vector4<T> calcPhysicalFluxFromConservativeVec(Vector4<T> u) {
 ////	return calcPhysicalFlux(u[0],
 ////			u[1] / u[0],
 ////			getp(u[0], eFromConservative(u[0], u[1], u[2])));
-//	Vec4 prim = conservativeToPrimitive(u);
+//	Vector4<T> prim = conservativeToPrimitive(u);
 
 //	return calcPhysicalFlux(prim[0], prim[1], prim[2], prim[3]);
 //}
 
 
-Vec4 conservativeToPrimitive(Vec4 q) {
+template <typename T>
+Vector4<T> conservativeToPrimitive(Vector4<T> q) {
 	// Primitive variables
-	double rho = q[0];
-	double u = q[1] / rho;
-	// double E = q[2] / rho;
+	T rho = q[0];
+	T u = q[1] / rho;
+	// T E = q[2] / rho;
 
 
-	double s1 = q[3] / q[0];
-	double s2 = 1. - s1;
-	double v = q[1] / q[0];
-	double cp1 = 1005.9; double cp2 = 627.83; // Cp values for air and sf6
-	double cv1 = 717.09; double cv2 = 566.95; // Cv values for air and sf6
-	double gammaeff = (cp1*s1+cp2*s2) / (cv1*s1+cv2*s2); // Calculate an effective gamma
-	double p = (q[2]-q[0]*std::pow(v, 2.0)/2.0)*(gammaeff-1.); // Calculate pressure from ch10.pdf, eq 10.2
+	T s1 = q[3] / q[0];
+	T s2 = 1. - s1;
+	T v = q[1] / q[0];
+	T cp1 = 1005.9; T cp2 = 627.83;  // Cp values for air and sf6
+	T cv1 = 717.09; T cv2 = 566.95;  // Cv values for air and sf6
+	T gammaeff = (cp1*s1+cp2*s2) / (cv1*s1+cv2*s2);  // Calculate an effective gamma
+	T p = (q[2]-q[0]*std::pow(v, 2.0)/2.0)*(gammaeff-1.);  // Calculate pressure from ch10.pdf, eq 10.2
 
-	return Vec4(rho, u, p, q[3] / q[0]);
+	return Vector4<T>(rho, u, p, q[3] / q[0]);
 }
 
 
-Vec4 calcPhysicalFluxFromConservativeVec(Vec4 u) {
-	double s1 = u[3] / u[0];
-	double s2 = 1. - s1;
-	double v = u[1] / u[0];
+template <typename T>
+Vector4<T> calcPhysicalFluxFromConservativeVec(Vector4<T> u) {
+	T s1 = u[3] / u[0];
+	T s2 = 1. - s1;
+	T v = u[1] / u[0];
 
-	double cp1 = 1005.9; double cp2 = 627.83; // Cp values for air and sf6
-	double cv1 = 717.09; double cv2 = 566.95; // Cv values for air and sf6
-	double gammaeff = (cp1*s1+cp2*s2) / (cv1*s1+cv2*s2); // Calculate an effective gamma
-	double P = (u[2]-u[0]*std::pow(v, 2.0)/2.0)*(gammaeff-1.); // Calculate pressure from ch10.pdf, eq 10.2
-	//		ret[0] = u[1]
-	//		ret[1] = rho*np.power(v,2.0)+P;
-	//		ret[2] = (u[2]+P)*v;
-	//		ret[3] = v*u[3];
-	//		return ret;
+	T cp1 = 1005.9; T cp2 = 627.83;  // Cp values for air and sf6
+	T cv1 = 717.09; T cv2 = 566.95;  // Cv values for air and sf6
+	T gammaeff = (cp1*s1+cp2*s2) / (cv1*s1+cv2*s2);  // Calculate an effective gamma
+	T P = (u[2]-u[0]*std::pow(v, 2.0)/2.0)*(gammaeff-1.);  // Calculate pressure from ch10.pdf, eq 10.2
+	//	ret[0] = u[1]
+	//	ret[1] = rho*np.power(v,2.0)+P;
+	//	ret[2] = (u[2]+P)*v;
+	//	ret[3] = v*u[3];
+	//	return ret;
 
-	return Vec4(u[1], u[0]*v*v + P, (u[2]+P)*v, u[3]*v);
+	return Vector4<T>(u[1], u[0]*v*v + P, (u[2]+P)*v, u[3]*v);
 }
 
 
-template <typename T1, typename T2>
-std::valarray<double> vecMatDot(const T1& vec, const T2& mat) {
+template <typename T, typename T1, typename T2>
+std::valarray<T> vecMatDot(const T1& vec, const T2& mat) {
 	/* Multiply a vector by a matrix (a sum product over
 	 * the last axis of mat and vec).
 	 */
 
-	std::valarray<double> result(std::ranges::size(mat));
+	std::valarray<T> result(std::ranges::size(mat));
 
-	for (size_t k = 0; k < std::ranges::size(mat)
+	for (std::size_t k = 0; k < std::ranges::size(mat)
 			&& k < std::ranges::size(vec); ++ k)
 		result[k] = std::inner_product(std::begin(mat[k]),
 									   std::end(mat[k]),
@@ -194,36 +202,35 @@ std::valarray<double> vecMatDot(const T1& vec, const T2& mat) {
 }
 
 
-std::valarray<Vec4> calcPhysFlux(std::valarray<Vec4> u_arr) {
+template <typename T>
+std::valarray<Vector4<T>> calcPhysFlux(const std::valarray<Vector4<T>>& u_arr) {
 	/* Calculate physical fluxes of conservative variables
 	 * in all points in the computation domain u_arr.
 	 */
 
-	// return std::valarray(Vec4::ZERO, 500); // TO DO
-	std::valarray<Vec4> f_arr = u_arr.apply(
-		calcPhysicalFluxFromConservativeVec
-	);
-
-	return f_arr;
+	return u_arr.apply(
+				calcPhysicalFluxFromConservativeVec
+			);  // f_arr
 }
 
 
-double calcMaxWaveSpeedD(std::valarray<Vec4> u_arr) {
+template <typename T>
+T calcMaxWaveSpeedD(const std::valarray<Vector4<T>>& u_arr) {
 	/* Calculate df/du. */
 
-	size_t k = 0;
+	std::size_t k = 0;
 
-	double cp1 = 1005.9; double cp2 = 627.83; // Cp values for air and sf6
-	double cv1 = 717.09; double cv2 = 566.95; // Cv values for air and sf6
+	T cp1 = 1005.9; T cp2 = 627.83; // Cp values for air and sf6
+	T cv1 = 717.09; T cv2 = 566.95; // Cv values for air and sf6
 
-	std::valarray<double> s1(0., u_arr.size());
+	std::valarray<T> s1(u_arr.size());
 	for (k = 0; k < u_arr.size(); ++ k)
 		s1[k] = u_arr[k][3] / u_arr[k][0]; // s2 = W[4,:]/W[0,:]
-	std::valarray<double> s2 = 1 - s1;
+	std::valarray<T> s2 = 1 - s1;
 
-	std::valarray<double> arr_G = (s1*cp1+s2*cp2) / (s1*cv1+s2*cv2);
-	// std::valarray<double> arr_G(1.4, U.size());
-	std::valarray<double> a0(0., u_arr.size());
+	std::valarray<T> arr_G = (s1*cp1+s2*cp2) / (s1*cv1+s2*cv2);
+	// std::valarray<T> arr_G(1.4, U.size());
+	std::valarray<T> a0(u_arr.size());
 	for (k = 0; k < u_arr.size(); ++ k)
 		a0[k] = arr_G[k] * u_arr[k][2] * (arr_G[k]-1.) / u_arr[k][0];
 	a0 = std::sqrt(a0);
@@ -232,10 +239,10 @@ double calcMaxWaveSpeedD(std::valarray<Vec4> u_arr) {
 }
 
 
-//template <typename T>
-//std::array<double, 3> smoothness_indicators(const T& f_stensil) {
-std::valarray<double> betaSmoothnessIndicators(
-		std::span<double, 5> f_stensil) {
+
+template <typename T>
+//std::array<T, 3> smoothness_indicators(const T1& f_stensil) {
+std::valarray<T> betaSmoothnessIndicators(std::span<T, 5> f_stensil) {
 	/* Return the WENO smoothness indicators of Jiang and Shu (1996)
 	 * for each of the 3 substancils.
 	 * That is the sum of the normalized squares of the scaled
@@ -246,22 +253,23 @@ std::valarray<double> betaSmoothnessIndicators(
 	 * order Eno schemes.
 	 */
 
-	// std::array<double, 3> res;
-	std::valarray<double> res(0., 3);
-	double f_prev2 = f_stensil[0];
-	double f_prev1 = f_stensil[1];
-	double f_curr0 = f_stensil[2];
-	double f_next1 = f_stensil[3];
-	double f_next2 = f_stensil[4];
+	// std::array<T, 3> res;
+	std::valarray<T> res(3);
+	T f_prev2 = f_stensil[0];
+	T f_prev1 = f_stensil[1];
+	T f_curr0 = f_stensil[2];
+	T f_next1 = f_stensil[3];
+	T f_next2 = f_stensil[4];
 
-	double beta_0 = ((13./12.) * pow(f_prev2 - 2.*f_prev1 + f_curr0, 2)
-					 + (1./4.) * pow(f_prev2 - 4.*f_prev1 + 3.*f_curr0, 2));
+	T beta_0 = ((13./12.) * pow(f_prev2 - 2.*f_prev1 + f_curr0, 2)
+				+ (1./4.) * pow(f_prev2 - 4.*f_prev1 + 3.*f_curr0, 2));
 
-	double beta_1 = ((13./12.) * pow((f_prev1 - 2.*f_curr0 + f_next1), 2)
-					 + (1/4.) * pow((f_prev1 - f_next1), 2));
+	T beta_1 = ((13./12.) * pow((f_prev1 - 2.*f_curr0 + f_next1), 2)
+				+ (1/4.) * pow((f_prev1 - f_next1), 2));
 
-	double beta_2 = ((13./12.) * pow(f_curr0 - 2.*f_next1 + f_next2, 2)
-					 + (1./4.) * pow(3*f_curr0 - 4.*f_next1 + f_next2, 2));
+	T beta_2 = ((13./12.) * pow(f_curr0 - 2.*f_next1 + f_next2, 2)
+				+ (1./4.) * pow(3*f_curr0 - 4.*f_next1 + f_next2, 2));
+
 	res[0] = beta_0;
 	res[1] = beta_1;
 	res[2] = beta_2;
@@ -270,24 +278,25 @@ std::valarray<double> betaSmoothnessIndicators(
 }
 
 
-template <typename T>
-std::valarray<double> betaSmoothnessIndicatorsMat(
-	const T& f_stensil,
-	std::array<std::array<const double, 6>, 6> _coefs[] = plus_coefs
+template <typename T, typename T1>
+std::valarray<T> betaSmoothnessIndicatorsMat(
+	const T1& f_stensil,
+	std::array<std::array<const T, 6>, 6> _coefs[] = plus_coefs
 ) {
-	/*Return the smoothness indicators beta_k, k=0,1,2
+	/* Return the smoothness indicators beta_k, k=0,1,2
 	 * for each of the 3 substancils of f_stensil.
 	 */
 
-	std::valarray<double> res(0., 3);
-	std::valarray<double> prod_buf(std::ranges::size(f_stensil));
+	std::valarray<T> res(3);
 
-	for (size_t k = 0; k < 3; ++ k) {
-		// for (size_t k = 0; k < half_size + 1; ++ k)
-		prod_buf = vecMatDot(f_stensil, _coefs[k]);
-		res[k] = std::inner_product(std::begin(prod_buf),
-									std::end(prod_buf),
-									std::begin(f_stensil), 0.);
+	for (std::size_t k = 0; k < 3; ++ k) {
+		// for (std::size_t k = 0; k < half_size + 1; ++ k)
+		res[k] = std::inner_product(
+					std::begin(f_stensil),
+					std::end(f_stensil),
+					std::begin(vecMatDot(f_stensil, _coefs[k])),
+					0.
+		);
 	}
 
 
@@ -295,13 +304,14 @@ std::valarray<double> betaSmoothnessIndicatorsMat(
 }
 
 
-double henrickGMappingForLambda(double lambda_weno_weight,
-								double lambda_ideal = 1./3.) {
+template <typename T>
+T henrickGMappingForLambda(T lambda_weno_weight,
+						   T lambda_ideal = 1./3.) {
 	/* The mapping function g by Henrick modified for symmetric
 	 * lambda-weights by Zheng Hong, Zhengyin Ye and Kun Ye.
 	 */
 
-	double square_ideal = lambda_ideal * lambda_ideal;
+	T square_ideal = lambda_ideal * lambda_ideal;
 	return lambda_weno_weight * (lambda_ideal
 								 + square_ideal
 								 - 3. * lambda_ideal * lambda_weno_weight
@@ -319,15 +329,17 @@ double henrickGMappingForLambda(double lambda_weno_weight,
 // achieving optimal order near critical points, 2005 by Henrick et al.)
 // and 'An improved WENO-Z scheme with symmetry-preserving mapping'
 // by Zheng Hong, Zhengyin Ye and Kun Ye, 2020
-void calcHydroStageWENO5FM(const std::valarray<double>& u,
-						   double t,
-						   double lam,
-						   std::valarray<double>& f,
-						   size_t nSize,
-						   double eps = 1e-40,
-						   double p = 2.) {
+template <typename T>
+void calcHydroStageWENO5FM(const std::valarray<T>& u,
+						   T t,
+						   T lam,
+						   std::valarray<T>& f,
+						   std::size_t nSize,
+						   T eps = 1e-40,
+						   T p = 2.) {
 	/* Component-wise finite-difference WENO5FM (WENO5-FM) - space
-	 * reconstruction method with Lax-Friedrichs (LF) flux splitting.
+	 * reconstruction method with the global Lax-Friedrichs (LF) flux
+	 * splitting.
 	 *
 	 * Usually, componentwise reconstruction produces satisfactory
 	 * results for schemes up to third-order accuracy, while characteristic
@@ -348,13 +360,13 @@ void calcHydroStageWENO5FM(const std::valarray<double>& u,
 	// as first noted and more or less fully outlined by Henrick et al.)
 
 	const unsigned order = 5;
-	const size_t stensil_size = order;
-	const size_t _actual_stensil_size = stensil_size + 1;  // 6
-	const size_t half_size = order / 2;  // 2
+	const std::size_t stensil_size = order;
+	const std::size_t _actual_stensil_size = stensil_size + 1;  // 6
+	const std::size_t half_size = order / 2;  // 2
 
-	const size_t nGhostCells = (stensil_size + 1) / 2;  // r = (order + 1) / 2 = 3
-	const size_t mini = nGhostCells;
-	const size_t maxi = nGhostCells + nSize - 1;
+	const std::size_t nGhostCells = (stensil_size + 1) / 2;  // r = (order + 1) / 2 = 3
+	const std::size_t mini = nGhostCells;
+	const std::size_t maxi = nGhostCells + nSize - 1;
 	// auto shifted_index_range = std::ranges::iota_view{mini + 2, maxi - 2};
 	auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 2};
 	// [g      g      g      i      i      i      i      i      i      ...]
@@ -368,13 +380,15 @@ void calcHydroStageWENO5FM(const std::valarray<double>& u,
 	// to find component stensils
 	// [q_k] = WmN(+/-) * [ f[j-2] ... f[j+2] ]
 	// of the WENO interpolator.
-	std::array<std::array<const double, 6>, 3> WmNminus {{
+	// So 3rd order approximation coefficients associated with
+	// the substencils.
+	std::array<std::array<const T, 6>, 3> WmNminus {{
 		{{0., 0., 0., 11./6, -7./6, 2./6}},
 		{{0., 0., 2./6, 5./6, -1./6, 0.}},
 		{{0., -1./6, 5./6, 2./6, 0., 0.}}
 	}};
 
-	std::array<std::array<const double, 6>, 3> WmNplus {{
+	std::array<std::array<const T, 6>, 3> WmNplus {{
 		{{2./6, -7./6, 11./6, 0., 0., 0.}},
 		{{0., -1./6, 5./6, 2./6, 0., 0.}},
 		{{0., 0., 2./6, 5./6, -1./6, 0.}}
@@ -383,41 +397,42 @@ void calcHydroStageWENO5FM(const std::valarray<double>& u,
 	// Calculation of f_hat, the numerical flux of u (whichever
 	// is chosen), requires the approximation of u that uses at
 	// the j-th cell of u-discretization a group of cell average
-	// values on the left (u_minus) and on the right (u_plus).
+	// values on the left (`u_minus`) and on the right (`u_plus`).
+	// So left- and right-biased approximations respectively.
 	// `u_plus` represents the cells [j-2, j-1, j, j+1, j+2],
 	// and `u_minus` represents the cells [j-1, j, j+1, j+2, j+3];
 	// for convenience and uniformity we represent both using the
 	// same combined structure of    [j-2, j-1, j, j+1, j+2, j+3].
-	std::valarray<double> u_plus(0., _actual_stensil_size);   // f_plus
-	std::valarray<double> u_minus(0., _actual_stensil_size);  // f_minus
+	std::valarray<T> u_plus(_actual_stensil_size);   // f_plus
+	std::valarray<T> u_minus(_actual_stensil_size);  // f_minus
 
-	std::valarray<double> betaISplus(0., half_size + 1);
-	std::valarray<double> betaISminus(0., half_size + 1);
+	std::valarray<T> betaISplus(half_size + 1);
+	std::valarray<T> betaISminus(half_size + 1);
 
-	std::valarray<double> alphaplus(0., half_size + 1);
-	std::valarray<double> alphaminus(0., half_size + 1);
+	std::valarray<T> alphaplus(half_size + 1);
+	std::valarray<T> alphaminus(half_size + 1);
 
-	std::valarray<double> lambdaplus(0., half_size + 1);
-	std::valarray<double> lambdaminus(0., half_size + 1);
+	std::valarray<T> lambdaplus(half_size + 1);
+	std::valarray<T> lambdaminus(half_size + 1);
 
-	std::valarray<double> omegaplus(0., half_size + 1);
-	std::valarray<double> omegaminus(0., half_size + 1);
+	std::valarray<T> omegaplus(half_size + 1);
+	std::valarray<T> omegaminus(half_size + 1);
 
-	double fhatminus = 0.;
-	double fhatplus = 0.;
+	T fhatminus = 0.;
+	T fhatplus = 0.;
 
-	// std::valarray<double> matvecprod(stensil_size);
-	std::valarray<double> matvecprod(half_size + 1);
+	// std::valarray<T> matvecprod(stensil_size);
+	std::valarray<T> matvecprod(half_size + 1);
 
 	// The ideal weights (they generate the central upstream fifth-order
 	// scheme for the 5-point stencil):
-	std::valarray<double> d_lin_weights = {0.1, 0.6, 0.3};
+	std::valarray<T> d_lin_weights = {0.1, 0.6, 0.3};
 	// From them WENO5-Z and WENO-M will calculate the non-linear
 	// alpha and omega weights.
 
 	// In WENO5-FM, further, we have one ideal value for λ
 	// \overbar{lambda} = 1/3
-	// double lambda_ideal = 1/3;
+	// T lambda_ideal = 1/3;
 	// In the smooth region the smoothness indicators β_k ought to be equal
 	// for all sub-stencils, and thus the weight's ideal value must be
 	// unique.
@@ -432,16 +447,16 @@ void calcHydroStageWENO5FM(const std::valarray<double>& u,
 	// is chosen here. `f_plus` uses a biased stencil with 1 point to
 	// the left, while `f_minus` uses a biased stencil with 1 point to
 	// the right.
-	// double alpha = abs(U).max();
-	// double alpha = std::sqrt(u.max().square());
-	double alpha = std::abs(lam);  // α = max |df/du|
-	// double alpha = std::abs(u).max();
-//	std::valarray<Vec4> f_minus = Vec4(0.5) * (calcPhysFlux(U)
-//						- Vec4(alpha) * U);
-//	std::valarray<Vec4> f_plus = Vec4(0.5) * (calcPhysFlux(U)
-//						+ Vec4(alpha) * U);
-	std::valarray<double> f_plus = 0.5 * (f + alpha * u);
-	std::valarray<double> f_minus = 0.5 * (f - alpha * u);
+	// T alpha = abs(U).max();
+	// T alpha = std::sqrt(u.max().square());
+	T alpha = std::abs(lam);  // α = max |df/du|
+	// T alpha = std::abs(u).max();
+//	std::valarray<Vector4<T>> f_minus = Vector4<T>(0.5) * (calcPhysFlux(U)
+//						- Vector4<T>(alpha) * U);
+//	std::valarray<Vector4<T>> f_plus = Vector4<T>(0.5) * (calcPhysFlux(U)
+//						+ Vector4<T>(alpha) * U);
+	std::valarray<T> f_plus = 0.5 * (f + alpha * u);
+	std::valarray<T> f_minus = 0.5 * (f - alpha * u);
 
 	// So an LF flux	`numerical_flux`, f_hat(u_minus, u_plus),
 	// a monotone numerical flux consistent with the physical one
@@ -452,15 +467,14 @@ void calcHydroStageWENO5FM(const std::valarray<double>& u,
 	// Riemann solver (see Toro, 2009). Somehow...
 	// Not every monotone flux can be writtenin the flux split form.
 	// For example, the Godunov flux cannot.
-	// std::valarray<double> numerical_flux(0., u.size());
-	for (size_t j = 0; j < u.size(); ++ j)
-		f[j] = 0;
+	// std::valarray<T> numerical_flux(0., u.size());
+	f = std::valarray<T>(u.size());
 
 	auto j_it_p = std::begin(f_plus);
 	auto j_it_m = std::begin(f_minus);
 
 	for (auto j : shifted_index_range) {
-	// for (size_t j = 10; j < 11; ++ j) {
+	// for (std::size_t j = 10; j < 11; ++ j) {
 		j_it_p = std::begin(f_plus);
 		j_it_m = std::begin(f_minus);
 		std::advance(j_it_p, j + half_size + 1 - stensil_size);
@@ -470,12 +484,12 @@ void calcHydroStageWENO5FM(const std::valarray<double>& u,
 //		std::copy_n(std::begin(f_plus)+j + half_size + 1 - stensil_size, u_plus.size(), std::begin(u_plus));
 //		std::copy_n(std::begin(f_minus)+j + half_size + 1 - stensil_size, u_minus.size(), std::begin(u_minus));
 //		std::cout << j + half_size + 1 - stensil_size << " " << j + half_size + 1 - stensil_size + u_plus.size() << "\n";
-//		for (auto n : u_plus)//	for (size_t j = maxi+1; j < u.size(); ++ j) {
+//		for (auto n : u_plus)//	for (std::size_t j = maxi+1; j < u.size(); ++ j) {
 		//		// numerical_flux[j] = 0;
 		//		f[j] = 0;
 		//	}
 
-		//	for (size_t j = 0; j < 2; ++ j) {
+		//	for (std::size_t j = 0; j < 2; ++ j) {
 		//		// numerical_flux[j] = 0;
 		//		f[j] = 0;
 		//	}
@@ -493,11 +507,11 @@ void calcHydroStageWENO5FM(const std::valarray<double>& u,
 
 		// The non-matrix variant seems to be faster(?)
 		betaISplus = betaSmoothnessIndicators(
-					std::span<double, 5>{std::begin(u_plus), 5});
+					std::span<T, 5>{std::begin(u_plus), 5});
 
 		std::reverse(std::begin(u_minus), std::end(u_minus));
 		betaISminus = betaSmoothnessIndicators(
-					std::span<double, 5>{std::begin(u_minus), 5});
+					std::span<T, 5>{std::begin(u_minus), 5});
 		// std::reverse(std::begin(u_minus), std::end(u_minus));
 
 		// non-linear non-scaled (α-)weights
@@ -520,7 +534,7 @@ void calcHydroStageWENO5FM(const std::valarray<double>& u,
 
 		// And only to them a mapping in the spirit of Henrick et al.
 		// is applied:
-		auto gMap = [](double x) -> double {
+		auto gMap = [](T x) -> T {
 			return henrickGMappingForLambda(x);
 		};
 
@@ -536,16 +550,16 @@ void calcHydroStageWENO5FM(const std::valarray<double>& u,
 		omegaminus /= omegaminus.sum();
 
 
-		// matvecprod stores an estimate of f_{i+1/2} for each substencil
-		// which is then used to calculate
+		// vecMatDot<T>(u_..., WmN...) stores a 3-rd order estimate of f_{i+1/2}
+		// via linear combinations with WmNplus/WmNminus coefficients
+		// for each substencil which is then used to calculate
 		// f_hat = ∑ ω * q = [ω] * (WmN(+/-) * [f])
-		matvecprod = vecMatDot(u_plus, WmNplus);
+		// using the nonlinear weights [ω]
 		fhatplus = std::inner_product(std::begin(omegaplus), std::end(omegaplus),
-									  std::begin(matvecprod), 0.);
+									  std::begin(vecMatDot<T>(u_plus, WmNplus)), 0.);
 		// matvecprod = vecMatDot(u_minus, WmNminus);
-		matvecprod = vecMatDot(u_minus, WmNplus);
 		fhatminus = std::inner_product(std::begin(omegaminus), std::end(omegaminus),
-									   std::begin(matvecprod), 0.);
+									   std::begin(vecMatDot<T>(u_minus, WmNplus)), 0.);
 		// std::reverse(std::begin(u_plus), std::end(u_minus));
 
 		// numerical_flux[j] = fhatplus + fhatminus;
@@ -556,12 +570,12 @@ void calcHydroStageWENO5FM(const std::valarray<double>& u,
 //		std::cout << "\n";
 	}
 
-//	for (size_t j = maxi+1; j < u.size(); ++ j) {
+//	for (std::size_t j = maxi+1; j < u.size(); ++ j) {
 //		// numerical_flux[j] = 0;
 //		f[j] = 0;
 //	}
 
-//	for (size_t j = 0; j < 2; ++ j) {
+//	for (std::size_t j = 0; j < 2; ++ j) {
 //		// numerical_flux[j] = 0;
 //		f[j] = 0;
 //	}
@@ -572,22 +586,23 @@ void calcHydroStageWENO5FM(const std::valarray<double>& u,
 }
 
 
-void update_ghost_points(std::valarray<Vec4>& U/*,
-										size_t mini,
-										size_t maxi*/) {
+template <typename T>
+void update_ghost_points(std::valarray<Vector4<T>>& U/*,
+										std::size_t mini,
+										std::size_t maxi*/) {
 	/* Update ghost points in U. */
 
 	//	for (k = nGhostCells; k < nGhostCells + nSize; ++ k) {
 	//			U[k] = ms[k-nGhostCells].W;
 	//	}
 
-	const size_t nFullSize = U.size();
-	const size_t nGhostCells = 3;  // 3
-	const size_t mini = nGhostCells;
-	const size_t maxi = nFullSize - nGhostCells - 1;
+	const std::size_t nFullSize = U.size();
+	const std::size_t nGhostCells = 3;  // 3
+	const std::size_t mini = nGhostCells;
+	const std::size_t maxi = nFullSize - nGhostCells - 1;
 	// ... nFullSize-4   nFullSize-3   nFullSize-2   nFullSize-1 ]
 	// ...    maxi
-	// const size_t nSize = nFullSize - 2 * nGhostCells;
+	// const std::size_t nSize = nFullSize - 2 * nGhostCells;
 
 	// Transmissive b.c.s
 	U[2] = U[mini]; U[1] = U[mini]; U[0] = U[mini];
@@ -595,20 +610,22 @@ void update_ghost_points(std::valarray<Vec4>& U/*,
 }
 
 
-std::valarray<Vec4> calcFluxComponentWise(std::valarray<Vec4>& U,
-							 double t, std::valarray<double>& lam,
-							 size_t nSize,
-							 double eps = 1e-40,
-							 double p = 2.) {
-	std::valarray<Vec4> res = calcPhysFlux(U);
-	std::valarray<std::valarray<double>> components(
-				std::valarray(0., U.size()), 4);
-	std::valarray<std::valarray<double>> component_fs(
-				std::valarray(0., U.size()), 4);
+template <typename T>
+std::valarray<Vector4<T>> calcFluxComponentWise(
+		const std::valarray<Vector4<T>>& U,
+		T t, const std::valarray<T>& lam,
+		std::size_t nSize,
+		T eps = 1e-40,
+		T p = 2.) {
+	std::valarray<Vector4<T>> res = calcPhysFlux(U);
+	std::valarray<std::valarray<T>> components(
+				std::valarray<T>(U.size()), 4);
+	std::valarray<std::valarray<T>> component_fs(
+				std::valarray<T>(U.size()), 4);
 
-	size_t k = 0;
+	std::size_t k = 0;
 
-	for (size_t j = 0; j < 4; ++ j)
+	for (std::size_t j = 0; j < 4; ++ j)
 		for (k = 0; k < U.size(); ++ k) {
 			components[j][k] = U[k][j];
 			component_fs[j][k] = res[k][j];
@@ -617,12 +634,12 @@ std::valarray<Vec4> calcFluxComponentWise(std::valarray<Vec4>& U,
 	k = 0;
 	// for (auto component : components) {
 	for (k = 0; k < 4; ++ k) {
-		calcHydroStageWENO5FM(components[k], t, lam[k],
-							  component_fs[k], nSize, eps, p);
+		calcHydroStageWENO5FM<T>(components[k], t, lam[k],
+								 component_fs[k], nSize, eps, p);
 		// ++ k;
 	}
 
-	for (size_t j = 0; j < 4; ++ j)
+	for (std::size_t j = 0; j < 4; ++ j)
 		for (k = 0; k < U.size(); ++ k)
 			res[k][j] = component_fs[j][k];
 
@@ -630,29 +647,30 @@ std::valarray<Vec4> calcFluxComponentWise(std::valarray<Vec4>& U,
 }
 
 
-std::valarray<Vec4> calcdSpace(std::valarray<Vec4>& U,
-							   double t,
-							   double dx,
-							   std::valarray<double>& lam,
-							   size_t nSize,
-							   double eps = 1e-40,
-							   double p = 2.) {
-	std::valarray<Vec4> dflux(Vec4::ZERO, U.size());
-	std::valarray<Vec4> lf = calcFluxComponentWise(
+template <typename T>
+std::valarray<Vector4<T>> calcdSpace(const std::valarray<Vector4<T>>& U,
+							   T t,
+							   T dx,
+							   const std::valarray<T>& lam,
+							   std::size_t nSize,
+							   T eps = 1e-40,
+							   T p = 2.) {
+	std::valarray<Vector4<T>> dflux(Vector4<T>::ZERO, U.size());
+	std::valarray<Vector4<T>> lf = calcFluxComponentWise<T>(
 				U, t, lam, nSize, eps, p
 				);
 
-	const size_t ghost_point_number = 3;
+	const std::size_t ghost_point_number = 3;
 
 	std::slice Nweno(ghost_point_number, nSize, 1);
 	std::slice Nweno_shifted_by_neg_1(ghost_point_number-1, nSize, 1);
 //	std::slice Nweno(1, U.size()-1, 1);
 //	std::slice Nweno_shifted_by_neg_1(0, U.size()-1, 1);
 
-	std::valarray<Vec4> f_mn = lf[Nweno_shifted_by_neg_1];
-	std::valarray<Vec4> f_pl = lf[Nweno];
+	std::valarray<Vector4<T>> f_mn = lf[Nweno_shifted_by_neg_1];
+	std::valarray<Vector4<T>> f_pl = lf[Nweno];
 
-	dflux[Nweno] = -(f_pl - f_mn) / Vec4(dx);
+	dflux[Nweno] = -(f_pl - f_mn) / Vector4<T>(dx);
 	// dflux[3] -= lf[3];
 	// dflux[ghost_point_number-1-3] += lf[ghost_point_number-1-3];
 
@@ -662,13 +680,14 @@ std::valarray<Vec4> calcdSpace(std::valarray<Vec4>& U,
 }
 
 
+template <typename T>
 void advanceTimestepTVDRK3(
-	std::valarray<Vec4>& U,
-	std::valarray<Vec4>& dflux,
-	std::valarray<Vec4>& Y2,
-	std::valarray<Vec4>& Y3,
-	double t, double dt, double dx,
-	std::valarray<double>& lam, size_t nSize
+	std::valarray<Vector4<T>>& U,
+	std::valarray<Vector4<T>>& dflux,
+	std::valarray<Vector4<T>>& Y2,
+	std::valarray<Vector4<T>>& Y3,
+	T t, T dt, T dx,
+	const std::valarray<T>& lam, std::size_t nSize
 ) {
 	/* Optimal 3rd Order 3 Stage Explicit Total Variation Diming
 	 * / Diminishing (Strong Stability Preserving)
@@ -687,68 +706,69 @@ void advanceTimestepTVDRK3(
 	// std::slice Nint(3, nSize, 1);
 
 	// ----------------------First Stage--------------------
-	// std::valarray<Vec4> flux = calcFlux(U, t, lam);
-	dflux = calcdSpace(U, t, dx, lam, nSize);  // L1 = L[u^n]
-	// std::valarray<Vec4> res(Vec4::ZERO, U.size());
+	// std::valarray<Vector4<T>> flux = calcFlux(U, t, lam);
+	dflux = calcdSpace<T>(U, t, dx, lam, nSize);  // L1 = L[u^n]
+	// std::valarray<Vector4<T>> res(Vector4<T>::ZERO, U.size());
 	// L[u] = (-) dF[u]/dx
 
-	Y2 = U + Vec4(dt) * dflux;
+	Y2 = U + Vector4<T>(dt) * dflux;
 	// u(1) = u^n + Δt L[u^n]
 
-	update_ghost_points(Y2);
+	update_ghost_points<T>(Y2);
 
 
 	// ----------------------Second Stage-------------------
-	dflux = calcdSpace(Y2, t, dx, lam, nSize);  // L2 = L[u(1)]
+	dflux = calcdSpace<T>(Y2, t, dx, lam, nSize);  // L2 = L[u(1)]
 
-	Y3 = Vec4(3.)*U + Vec4(dt) * dflux + Y2;
-	Y3 *= Vec4(0.25);
+	Y3 = Vector4<T>(3.)*U + Vector4<T>(dt) * dflux + Y2;
+	Y3 *= Vector4<T>(0.25);
 	// u(2) = 0.75 * u^n + 0.25 * u(1) + 0.25 * Δt L[u(1)]
 
-	update_ghost_points(Y3);
+	update_ghost_points<T>(Y3);
 
 
 	// ----------------------Third Stage--------------------
-	dflux = calcdSpace(Y3, t, dx, lam, nSize);  // L3 = L[u(2)]
+	dflux = calcdSpace<T>(Y3, t, dx, lam, nSize);  // L3 = L[u(2)]
 
 
-	U += Vec4(2.) * (Y3 + Vec4(dt) * dflux);
-	U *= Vec4(1./3.);
+	U += Vector4<T>(2.) * (Y3 + Vector4<T>(dt) * dflux);
+	U *= Vector4<T>(1./3.);
 	// u^(n+1) = (1/3) * u^n + (2/3) * u(2) + (2/3) * Δt L[u(2)]
 
-	update_ghost_points(U);
+	update_ghost_points<T>(U);
 
 	// return U;
 	// U = res;
 }
 
 
+template <typename T>
 void integrate(
-	std::valarray<Vec4>& U,
-	std::valarray<Vec4>& flux,
-	std::valarray<Vec4>& Y2,
-	std::valarray<Vec4>& Y3,
-	double t0, double dx, size_t nSize,
-	double fin_t, double cfl = 0.4
+	std::valarray<Vector4<T>>& U,
+	std::valarray<Vector4<T>>& flux,
+	std::valarray<Vector4<T>>& Y2,
+	std::valarray<Vector4<T>>& Y3,
+	T t0, T dx, std::size_t nSize,
+	T fin_t, T cfl = 0.4
 ) {
-	double t = t0;
+	T t = t0;
 
-	double cpu = calcMaxWaveSpeedD(U);
-	std::valarray<double> lam = std::valarray(cpu, 4);
+	T cpu = calcMaxWaveSpeedD<T>(U);
+	std::valarray<T> lam = std::valarray(cpu, 4);
 
-	double dt = cfl * dx / lam[0];
+	T dt = cfl * dx / lam[0];
 
 	while (t < fin_t) {
 		if (t + dt > fin_t)
 			dt = fin_t - t;
 
-		advanceTimestepTVDRK3(U, flux, Y2, Y3, t, dt, dx, lam, nSize);
+		advanceTimestepTVDRK3<T>(U, flux, Y2, Y3, t, dt, dx, lam, nSize);
 		// std::cout << n*dt << "\n";
 		// std::cout << t << "\n";
 
 		t += dt;
 
-		 cpu = calcMaxWaveSpeedD(U);
+		 cpu = calcMaxWaveSpeedD<T>(U);
 		 lam = std::valarray(cpu, 4);
 
 		dt = cfl * dx / lam[0];
