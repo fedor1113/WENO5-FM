@@ -1,6 +1,6 @@
-// #pragma GCC optimize("Ofast")
-// #pragma GCC target("avx,avx2,fma")
-// #pragma GCC optimization("unroll-loops")
+#pragma GCC optimize("Ofast")
+#pragma GCC target("avx,avx2,fma")
+#pragma GCC optimization("unroll-loops")
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -43,7 +43,7 @@ int main() {
 	numeric_val cp1 = 1005.9; numeric_val cp2 = 627.83;  // Cp values for air and sf6
 	numeric_val cv1 = 717.09; numeric_val cv2 = 566.95;  // Cv values for air and sf6
 
-	std::size_t Nx = 2000;
+	std::size_t Nx = 500;
 	const std::size_t N_ghost_points = 3;
 	std::size_t N_full = Nx + 2*N_ghost_points;
 	// Nx = Nx + 6;  // Add in ghost cells

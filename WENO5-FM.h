@@ -83,10 +83,22 @@ std::array<std::array<const double, 6>, 6> WmAp2 {{
 	{{0., 0., 0., 0., 0., 0.}}
 }};
 
-
 std::array<std::array<const double, 6>, 6> plus_coefs[] = {
 	WmAp0, WmAp1, WmAp2
 };
+
+//	std::array<std::array<const T, 6>, 3> WmNminus {{
+//		{{0., 0., 0., 11./6, -7./6, 2./6}},
+//		{{0., 0., 2./6, 5./6, -1./6, 0.}},
+//		{{0., -1./6, 5./6, 2./6, 0., 0.}}
+//	}};
+
+//	std::array<std::array<const T, 6>, 3> WmNplus {{
+//		{{2./6, -7./6, 11./6, 0., 0., 0.}},
+//		{{0., -1./6, 5./6, 2./6, 0., 0.}},
+//		{{0., 0., 2./6, 5./6, -1./6, 0.}}
+//	}};
+
 
 //template <typename T>
 //T gete(T rho, T p) {
@@ -142,6 +154,48 @@ std::array<std::array<const double, 6>, 6> plus_coefs[] = {
 
 //	return calcPhysicalFlux(prim[0], prim[1], prim[2], prim[3]);
 //}
+
+
+template <typename T>
+std::valarray<T> operator + (const std::valarray<T>& arr,
+							 auto some_range) {
+	std::valarray<T> res(arr.size());
+	std::transform(std::begin(arr), std::end(arr),
+				   std::ranges::begin(some_range),
+				   std::begin(res), std::plus<>{});
+
+	return res;
+}
+
+
+template <typename T>
+std::valarray<T> operator - (const std::valarray<T>& arr,
+							 auto some_range) {
+	std::valarray<T> res(arr.size());
+	std::transform(std::begin(arr), std::end(arr),
+				   std::ranges::begin(some_range),
+				   std::begin(res), std::minus<>{});
+
+	return res;
+}
+
+
+template <typename T>
+std::valarray<T>& operator += (std::valarray<T>& arr, auto some_range) {
+	std::transform(std::begin(arr), std::end(arr),
+				   std::ranges::begin(some_range),
+				   std::begin(arr), std::plus<>{});
+	return arr;
+}
+
+
+template <typename T>
+std::valarray<T>& operator -= (std::valarray<T>& arr, auto some_range) {
+	std::transform(std::begin(arr), std::end(arr),
+				   std::ranges::begin(some_range),
+				   std::begin(arr), std::minus<>{});
+	return arr;
+}
 
 
 template <typename T>
@@ -241,13 +295,13 @@ T calcMaxWaveSpeedD(const std::valarray<Vector4<T>>& u_arr) {
 
 
 template <typename T>
-//std::array<T, 3> smoothness_indicators(const T1& f_stensil) {
-std::valarray<T> betaSmoothnessIndicators(std::span<T, 5> f_stensil) {
-	/* Return the WENO smoothness indicators of Jiang and Shu (1996)
-	 * for each of the 3 substancils.
+//std::array<T, 3> smoothness_indicators(const T1& f_stencil) {
+std::valarray<T> betaSmoothnessIndicators(std::span<T, 5> f_stencil) {
+	/* Return the WENO5 smoothness indicators of Jiang and Shu (1996)
+	 * for each of the 3 substencils.
 	 * That is the sum of the normalized squares of the scaled
 	 * L2-norms of all the derivatives of 3 local interpolating
-	 * polynomials in the sub-stencils of 5-node `f_stensil`.
+	 * polynomials in the sub-stencils of 5-node `f_stencil`.
 	 *
 	 * This allows for (2*3-1)=5th order accuracy from the 3rd
 	 * order Eno schemes.
@@ -255,11 +309,11 @@ std::valarray<T> betaSmoothnessIndicators(std::span<T, 5> f_stensil) {
 
 	// std::array<T, 3> res;
 	std::valarray<T> res(3);
-	T f_prev2 = f_stensil[0];
-	T f_prev1 = f_stensil[1];
-	T f_curr0 = f_stensil[2];
-	T f_next1 = f_stensil[3];
-	T f_next2 = f_stensil[4];
+	T f_prev2 = f_stencil[0];
+	T f_prev1 = f_stencil[1];
+	T f_curr0 = f_stencil[2];
+	T f_next1 = f_stencil[3];
+	T f_next2 = f_stencil[4];
 
 	T beta_0 = ((13./12.) * pow(f_prev2 - 2.*f_prev1 + f_curr0, 2)
 				+ (1./4.) * pow(f_prev2 - 4.*f_prev1 + 3.*f_curr0, 2));
@@ -280,11 +334,11 @@ std::valarray<T> betaSmoothnessIndicators(std::span<T, 5> f_stensil) {
 
 template <typename T, typename T1>
 std::valarray<T> betaSmoothnessIndicatorsMat(
-	const T1& f_stensil,
+	const T1& f_stencil,
 	std::array<std::array<const T, 6>, 6> _coefs[] = plus_coefs
 ) {
 	/* Return the smoothness indicators beta_k, k=0,1,2
-	 * for each of the 3 substancils of f_stensil.
+	 * for each of the 3 substencils of `f_stencil`.
 	 */
 
 	std::valarray<T> res(3);
@@ -292,15 +346,47 @@ std::valarray<T> betaSmoothnessIndicatorsMat(
 	for (std::size_t k = 0; k < 3; ++ k) {
 		// for (std::size_t k = 0; k < half_size + 1; ++ k)
 		res[k] = std::inner_product(
-					std::begin(f_stensil),
-					std::end(f_stensil),
-					std::begin(vecMatDot(f_stensil, _coefs[k])),
-					0.
+			std::begin(f_stencil),
+			std::end(f_stencil),
+			std::begin(vecMatDot(f_stencil, _coefs[k])),
+			0.
 		);
 	}
 
 
 	return res;
+}
+
+
+template <typename T>
+std::valarray<T> f3OrdReconstructionFromStencil(
+		std::span<T, 5> f_stencil) {
+	/* 3rd order reconstructions of f(j) from all the 3 3-element
+	 * substencils of `f_stencil` (f_plus or reversed f_minus:
+	 * receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '+'
+	 *               (or [j+3, j+2, j+1, j+0, j-1, ...] for '-').
+	 *                     ^    ^    ^    ^    ^    ^
+	 *                     0    1    2    3    4    |
+	 */
+	//		{{2./6, -7./6, 11./6, 0., 0., 0.}},
+	//		{{0., -1./6, 5./6, 2./6, 0., 0.}},
+	//		{{0., 0., 2./6, 5./6, -1./6, 0.}}
+
+	std::valarray<T> q_res(3);
+
+	q_res[0] = (2. * f_stencil[0]
+			  - 7. * f_stencil[1]
+			 + 11. * f_stencil[2]) / 6.;
+
+	q_res[1] = (-1. * f_stencil[1]
+			   + 5. * f_stencil[2]
+			   + 2. * f_stencil[3]) / 6.;
+
+	q_res[2] = (2. * f_stencil[2]
+			  + 5. * f_stencil[3]
+			  - 1. * f_stencil[4]) / 6.;
+
+	return q_res;
 }
 
 
@@ -322,30 +408,104 @@ T henrickGMappingForLambda(T lambda_weno_weight,
 }
 
 
-// FD WENO5FM (WENO5-FM) - method
-// Reconstruction based on LF flux splitting + improved mapped WENO
-// of 5th order
-// (see Mapped weighted essentially non-oscillatory schemes:
-// achieving optimal order near critical points, 2005 by Henrick et al.)
-// and 'An improved WENO-Z scheme with symmetry-preserving mapping'
-// by Zheng Hong, Zhengyin Ye and Kun Ye, 2020
 template <typename T>
-void calcHydroStageWENO5FM(const std::valarray<T>& u,
-						   T t,
-						   T lam,
-						   std::valarray<T>& f,
-						   std::size_t nSize,
-						   T eps = 1e-40,
-						   T p = 2.) {
-	/* Component-wise finite-difference WENO5FM (WENO5-FM) - space
-	 * reconstruction method with the global Lax-Friedrichs (LF) flux
-	 * splitting.
+std::valarray<T> alphaWENO5FMWeights(
+	const std::valarray<T>&& beta_IS_coefs,
+	T epsilon = 1e-40,
+	T p = 2.
+) {
+	/* Compute appropriate alpha(α)-weights for the WENO5-FM scheme,
+	 * by which the inverses of smoothness indicators are meant,
+	 * so inverse beta(β) with the caveat of aritificially finite
+	 * answers using the added epsilon-parameter to the beta-weights
+	 * (receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '+'
+	 *                (or [j+3, j+2, j+1, j+0, j-1, ...] for '-')
+	 *                      ^    ^    ^    ^    ^    ^
+	 *                      0    1    2    3    4    |
+	 * in either case for convenience).
 	 *
-	 * Usually, componentwise reconstruction produces satisfactory
-	 * results for schemes up to third-order accuracy, while characteristic
-	 * reconstruction produces better nonoscillatory results for
-	 * higher-order accuracy, albeit with an increased computational cost.
-	*/
+	 * `p` controls (increases) the amount of numerical dissipation
+	 * (it's recommended to take it = r-1 for 2r-1 order schemes,
+	 * so 2 for WENO5).
+	 */
+
+	return 1. / std::pow(epsilon + beta_IS_coefs, p);
+}
+
+
+template <typename T>
+std::valarray<T> lambdaWENO5FMWeights(
+	const std::valarray<T>&& alpha_weights
+) {
+	/* FM(ZM)-improved scaled (normalized) symmetric (λ-)weights
+	 * for WENO5-FM or WENO5-ZM
+	 * due to Zheng Hong, Zhengyin Ye and Kun Ye:
+	 * lambda_weights = alpha_weights / alpha_weights.sum();
+	 */
+
+	return alpha_weights / alpha_weights.sum();
+}
+
+
+template <typename T>
+std::valarray<T> omegaWENO5FMWeights(
+	const std::valarray<T>&& lambda_weights
+) {
+	/* From Henrick et al.'s mappings of g(λ_k) for the improved
+	 * symmetric normalized lambda-weights of Hong, Ye & Ye
+	 * and linear weights d_k we get the new corrected resultant
+	 * normalized WENO5-FM (WENO5-ZM) omega (ω_k-)weights for WENO5-FM
+	 * (again due to Zheng Hong, Zhengyin Ye and Kun Ye).
+	 */
+
+	// The ideal weights (they generate the central upstream fifth-order
+	// scheme for the 5-point stencil), which are in WENO usu. called
+	// linear weights:
+	std::valarray<T> d_lin_weights = {0.1, 0.6, 0.3};
+	// From them WENO5-Z and WENO-M will calculate the non-linear
+	// alpha and omega weights.
+
+	// In WENO5-FM, further, we have one ideal value for λ
+	// \overbar{lambda} = 1/3
+	// T lambda_ideal = 1/3;
+	// In the smooth region the smoothness indicators β_k ought to
+	// be equal for all sub-stencils, and thus the weight's ideal
+	// value must be unique.
+
+	// normalized WENO5-FM (WENO5-ZM) (ω_k-)weights:
+	// omega_weights = d_lin_weights * alpha_weights;
+	// lambda_weights
+
+	// And only to the λ-weights a mapping in the spirit of
+	// Henrick et al. is applied:
+	auto gMap = [](T x) -> T {
+		return henrickGMappingForLambda(x);
+	};
+
+	std::valarray<T> alpha_weights = lambda_weights.apply(gMap);
+	// α*-weights
+
+	// From α*=g(λ_k) and d_k we get the new corrected resultant
+	// normalized WENO5-FM (WENO5-ZM) (ω_k-)weights:
+	// omega_weights = d_lin_weights * alpha_weights;
+	std::valarray<T> omega_weights = d_lin_weights * alpha_weights;
+	omega_weights /= omega_weights.sum();
+
+	return omega_weights;
+}
+
+
+template <typename T>
+T computeFHatWENO5FMReconstructionKernel(std::span<T, 5> f_stencil,
+										 T eps = 1e-40, T p = 2.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical fluxes
+	 * `fhatplus` / `fhatminus` at a point j+0 for a given stencil
+	 * (receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '+'
+	 *                (or [j+3, j+2, j+1, j+0, j-1, ...] for '-')
+	 *                      ^    ^    ^    ^    ^    ^
+	 *                      0    1    2    3    4    |
+	 * in either case for convenience).
+	 */
 
 	// `p` controls (increases) the amount of numerical dissipation
 	// (and nothing more in WENO and WENO-(F)M);
@@ -359,12 +519,146 @@ void calcHydroStageWENO5FM(const std::valarray<T>& u,
 	// and should ideally be tailored to the specific comp. problem,
 	// as first noted and more or less fully outlined by Henrick et al.)
 
+	// f_stencil = f_plus (or a reversed stencil for f_minus)
+
+	std::valarray<T> beta_IS_coefs(3);
+	// Computationally, we will only need to remember
+	// some 3 weights at each WENO5 reconstruction step,
+	// so this array will be more than enough, but,
+	// for ease of understanding, we will create
+	// a bunch of other arrays.
+//	std::valarray<T> alpha_weights(3);
+//	std::valarray<T> lambda_weights(3);
+//	std::valarray<T> omega_weights(3);
+//	std::valarray<T> eno_reconstructed_f(3);
+
+	T f_hat = 0.;
+
+	// smoothness indicators of the stencil
+	// (measure how smooth u is in the stencil)
+//	 beta_IS_coefs = betaSmoothnessIndicatorsMat(f_stencil);
+
+	// The non-matrix variant seems to be faster(?)
+	beta_IS_coefs = betaSmoothnessIndicators(f_stencil);
+
+	// non-linear non-scaled (α-)weights
+//	alpha_weights = d_lin_weights / std::pow(eps + beta_IS_coefs, p);
+	// — we have no need of them in WENO-FM!
+
+	// Instead we use:
+	std::valarray<T> alpha_weights = alphaWENO5FMWeights(
+		std::move(beta_IS_coefs), eps, p
+	);
+
+	// scaled (normalized) non-linear (ω-)weights (ENO weights)
+//	 omega_weights = alpha_weights / alpha_weights.sum();
+
+	// FM(ZM)-improved scaled (normalized) symmetric (λ-)weights
+	// due to Zheng Hong, Zhengyin Ye and Kun Ye:
+//	 lambda_weights = alpha_weights / alpha_weights.sum();
+	std::valarray<T> lambda_weights = lambdaWENO5FMWeights(
+		std::move(alpha_weights)
+	);
+
+	std::valarray<T> omega_weights = omegaWENO5FMWeights(
+		std::move(lambda_weights)
+	);
+
+	// vecMatDot<T>(u_..., WmN...) stores a 3-rd order estimate of f_{i+1/2}
+	// via linear combinations with WmNplus coefficients
+	// for each substencil which is then used to calculate
+	// f_hat = ∑ ω * q = [ω] * (WmN(+/-) * [f])
+	// using the nonlinear weights [ω]
+//	f_hat = std::inner_product(
+//		std::begin(omega_weights), std::end(omega_weights),
+//		std::begin(f3OrdReconstructionFromStencil(f_stencil)), 0.
+//	);
+
+	std::valarray<
+		T
+	> eno_reconstructed_f = f3OrdReconstructionFromStencil(f_stencil);
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2];
+
+
+	return f_hat;
+}
+
+
+template <typename T>
+std::array<std::valarray<T>, 2> splitFluxAsLaxFriedrichs(
+		const auto& u, const auto& f, T alpha) {
+	/* Global Lax-Friedrichs (LF) flux splitting.
+	 *
+	 * For the purpose of linear stability (upwinding),
+	 * a flux splitting, f = fplus + fminus (dfplus/du >= 0 and
+	 * dfminus/du <= 0), is performed.
+	 */
+
+	std::array<std::valarray<T>, 2> monotone_lf_flux_components {
+		std::valarray<T>(std::ranges::size(f)),
+		std::valarray<T>(std::ranges::size(f))
+	};
+
+	// 	std::valarray<T> f_plus = 0.5 * (f + alpha * u);
+	//	std::valarray<T> f_plus = f / alpha;
+	//	f_plus += u;
+	//	f_plus *= 0.5 * alpha;
+	std::transform(std::begin(f), std::end(f),
+		std::begin(u), std::begin(monotone_lf_flux_components[0]),
+		[&alpha](T f_pt, T u_pt) {
+		return 0.5 * (f_pt + alpha * u_pt);
+	});
+
+	//	std::valarray<T> f_minus = 0.5 * (f - alpha * u);
+	//	std::valarray<T> f_minus = f / alpha;
+	//	f_minus -= u;
+	//	f_minus *= 0.5 * alpha;
+	std::valarray<T> f_minus(std::ranges::size(f));
+	std::transform(std::begin(f), std::end(f),
+		std::begin(u), std::begin(monotone_lf_flux_components[1]),
+		[&alpha](T f_pt, T u_pt) {
+		return 0.5 * (f_pt - alpha * u_pt);
+	});
+
+	return monotone_lf_flux_components;
+}
+
+
+// FD WENO5FM (WENO5-FM) - method
+// Reconstruction based on LF flux splitting + improved mapped WENO
+// of 5th order
+// (see Mapped weighted essentially non-oscillatory schemes:
+// achieving optimal order near critical points, 2005 by Henrick et al.)
+// and 'An improved WENO-Z scheme with symmetry-preserving mapping'
+// by Zheng Hong, Zhengyin Ye and Kun Ye, 2020
+template <typename T>
+void calcHydroStageWENO5FM(const auto& u,
+						   T t,
+						   T lam,
+						   auto& f,
+						   std::size_t nSize,
+						   T eps = 1e-40,
+						   T p = 2.) {
+	/* Component-wise finite-difference WENO5FM (WENO5-FM) - space
+	 * reconstruction method with the global Lax-Friedrichs (LF) flux
+	 * splitting.
+	 *
+	 * Usually, componentwise reconstruction produces satisfactory
+	 * results for schemes up to third-order accuracy, while characteristic
+	 * reconstruction produces better nonoscillatory results for
+	 * higher-order accuracy, albeit with an increased computational cost.
+	*/
+
 	const unsigned order = 5;
-	const std::size_t stensil_size = order;
-	const std::size_t _actual_stensil_size = stensil_size + 1;  // 6
+	const std::size_t stencil_size = order;
+	const std::size_t _actual_stencil_size = stencil_size + 1;  // 6
 	const std::size_t half_size = order / 2;  // 2
 
-	const std::size_t nGhostCells = (stensil_size + 1) / 2;  // r = (order + 1) / 2 = 3
+	// r = (order + 1) / 2 = 3
+	const std::size_t nGhostCells = (stencil_size + 1) / 2;
 	const std::size_t mini = nGhostCells;
 	const std::size_t maxi = nGhostCells + nSize - 1;
 	// auto shifted_index_range = std::ranges::iota_view{mini + 2, maxi - 2};
@@ -376,23 +670,12 @@ void calcHydroStageWENO5FM(const std::valarray<T>& u,
 
 	// WENO5 stencils
 
-	// Coefficients WmN(+/-) before fluxes at the stensil nodes
-	// to find component stensils
+	// Coefficients WmN(+/-) before fluxes at the stencil nodes
+	// to find component stencils
 	// [q_k] = WmN(+/-) * [ f[j-2] ... f[j+2] ]
 	// of the WENO interpolator.
 	// So 3rd order approximation coefficients associated with
 	// the substencils.
-	std::array<std::array<const T, 6>, 3> WmNminus {{
-		{{0., 0., 0., 11./6, -7./6, 2./6}},
-		{{0., 0., 2./6, 5./6, -1./6, 0.}},
-		{{0., -1./6, 5./6, 2./6, 0., 0.}}
-	}};
-
-	std::array<std::array<const T, 6>, 3> WmNplus {{
-		{{2./6, -7./6, 11./6, 0., 0., 0.}},
-		{{0., -1./6, 5./6, 2./6, 0., 0.}},
-		{{0., 0., 2./6, 5./6, -1./6, 0.}}
-	}};
 
 	// Calculation of f_hat, the numerical flux of u (whichever
 	// is chosen), requires the approximation of u that uses at
@@ -403,40 +686,8 @@ void calcHydroStageWENO5FM(const std::valarray<T>& u,
 	// and `u_minus` represents the cells [j-1, j, j+1, j+2, j+3];
 	// for convenience and uniformity we represent both using the
 	// same combined structure of    [j-2, j-1, j, j+1, j+2, j+3].
-	std::valarray<T> u_plus(_actual_stensil_size);   // f_plus
-	std::valarray<T> u_minus(_actual_stensil_size);  // f_minus
-
-	std::valarray<T> betaISplus(half_size + 1);
-	std::valarray<T> betaISminus(half_size + 1);
-
-	std::valarray<T> alphaplus(half_size + 1);
-	std::valarray<T> alphaminus(half_size + 1);
-
-	std::valarray<T> lambdaplus(half_size + 1);
-	std::valarray<T> lambdaminus(half_size + 1);
-
-	std::valarray<T> omegaplus(half_size + 1);
-	std::valarray<T> omegaminus(half_size + 1);
-
-	T fhatminus = 0.;
-	T fhatplus = 0.;
-
-	// std::valarray<T> matvecprod(stensil_size);
-	std::valarray<T> matvecprod(half_size + 1);
-
-	// The ideal weights (they generate the central upstream fifth-order
-	// scheme for the 5-point stencil):
-	std::valarray<T> d_lin_weights = {0.1, 0.6, 0.3};
-	// From them WENO5-Z and WENO-M will calculate the non-linear
-	// alpha and omega weights.
-
-	// In WENO5-FM, further, we have one ideal value for λ
-	// \overbar{lambda} = 1/3
-	// T lambda_ideal = 1/3;
-	// In the smooth region the smoothness indicators β_k ought to be equal
-	// for all sub-stencils, and thus the weight's ideal value must be
-	// unique.
-
+	std::valarray<T> u_plus(_actual_stencil_size);   // f_plus
+	std::valarray<T> u_minus(_actual_stencil_size);  // f_minus
 
 	// For the purpose of linear stability (upwinding),
 	// a flux splitting, f = fplus + fminus (dfplus/du >= 0 and
@@ -450,13 +701,15 @@ void calcHydroStageWENO5FM(const std::valarray<T>& u,
 	// T alpha = abs(U).max();
 	// T alpha = std::sqrt(u.max().square());
 	T alpha = std::abs(lam);  // α = max |df/du|
-	// T alpha = std::abs(u).max();
-//	std::valarray<Vector4<T>> f_minus = Vector4<T>(0.5) * (calcPhysFlux(U)
-//						- Vector4<T>(alpha) * U);
-//	std::valarray<Vector4<T>> f_plus = Vector4<T>(0.5) * (calcPhysFlux(U)
-//						+ Vector4<T>(alpha) * U);
-	std::valarray<T> f_plus = 0.5 * (f + alpha * u);
-	std::valarray<T> f_minus = 0.5 * (f - alpha * u);
+
+	T fhatminus = 0.;
+	T fhatplus = 0.;
+
+	std::array<
+			std::valarray<T>, 2
+			> monotone_flux_components = splitFluxAsLaxFriedrichs(
+				u, f, alpha
+				);
 
 	// So an LF flux	`numerical_flux`, f_hat(u_minus, u_plus),
 	// a monotone numerical flux consistent with the physical one
@@ -468,101 +721,30 @@ void calcHydroStageWENO5FM(const std::valarray<T>& u,
 	// Not every monotone flux can be writtenin the flux split form.
 	// For example, the Godunov flux cannot.
 	// std::valarray<T> numerical_flux(0., u.size());
-	f = std::valarray<T>(u.size());
+	// f = std::valarray<T>(u.size());
 
-	auto j_it_p = std::begin(f_plus);
-	auto j_it_m = std::begin(f_minus);
+	auto j_it_p = std::begin(monotone_flux_components[0]);  // f_plus
+	auto j_it_m = std::begin(monotone_flux_components[1]);  // f_minus
 
 	for (auto j : shifted_index_range) {
 	// for (std::size_t j = 10; j < 11; ++ j) {
-		j_it_p = std::begin(f_plus);
-		j_it_m = std::begin(f_minus);
-		std::advance(j_it_p, j + half_size + 1 - stensil_size);
-		std::advance(j_it_m, j + half_size + 1 - stensil_size);
+		j_it_p = std::begin(monotone_flux_components[0]); // f_plus
+		std::advance(j_it_p, j + half_size + 1 - stencil_size);
 		std::copy_n(j_it_p, u_plus.size(), std::begin(u_plus));
+
+		j_it_m = std::begin(monotone_flux_components[1]);  // f_minus
+		std::advance(j_it_m, j + half_size + 1 - stencil_size);
 		std::copy_n(j_it_m, u_minus.size(), std::begin(u_minus));
-//		std::copy_n(std::begin(f_plus)+j + half_size + 1 - stensil_size, u_plus.size(), std::begin(u_plus));
-//		std::copy_n(std::begin(f_minus)+j + half_size + 1 - stensil_size, u_minus.size(), std::begin(u_minus));
-//		std::cout << j + half_size + 1 - stensil_size << " " << j + half_size + 1 - stensil_size + u_plus.size() << "\n";
-//		for (auto n : u_plus)//	for (std::size_t j = maxi+1; j < u.size(); ++ j) {
-		//		// numerical_flux[j] = 0;
-		//		f[j] = 0;
-		//	}
 
-		//	for (std::size_t j = 0; j < 2; ++ j) {
-		//		// numerical_flux[j] = 0;
-		//		f[j] = 0;
-		//	}
-//			std::cout << n << " ";
-//		std::cout << "\n";
-//		std::cout << j + half_size + 1 - stensil_size << " " << j + half_size + 1 - stensil_size + u_minus.size() << "\n";
-//		for (auto n : u_minus)
-//			std::cout << n << " ";
-//		std::cout << "\n";
-
-		// smoothness indicators of the stensil
-		// (measure how smooth u is in the stensil)
-//		betaISplus = betaSmoothnessIndicatorsMat(u_plus, plus_coefs);
-//		betaISminus = betaSmoothnessIndicatorsMat(u_minus, minus_coefs);
-
-		// The non-matrix variant seems to be faster(?)
-		betaISplus = betaSmoothnessIndicators(
-					std::span<T, 5>{std::begin(u_plus), 5});
+		fhatplus = computeFHatWENO5FMReconstructionKernel(
+			std::span<T, 5>{std::begin(u_plus), 5}
+		);
 
 		std::reverse(std::begin(u_minus), std::end(u_minus));
-		betaISminus = betaSmoothnessIndicators(
-					std::span<T, 5>{std::begin(u_minus), 5});
-		// std::reverse(std::begin(u_minus), std::end(u_minus));
+		fhatminus = computeFHatWENO5FMReconstructionKernel(
+			std::span<T, 5>{std::begin(u_minus), 5}
+		);
 
-		// non-linear non-scaled (α-)weights
-		//alphaplus = d_lin_weights / std::pow(eps + betaISplus, p);
-		//alphaminus = d_lin_weights / std::pow(eps + betaISminus, p);
-		// — we have no need of them in WENO-FM!
-
-		// Instead we use:
-		alphaplus = 1. / std::pow(eps + betaISplus, p);
-		alphaminus = 1. / std::pow(eps + betaISminus, p);
-
-		// scaled (normalized) non-linear (ω-)weights (ENO weights)
-		// omegaplus = alphaplus / alphaplus.sum();
-		// omegaminus = alphaminus / alphaminus.sum();
-
-		// FM(ZM)-improved scaled (normalized) symmetric (λ-)weights
-		// due to Zheng Hong, Zhengyin Ye and Kun Ye:
-		lambdaplus = alphaplus / alphaplus.sum();
-		lambdaminus = alphaminus / alphaminus.sum();
-
-		// And only to them a mapping in the spirit of Henrick et al.
-		// is applied:
-		auto gMap = [](T x) -> T {
-			return henrickGMappingForLambda(x);
-		};
-
-		alphaplus = lambdaplus.apply(gMap);
-		alphaminus = lambdaminus.apply(gMap);
-
-		// From g(λ_k) and d_k we get the new corrected resultant
-		// normalized WENO5-FM (WENO5-ZM) (ω_k-)weights:
-		omegaplus = d_lin_weights * alphaplus;
-		omegaplus /= omegaplus.sum();
-
-		omegaminus = d_lin_weights * alphaminus;
-		omegaminus /= omegaminus.sum();
-
-
-		// vecMatDot<T>(u_..., WmN...) stores a 3-rd order estimate of f_{i+1/2}
-		// via linear combinations with WmNplus/WmNminus coefficients
-		// for each substencil which is then used to calculate
-		// f_hat = ∑ ω * q = [ω] * (WmN(+/-) * [f])
-		// using the nonlinear weights [ω]
-		fhatplus = std::inner_product(std::begin(omegaplus), std::end(omegaplus),
-									  std::begin(vecMatDot<T>(u_plus, WmNplus)), 0.);
-		// matvecprod = vecMatDot(u_minus, WmNminus);
-		fhatminus = std::inner_product(std::begin(omegaminus), std::end(omegaminus),
-									   std::begin(vecMatDot<T>(u_minus, WmNplus)), 0.);
-		// std::reverse(std::begin(u_plus), std::end(u_minus));
-
-		// numerical_flux[j] = fhatplus + fhatminus;
 		f[j] = fhatplus + fhatminus;
 
 //		for (auto n : f)
@@ -618,8 +800,6 @@ std::valarray<Vector4<T>> calcFluxComponentWise(
 		T eps = 1e-40,
 		T p = 2.) {
 	std::valarray<Vector4<T>> res = calcPhysFlux(U);
-	std::valarray<std::valarray<T>> components(
-				std::valarray<T>(U.size()), 4);
 	std::valarray<std::valarray<T>> component_fs(
 				std::valarray<T>(U.size()), 4);
 
@@ -627,16 +807,26 @@ std::valarray<Vector4<T>> calcFluxComponentWise(
 
 	for (std::size_t j = 0; j < 4; ++ j)
 		for (k = 0; k < U.size(); ++ k) {
-			components[j][k] = U[k][j];
 			component_fs[j][k] = res[k][j];
 		}
 
-	k = 0;
-	// for (auto component : components) {
-	for (k = 0; k < 4; ++ k) {
-		calcHydroStageWENO5FM<T>(components[k], t, lam[k],
-								 component_fs[k], nSize, eps, p);
-		// ++ k;
+
+
+	auto getVector4Component = [](
+			const Vector4<T>& x,
+			std::size_t k) { return x[k]; };
+
+	for (size_t k : std::ranges::iota_view{0, 4}) {
+		auto kThVector4Component = [&k, &getVector4Component](
+				const Vector4<T>& x) {
+			return getVector4Component(x, k);
+		};
+
+		calcHydroStageWENO5FM<T>(
+			std::ranges::views::transform(U, kThVector4Component),
+			t, lam[k],
+			component_fs[k], nSize, eps, p
+		);
 	}
 
 	for (std::size_t j = 0; j < 4; ++ j)
@@ -645,6 +835,43 @@ std::valarray<Vector4<T>> calcFluxComponentWise(
 
 	return res;
 }
+
+
+//template <typename T>
+//std::valarray<Vector4<T>> calcFluxComponentWise(
+//		const std::valarray<Vector4<T>>& U,
+//		T t, const std::valarray<T>& lam,
+//		std::size_t nSize,
+//		T eps = 1e-40,
+//		T p = 2.) {
+//	std::valarray<Vector4<T>> res = calcPhysFlux(U);
+//	std::valarray<std::valarray<T>> components(
+//				std::valarray<T>(U.size()), 4);
+//	std::valarray<std::valarray<T>> component_fs(
+//				std::valarray<T>(U.size()), 4);
+
+//	std::size_t k = 0;
+
+//	for (std::size_t j = 0; j < 4; ++ j)
+//		for (k = 0; k < U.size(); ++ k) {
+//			components[j][k] = U[k][j];
+//			component_fs[j][k] = res[k][j];
+//		}
+
+//	k = 0;
+//	// for (auto component : components) {
+//	for (k = 0; k < 4; ++ k) {
+//		calcHydroStageWENO5FM<T>(components[k], t, lam[k],
+//								 component_fs[k], nSize, eps, p);
+//		// ++ k;
+//	}
+
+//	for (std::size_t j = 0; j < 4; ++ j)
+//		for (k = 0; k < U.size(); ++ k)
+//			res[k][j] = component_fs[j][k];
+
+//	return res;
+//}
 
 
 template <typename T>
