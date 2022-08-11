@@ -19,8 +19,6 @@
 
 // using Vec4 = Vector4<double>;
 
-// const double GAMMA = 1.4;
-
 
 // const std::vector<std::vector<double>> WmAm0 {};
 std::array<std::array<const double, 6>, 6> WmAm0 {{
@@ -100,13 +98,13 @@ std::array<std::array<const double, 6>, 6> plus_coefs[] = {
 //	}};
 
 
-//template <typename T>
-//T gete(T rho, T p) {
-//	if (rho != 0.)
-//		return p / (GAMMA-1.) / rho;
+template <typename T>
+T gete(T rho, T p, T gamma) {
+	if (rho != 0.)
+		return p / (gamma-1.) / rho;
 
-//	return 0.;
-//}
+	return 0.;
+}
 
 
 //template <typename T>
@@ -121,39 +119,46 @@ std::array<std::array<const double, 6>, 6> plus_coefs[] = {
 //}
 
 
-//template <typename T>
-//Vector4<T> calcPhysicalFlux(T rho, T u, T p, T last) {
-//	if (rho == 0) return Vector4<T>::ZERO;
+template <typename T>
+Vector4<T> calcPhysicalFlux(T rho, T u, T p, T last, T gamma) {
+	if (rho == 0) return Vector4<T>::ZERO;
 
 
-//	T e = gete(rho, p);
-//	return Vector4<T>(rho * u, p + rho*u*u,
-//				u*(p + rho*(e + 0.5*u*u)),
-//				u*last);
-//}
+	T e = gete(rho, p, gamma);
+	return Vector4<T>(rho * u, p + rho*u*u,
+				u*(p + rho*(e + 0.5*u*u)),
+				u*last);
+}
 
 
-//template <typename T>
-//Vector4<T> conservativeToPrimitive(Vector4<T> q) {
-//	// Primitive variables
-//	T rho = q[0];
-//	T u = q[1] / rho;
-//	T E = q[2] / rho;
-//	T p = (GAMMA - 1.) * rho * (E - 0.5*u*u);
-
-//	return Vector4<T>(rho, u, p, q[3]);
-//}
+template <typename T>
+Vector4<T> primitiveToConservative(Vector4<T> u, T gamma = 1.4) {
+	// Conservative variables
+	return Vector4<T>(u[0], u[1] / u[0], u[2] / (gamma - 1.), u[3]);
+}
 
 
-//template <typename T>
-//Vector4<T> calcPhysicalFluxFromConservativeVec(Vector4<T> u) {
-////	return calcPhysicalFlux(u[0],
-////			u[1] / u[0],
-////			getp(u[0], eFromConservative(u[0], u[1], u[2])));
-//	Vector4<T> prim = conservativeToPrimitive(u);
+template <typename T>
+Vector4<T> conservativeToPrimitive(Vector4<T> q, T gamma) {
+	// Primitive variables
+	T rho = q[0];
+	T u = q[1] / rho;
+	T E = q[2] / rho;
+	T p = (gamma - 1.) * rho * (E - 0.5*u*u);
 
-//	return calcPhysicalFlux(prim[0], prim[1], prim[2], prim[3]);
-//}
+	return Vector4<T>(rho, u, p, q[3]);
+}
+
+
+template <typename T>
+Vector4<T> calcPhysicalFluxFromConservativeVec(Vector4<T> u, T gamma) {
+//	return calcPhysicalFlux(u[0],
+//			u[1] / u[0],
+//			getp(u[0], eFromConservative(u[0], u[1], u[2])));
+	Vector4<T> prim = conservativeToPrimitive(u, gamma);
+
+	return calcPhysicalFlux(prim[0], prim[1], prim[2], prim[3], gamma);
+}
 
 
 template <typename T>
@@ -198,44 +203,53 @@ std::valarray<T>& operator -= (std::valarray<T>& arr, auto some_range) {
 }
 
 
-template <typename T>
-Vector4<T> conservativeToPrimitive(Vector4<T> q) {
-	// Primitive variables
-	T rho = q[0];
-	T u = q[1] / rho;
-	// T E = q[2] / rho;
+//template <typename T>
+//Vector4<T> primitiveToConservative(Vector4<T> u, T gamma = 1.4) {
+//	// Conservative variables
+//	double G = 1005.9 / 717.09;
+//	return Vector4<T>(u[0], u[1] / u[0], u[2] / (G-1.0), u[3]);
+//}
 
 
-	T s1 = q[3] / q[0];
-	T s2 = 1. - s1;
-	T v = q[1] / q[0];
-	T cp1 = 1005.9; T cp2 = 627.83;  // Cp values for air and sf6
-	T cv1 = 717.09; T cv2 = 566.95;  // Cv values for air and sf6
-	T gammaeff = (cp1*s1+cp2*s2) / (cv1*s1+cv2*s2);  // Calculate an effective gamma
-	T p = (q[2]-q[0]*std::pow(v, 2.0)/2.0)*(gammaeff-1.);  // Calculate pressure from ch10.pdf, eq 10.2
-
-	return Vector4<T>(rho, u, p, q[3] / q[0]);
-}
+//template <typename T>
+//Vector4<T> conservativeToPrimitive(Vector4<T> q, T gamma = 1.4) {
+//	// Primitive variables
+//	T rho = q[0];
+//	T u = q[1] / rho;
+//	// T E = q[2] / rho;
 
 
-template <typename T>
-Vector4<T> calcPhysicalFluxFromConservativeVec(Vector4<T> u) {
-	T s1 = u[3] / u[0];
-	T s2 = 1. - s1;
-	T v = u[1] / u[0];
+//	T s1 = q[3] / q[0];
+//	T s2 = 1. - s1;
+//	T v = q[1] / q[0];
+//	T cp1 = 1005.9; T cp2 = 627.83;  // Cp values for air and sf6
+//	T cv1 = 717.09; T cv2 = 566.95;  // Cv values for air and sf6
+//	T gammaeff = (cp1*s1+cp2*s2) / (cv1*s1+cv2*s2);  // Calculate an effective gamma
+//	T p = (q[2]-q[0]*std::pow(v, 2.0)/2.0)*(gammaeff-1.);  // Calculate pressure from ch10.pdf, eq 10.2
 
-	T cp1 = 1005.9; T cp2 = 627.83;  // Cp values for air and sf6
-	T cv1 = 717.09; T cv2 = 566.95;  // Cv values for air and sf6
-	T gammaeff = (cp1*s1+cp2*s2) / (cv1*s1+cv2*s2);  // Calculate an effective gamma
-	T P = (u[2]-u[0]*std::pow(v, 2.0)/2.0)*(gammaeff-1.);  // Calculate pressure from ch10.pdf, eq 10.2
-	//	ret[0] = u[1]
-	//	ret[1] = rho*np.power(v,2.0)+P;
-	//	ret[2] = (u[2]+P)*v;
-	//	ret[3] = v*u[3];
-	//	return ret;
+//	return Vector4<T>(rho, u, p, q[3] / q[0]);
+//}
 
-	return Vector4<T>(u[1], u[0]*v*v + P, (u[2]+P)*v, u[3]*v);
-}
+
+//template <typename T>
+//Vector4<T> calcPhysicalFluxFromConservativeVec(Vector4<T> u,
+//											   T gamma = 1.4) {
+//	T s1 = 1.;  // u[3] / u[0];
+//	T s2 = 1. - s1;
+//	T v = u[1] / u[0];
+
+//	T cp1 = 1005.9; T cp2 = 627.83;  // Cp values for air and sf6
+//	T cv1 = 717.09; T cv2 = 566.95;  // Cv values for air and sf6
+//	T gammaeff = (cp1*s1+cp2*s2) / (cv1*s1+cv2*s2);  // Calculate an effective gamma
+//	T P = (u[2]-u[0]*std::pow(v, 2.0)/2.0)*(gammaeff-1.);  // Calculate pressure from ch10.pdf, eq 10.2
+//	//	ret[0] = u[1]
+//	//	ret[1] = rho*np.power(v,2.0)+P;
+//	//	ret[2] = (u[2]+P)*v;
+//	//	ret[3] = v*u[3];
+//	//	return ret;
+
+//	return Vector4<T>(u[1], u[0]*v*v + P, (u[2]+P)*v, u[3]*v);
+//}
 
 
 template <typename T, typename T1, typename T2>
@@ -257,36 +271,62 @@ std::valarray<T> vecMatDot(const T1& vec, const T2& mat) {
 
 
 template <typename T>
-std::valarray<Vector4<T>> calcPhysFlux(const std::valarray<Vector4<T>>& u_arr) {
+std::valarray<Vector4<T>> calcPhysFlux(
+		const std::valarray<Vector4<T>>& u_arr, T gamma = 1.4) {
 	/* Calculate physical fluxes of conservative variables
 	 * in all points in the computation domain u_arr.
 	 */
 
-	return u_arr.apply(
-				calcPhysicalFluxFromConservativeVec
-			);  // f_arr
+//	return u_arr.apply(
+//				[](Vector4<T> v) {
+//		return calcPhysicalFluxFromConservativeVec<T>(v);
+//	});  // f_arr
+	std::valarray<Vector4<T>> res(std::ranges::size(u_arr));
+
+	std::transform(std::begin(u_arr), std::end(u_arr), std::begin(res),
+				   [&gamma](Vector4<T> v) {
+		return calcPhysicalFluxFromConservativeVec<T>(v, gamma);
+	});
+
+	return res;  // f_arr
 }
 
 
+//template <typename T>
+//T calcMaxWaveSpeedD(const std::valarray<Vector4<T>>& u_arr) {
+//	/* Calculate df/du. */
+
+//	std::size_t k = 0;
+
+//	T cp1 = 1005.9; T cp2 = 627.83; // Cp values for air and sf6
+//	T cv1 = 717.09; T cv2 = 566.95; // Cv values for air and sf6
+
+//	std::valarray<T> s1(u_arr.size());
+//	for (k = 0; k < u_arr.size(); ++ k)
+//		s1[k] = 1.; // s2 = W[4,:]/W[0,:]
+//	std::valarray<T> s2 = 1. - s1;
+
+//	std::valarray<T> arr_G = (s1*cp1+s2*cp2) / (s1*cv1+s2*cv2);
+//	// std::valarray<T> arr_G(1.4, U.size());
+//	std::valarray<T> a0(u_arr.size());
+//	for (k = 0; k < u_arr.size(); ++ k)
+//		a0[k] = arr_G[k] * u_arr[k][2] * (arr_G[k]-1.) / u_arr[k][0];
+//	a0 = std::sqrt(a0);
+
+//	return a0.max();
+//}
+
+
 template <typename T>
-T calcMaxWaveSpeedD(const std::valarray<Vector4<T>>& u_arr) {
+T calcMaxWaveSpeedD(const std::valarray<Vector4<T>>& u_arr, T gamma = 1.4) {
 	/* Calculate df/du. */
 
 	std::size_t k = 0;
 
-	T cp1 = 1005.9; T cp2 = 627.83; // Cp values for air and sf6
-	T cv1 = 717.09; T cv2 = 566.95; // Cv values for air and sf6
-
-	std::valarray<T> s1(u_arr.size());
-	for (k = 0; k < u_arr.size(); ++ k)
-		s1[k] = u_arr[k][3] / u_arr[k][0]; // s2 = W[4,:]/W[0,:]
-	std::valarray<T> s2 = 1 - s1;
-
-	std::valarray<T> arr_G = (s1*cp1+s2*cp2) / (s1*cv1+s2*cv2);
 	// std::valarray<T> arr_G(1.4, U.size());
 	std::valarray<T> a0(u_arr.size());
 	for (k = 0; k < u_arr.size(); ++ k)
-		a0[k] = arr_G[k] * u_arr[k][2] * (arr_G[k]-1.) / u_arr[k][0];
+		a0[k] = gamma * u_arr[k][2] * (gamma-1.) / u_arr[k][0];
 	a0 = std::sqrt(a0);
 
 	return a0.max();
@@ -594,7 +634,10 @@ std::array<std::valarray<T>, 2> splitFluxAsLaxFriedrichs(
 	 *
 	 * For the purpose of linear stability (upwinding),
 	 * a flux splitting, f = fplus + fminus (dfplus/du >= 0 and
-	 * dfminus/du <= 0), is performed.
+	 * dfminus/du <= 0), needs to be performed in FD WENO5.
+	 * LF flux splitting remains especially simple, while still
+	 * retaining the necessary number of derivatives,
+	 * so it's perfect for the job.
 	 */
 
 	std::array<std::valarray<T>, 2> monotone_lf_flux_components {
@@ -650,7 +693,7 @@ void calcHydroStageWENO5FM(const auto& u,
 	 * results for schemes up to third-order accuracy, while characteristic
 	 * reconstruction produces better nonoscillatory results for
 	 * higher-order accuracy, albeit with an increased computational cost.
-	*/
+	 */
 
 	const unsigned order = 5;
 	const std::size_t stencil_size = order;
@@ -737,12 +780,12 @@ void calcHydroStageWENO5FM(const auto& u,
 		std::copy_n(j_it_m, u_minus.size(), std::begin(u_minus));
 
 		fhatplus = computeFHatWENO5FMReconstructionKernel(
-			std::span<T, 5>{std::begin(u_plus), 5}
+			std::span<T, 5>{std::begin(u_plus), 5}, eps, p
 		);
 
 		std::reverse(std::begin(u_minus), std::end(u_minus));
 		fhatminus = computeFHatWENO5FMReconstructionKernel(
-			std::span<T, 5>{std::begin(u_minus), 5}
+			std::span<T, 5>{std::begin(u_minus), 5}, eps, p
 		);
 
 		f[j] = fhatplus + fhatminus;
@@ -769,9 +812,9 @@ void calcHydroStageWENO5FM(const auto& u,
 
 
 template <typename T>
-void update_ghost_points(std::valarray<Vector4<T>>& U/*,
-										std::size_t mini,
-										std::size_t maxi*/) {
+void update_ghost_points(auto& U/*,
+						 std::size_t mini,
+						 std::size_t maxi*/) {
 	/* Update ghost points in U. */
 
 	//	for (k = nGhostCells; k < nGhostCells + nSize; ++ k) {
@@ -809,8 +852,6 @@ std::valarray<Vector4<T>> calcFluxComponentWise(
 		for (k = 0; k < U.size(); ++ k) {
 			component_fs[j][k] = res[k][j];
 		}
-
-
 
 	auto getVector4Component = [](
 			const Vector4<T>& x,
@@ -932,7 +973,7 @@ void advanceTimestepTVDRK3(
 
 	// std::slice Nint(3, nSize, 1);
 
-	// ----------------------First Stage--------------------
+	// ------------------------First Stage-----------------------
 	// std::valarray<Vector4<T>> flux = calcFlux(U, t, lam);
 	dflux = calcdSpace<T>(U, t, dx, lam, nSize);  // L1 = L[u^n]
 	// std::valarray<Vector4<T>> res(Vector4<T>::ZERO, U.size());
@@ -944,7 +985,7 @@ void advanceTimestepTVDRK3(
 	update_ghost_points<T>(Y2);
 
 
-	// ----------------------Second Stage-------------------
+	// ------------------------Second Stage----------------------
 	dflux = calcdSpace<T>(Y2, t, dx, lam, nSize);  // L2 = L[u(1)]
 
 	Y3 = Vector4<T>(3.)*U + Vector4<T>(dt) * dflux + Y2;
@@ -954,7 +995,7 @@ void advanceTimestepTVDRK3(
 	update_ghost_points<T>(Y3);
 
 
-	// ----------------------Third Stage--------------------
+	// ------------------------Third Stage-----------------------
 	dflux = calcdSpace<T>(Y3, t, dx, lam, nSize);  // L3 = L[u(2)]
 
 
@@ -970,14 +1011,16 @@ void advanceTimestepTVDRK3(
 
 
 template <typename T>
-void integrate(
-	std::valarray<Vector4<T>>& U,
-	std::valarray<Vector4<T>>& flux,
-	std::valarray<Vector4<T>>& Y2,
-	std::valarray<Vector4<T>>& Y3,
+std::valarray<Vector4<T>> integrateRiemannProblem(
+	auto& U,
+	auto& flux,
+	auto& Y2,
+	auto& Y3,
 	T t0, T dx, std::size_t nSize,
 	T fin_t, T cfl = 0.4
 ) {
+	/* ... */
+
 	T t = t0;
 
 	T cpu = calcMaxWaveSpeedD<T>(U);
@@ -1001,4 +1044,127 @@ void integrate(
 		dt = cfl * dx / lam[0];
 	}
 	std::cout << "t = " << t << "\n";
+
+	return U;
+}
+
+
+template <typename T>
+std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU
+	= primitiveToConservative<T>;
+
+
+template <typename T>
+void prepareRiemannProblem(
+	auto& u_init, auto& x, T gamma,
+	T rho_left, T v_left, T p_left, T e_left, T rhoE_left,
+	T rho_right, T v_right, T p_right, T e_rightR, T rhoE_right,
+	T q0, T l_min, T l_max,
+	std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU,
+	std::size_t mesh_size
+) {
+	/* ... */
+
+//	const T Runiv = 8.314;  // Universal gas constant, [J/K-mol]
+//	T mu1 = 0.0289647; T mu2 = 0.14606;  // Mollecular weights of air and sf6 [kg/mol]
+//	T R1 = Runiv/mu1; T R2 = Runiv/mu2;  // Specific gas constants
+//	T cp1 = 1005.9; T cp2 = 627.83;  // Cp values for air and sf6
+//	T cv1 = 717.09; T cv2 = 566.95;  // Cv values for air and sf6
+
+	std::size_t computational_domain_size = mesh_size;
+	const std::size_t n_ghost_points = 3;
+	std::size_t full_mesh_size = computational_domain_size
+		+ 2*n_ghost_points;
+	T dx = (l_max - l_min) / mesh_size;  // [L]
+
+	x = std::valarray<T>(0., full_mesh_size);
+	u_init = std::valarray<Vector4<T>>(Vector4<T>::ZERO, full_mesh_size);
+
+	std::size_t k = 0;
+	for (k = 0; k < n_ghost_points; ++ k)
+		x[k] = l_min - dx * (n_ghost_points - k);
+
+	x[n_ghost_points] = l_min;
+	for (k = n_ghost_points + 1; k < full_mesh_size; ++ k)
+		x[k] = x[k-1] + dx;
+
+	std::size_t x0_coord = 0;
+	while (x[x0_coord] < q0)
+		++ x0_coord;
+
+//	T Tatm = 293.0;  // [K], approx 70 F
+//	T Patm = 101300.0;  // [Pa], Atmospheric Pressure
+//	T Rhoatm = Patm / (Tatm * R1);  // Density of the first gas at STP
+
+// 	T G = gamma;
+	Vector4<T> vec(rho_left, v_left, p_left, 0.);
+	vec = primitiveToConservativeU(vec, gamma);
+	for (k = 0; k <= x0_coord; ++ k) {
+		u_init[k] = vec;
+		// u_init[k][3] = 1. * u_init[k][0];
+	}
+
+	vec = primitiveToConservativeU(Vector4(rho_right, v_right, p_right, 0.), gamma);
+	for (k = x0_coord + 1; k < full_mesh_size; ++ k) {
+		u_init[k] = vec;
+		// u_init[k][3] = 1. * u_init[k][0];
+	}
+}
+
+
+template <typename T>
+std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
+	auto& u_init, auto& x, T gamma,
+	T rho_left, T v_left, T p_left, T e_left, T rhoE_left,
+	T rho_right, T v_right, T p_right, T e_rightR, T rhoE_right,
+	T q0, // Initial coordinate of the discontinuity
+	T t0, T t_max, T l_min, T l_max,
+	std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU,
+	std::size_t mesh_size, T cfl = 0.4
+) {
+	/* ... */
+
+	prepareRiemannProblem<T>(
+		u_init, x, gamma,
+		rho_left, v_left, p_left, e_left, rhoE_left,
+		rho_right, v_right, p_right, e_rightR, rhoE_right,
+		q0, l_min, l_max, primitiveToConservativeU, mesh_size
+	);
+
+	std::valarray<Vector4<T>> flux(Vector4<T>::ZERO,
+								  std::ranges::size(u_init));
+	std::valarray<Vector4<T>> y2(Vector4<T>::ZERO,
+								 std::ranges::size(u_init));
+	std::valarray<Vector4<T>> y3(Vector4<T>::ZERO,
+								 std::ranges::size(u_init));
+
+	u_init = integrateRiemannProblem<T>(u_init, flux, y2, y3,
+		t0, (l_max-l_min) / mesh_size, mesh_size, t_max, cfl);
+
+	return u_init;
+}
+
+
+template <typename T>
+std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
+	auto& u_init, auto& x, T gamma,
+	T rho_left, T v_left, T p_left,
+	T rho_right, T v_right, T p_right,
+	T q0, // Initial coordinate of the discontinuity
+	T t0, T t_max, T l_min, T l_max,
+	std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU,
+	std::size_t mesh_size, T cfl = 0.4
+) {
+	double e_left = p_left / (gamma - 1.) / rho_left;
+	double e_right = p_right / (gamma - 1.) / rho_right;
+	double E_left = (e_left + (v_left*v_left)/2.);
+	double E_right = (e_right + (v_right*v_right)/2.);
+
+	return solve1DRiemannProblemForEulerEq(
+		u_init, x, gamma,
+		rho_left, v_left, p_left, e_left, E_left,
+		rho_right, v_right, p_right, e_right, E_right,
+		q0, t0, t_max, l_min, l_max,
+		primitiveToConservativeU, mesh_size, cfl
+	);
 }

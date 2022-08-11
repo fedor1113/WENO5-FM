@@ -7,6 +7,7 @@
 #include <numeric>
 #include <valarray>
 
+// #include "vectorfieldcomponentview.h"
 #include "WENO5-FM.h"
 
 using numeric_val = double;
@@ -43,23 +44,15 @@ int main() {
 	numeric_val cp1 = 1005.9; numeric_val cp2 = 627.83;  // Cp values for air and sf6
 	numeric_val cv1 = 717.09; numeric_val cv2 = 566.95;  // Cv values for air and sf6
 
-	std::size_t Nx = 500;
+	std::size_t Nx = 1000;
 	const std::size_t N_ghost_points = 3;
 	std::size_t N_full = Nx + 2*N_ghost_points;
 	// Nx = Nx + 6;  // Add in ghost cells
 	numeric_val L = 1.;  // [L]
-	numeric_val dx = L / Nx;  // [L]
-	std::valarray<numeric_val> x(0., N_full);
 
-	for (k = 0; k < N_ghost_points; ++ k)
-		x[k] = -dx * (N_ghost_points-k);
-
-	for (k = N_ghost_points; k < N_full; ++ k)
-		x[k] = x[k-1] + dx;
-
-	numeric_val cfl = 0.4;
+	numeric_val cfl = 0.3;
 	numeric_val t = 0;
-	numeric_val tfinal = 0.2;  // [T]
+	numeric_val tfinal = 0.15;  // [T]
 
 	std::valarray<Vec4> u_init(Vec4::ZERO, N_full);
 	std::valarray<Vec4> flux(Vec4::ZERO, N_full);
@@ -69,62 +62,52 @@ int main() {
 	numeric_val Patm = 101300.0;  // [Pa], Atmospheric Pressure
 	numeric_val Rhoatm = Patm / (Tatm * R1);  // Density of the first gas at STP
 
-	numeric_val P, c1, c2, R, G, rho;
-	for (k = 0; k < std::size_t(N_full/2) + 1; ++ k) {
-		P = 8. * Patm;
-		// P = 1.;
-		c1 = 1.; c2 = 1. - c1;
-		R = c1*R1 + c2*R2;
-		G = (c1*cp1+c2*cp2) / (c1*cv1+c2*cv2);
-		// G = 1.4;
-		rho = P / (R * Tatm);
-		// rho = 1.;
-		u_init[k][0] = rho / Rhoatm;  // rho
-		// u_init[k][0] = rho;  // rho
-		u_init[k][1] = 0.; // j = rho*u
-		u_init[k][2] = (P/Patm) / (G-1.0);  // rho*E
-		// u_init[k][2] = P / (G-1.0);  // rho*E
-		u_init[k][3] = c1 * u_init[k][0];
-	}
+	numeric_val c1, c2, R, G;
 
-	for (k = std::size_t(N_full/2) + 1; k < N_full; ++ k) {
-		P = 1. * Patm;
-		// P = .1;
-		c1 = 1.; c2 = 1. - c1;
-		R = c1*R1 + c2*R2;
-		G = (c1*cp1+c2*cp2) / (c1*cv1+c2*cv2);
-		// G = 1.4;
-		rho = P / (R * Tatm);
-		// rho = 1.;
-		// rho = 0.125;
-		u_init[k][0] = rho / Rhoatm;  // rho
-		// u_init[k][0] = rho;  // rho
-		u_init[k][1] = 0.; // j = rho*u
-		u_init[k][2] = (P/Patm) / (G-1.0);  // rho*E
-		// u_init[k][2] = P / (G-1.0);  // rho*E
-		u_init[k][3] = c1 * u_init[k][0];
-	}
-
-	std::valarray<numeric_val> s1(static_cast<numeric_val>(0.), N_full);
-	for (k = 0; k < N_full; ++ k)
-		s1[k] = u_init[k][3] / u_init[k][0];  // s2 = W[4,:]/W[0,:]
-	std::valarray<numeric_val> s2 = 1 - s1;
+	c1 = 1.; c2 = 1. - c1;
+	R = c1*R1 + c2*R2;
+	G = (c1*cp1+c2*cp2) / (c1*cv1+c2*cv2);
+//	std::valarray<numeric_val> s1(static_cast<numeric_val>(0.), N_full);
+//	for (k = 0; k < N_full; ++ k)
+//		s1[k] = u_init[k][3] / u_init[k][0];  // s2 = W[4,:]/W[0,:]
+//	std::valarray<numeric_val> s2 = 1 - s1;
 
 	// std::size_t Nt = std::ceil(tfinal / dt);
 	// std::valarray<int> Ts = std::valarray(0, Nt+2);
 	// for (std::size_t k = 0; k <= Nt+1; ++ k) Ts[k] = k;
 
 	// for (auto n : Ts) {
-	integrate<numeric_val>(u_init, flux, Y2, Y3, t, dx, Nx, tfinal, cfl);
+
+	std::valarray<Vec4> u_res(Vec4::ZERO, N_full);
+	u_res[0][3] = 1;
+	std::valarray<numeric_val> x(0., N_full);
+//	for (auto n : VectorFieldComponentView<std::valarray<Vec4>>(u_res, 3))
+//		std::cout << n << "\n";
+
+//	solve1DRiemannProblemForEulerEq<numeric_val>(
+//		u_res, x, G,
+//		8., 0., 8.,
+//		1., 0., 1., 0.5,
+//		t, tfinal, 0., L,
+//		primitiveToConservativeU<numeric_val>, Nx, cfl
+//	);
+
+	solve1DRiemannProblemForEulerEq<numeric_val>(
+		u_res, x, 1.4,
+		1., 0., 1.,
+		0.125, 0., 0.1, 0.5,
+		t, tfinal, 0., L,
+		primitiveToConservativeU<numeric_val>, Nx, cfl
+	);
 
 	std::ofstream outfile;
 
-	outfile.open("res.dat");
+	outfile.open("res500.dat");
 
 	k = 0;
 	if (outfile.is_open())
-		for (auto u : u_init) {
-			Vec4 q = conservativeToPrimitive(u);
+		for (auto u : u_res) {
+			Vec4 q = conservativeToPrimitive(u, 1.4);
 			// std::cout << u << "\n";
 
 //			std::cout << x[k]

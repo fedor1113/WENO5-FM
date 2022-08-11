@@ -7,11 +7,12 @@ Adapted from Ogre3D
 #ifndef __Vector4_H__
 #define __Vector4_H__
 
-#include <assert.h>
 // #include <concepts>
 // #include <cstddef>
-#include <iostream>
+#include <cassert>
 #include <cmath>
+#include <functional>
+#include <iostream>
 #include <valarray>
 #include <vector>
 
@@ -31,7 +32,6 @@ template <typename N>
 class Vector4
 {
 public:
-
 	N x, y, z, w;
 
 	static const Vector4<N> ZERO;
@@ -519,8 +519,148 @@ public:
         o << "Vector4(" << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ")";
         return o;
     }
+
+	// constexpr auto begin() const { return Vector4ComponentIterator<N>(*this, 0, &x); }
+	// constexpr auto end() const { return Vector4ComponentIterator<N>(*this, 3, &w); }
 };
 
 
+//template <typename N>
+//class Vector4ComponentIterator {
+//public:
+//	using self_type = Vector4ComponentIterator;
+
+//	using iterator_category = std::random_access_iterator_tag;
+//	using difference_type   = std::ptrdiff_t;
+//	using value_type        = N;
+//	using pointer           = N*;
+//	using reference         = N&;
+//	std::size_t size = 4;
+
+//private:
+//	Vector4<N>& v_;
+//	difference_type index_;
+//	pointer ptr_;
+
+//	bool compatible(self_type const & other) const {
+//		return *ptr_ == *other.ptr_;
+//	}
+
+//public:
+////	explicit VectorFieldComponentIterator(pointer ptr, size_t const index)
+////		: ptr(ptr), index(index) { }
+//	explicit Vector4ComponentIterator(Vector4<N>& v, difference_type index, pointer ptr)
+//		: v_(v), index_(index), ptr_(ptr) {}
+
+//	Vector4ComponentIterator(self_type const & o) = default;
+//	Vector4ComponentIterator& operator=(self_type const & o) = default;
+//	~Vector4ComponentIterator() = default;
+//	Vector4ComponentIterator() {};
+
+
+//	self_type & operator++ () {
+//		if (index_ >= size)
+//			throw std::out_of_range("Iterator cannot be incremented past the end of range.");
+//		++ index_;
+
+//		return *this;
+//	}
+
+//	self_type operator++ (int) {
+//	self_type tmp = *this;
+//		++ *this;
+//		return tmp;
+//	}
+
+//	bool operator== (self_type const & other) const {
+//		assert(compatible(other));
+//		return index_ == other.index;
+//	}
+
+//	bool operator!= (self_type const & other) const {
+//		return !(*this == other);
+//	}
+
+//	reference operator* () const {
+//		if (ptr_ == nullptr)
+//			throw std::bad_function_call();
+
+//		return *(ptr_ + index_);
+//	}
+
+//	reference operator-> () const {
+//		if (ptr_ == nullptr)
+//			throw std::bad_function_call();
+
+//		return *(ptr_ + index_);
+//	}
+
+//	self_type & operator--() {
+//		if (index_ <= 0)
+//			throw std::out_of_range("Iterator cannot be decremented past the end of range.");
+//		-- index_;
+
+//		return *this;
+//	}
+
+//	self_type operator--(int) {
+//		self_type tmp = *this;
+//		-- *this;
+
+//		return tmp;
+//	}
+
+//	self_type operator+(difference_type offset) const {
+//		self_type tmp = *this;
+//		return tmp += offset;
+//	}
+
+//	self_type operator-(difference_type offset) const {
+//		self_type tmp = *this;
+//		return tmp -= offset;
+//	}
+
+//	difference_type operator-(self_type const & other) const {
+//		assert(compatible(other));
+//		return (index_ - other.index);
+//	}
+
+//	bool operator<(self_type const & other) const {
+//		assert(compatible(other));
+//		return index_ < other.index;
+//	}
+
+//	bool operator>(self_type const & other) const {
+//		return other < *this;
+//	}
+
+//	bool operator<=(self_type const & other) const {
+//		return !(other < *this);
+//	}
+
+//	bool operator>=(self_type const & other) const {
+//		return !(*this < other);
+//	}
+
+//	self_type & operator+=(difference_type const offset) {
+//		if (index_ + offset < 0 || index_ + offset > size)
+//			throw std::out_of_range("Iterator cannot be incremented past the end of range.");
+//		index_ += offset;
+
+//		return *this;
+//	}
+
+//	self_type & operator-=(difference_type const offset) {
+//		return *this += -offset;
+//	}
+
+//	value_type & operator[](difference_type const offset) {
+//		return (*(*this + offset));
+//	}
+
+//	value_type const & operator[](difference_type const offset) const {
+//		return (*(*this + offset));
+//	}
+//};
 
 #endif

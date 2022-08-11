@@ -6,7 +6,9 @@ CONFIG -= qt
 SOURCES += \
         WENO5-FM.h \
         _vector4.cpp \
-        main.cpp
+        main.cpp \
+        vectorfieldcomponentview.cpp
 
 HEADERS += \
-    _vector4.h
+    _vector4.h \
+    vectorfieldcomponentview.h
