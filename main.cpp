@@ -14,24 +14,6 @@ using numeric_val = double;
 template class Vector4<numeric_val>;
 using Vec4 = Vector4<numeric_val>;
 
-//class CTestToro {
-//public:
-//	numeric_val gamma;
-//	numeric_val roL, vL, pL, eL, EL,
-//		   roR, vR, pR, eR, ER;
-//	numeric_val q0;   // Начальное значение координаты разрыва
-//	numeric_val tMax; // Время, до которого ведется счет
-//	CTestToro(numeric_val _gamma,
-//			  numeric_val _roL, numeric_val _uL, numeric_val _vL, numeric_val _wL, numeric_val _pL,
-//			  numeric_val _roR, numeric_val _uR, numeric_val _vR, numeric_val _wR, numeric_val _pR, numeric_val _q0, numeric_val _tMax) :
-//			  gamma(_gamma), roL(_roL), vL(_vL), pL(_pL), roR(_roR), vR(_vR), pR(_pR), q0(_q0), tMax(_tMax) {
-//				  eL = pL/(gamma-1.)/roL;
-//				  EL = eL + (vL*vL)/2.;
-//				  eR = pR/(gamma-1.)/roR;
-//				  ER = eR + (vR*vR)/2.;
-//			  }
-//};
-
 
 int main() {
 	 std::ios::sync_with_stdio(false);
