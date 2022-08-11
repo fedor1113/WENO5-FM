@@ -102,10 +102,14 @@ int main() {
 
 	std::ofstream outfile;
 
-	outfile.open("res500.dat");
+	outfile.open("res.dat");
 
 	k = 0;
-	if (outfile.is_open())
+	if (outfile.is_open()) {
+		outfile << "TITLE=\"Riemann Problem 1D slice t=" << tfinal << "\"" << "\n";
+		// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
+		outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
+		outfile << "ZONE T=\"Numerical\", I=" << N_full << ", F=POINT" << "\n";
 		for (auto u : u_res) {
 			Vec4 q = conservativeToPrimitive(u, 1.4);
 			// std::cout << u << "\n";
@@ -124,11 +128,12 @@ int main() {
 			outfile << x[k]
 				   << " " << q[0]
 				   << " " << q[1]
-				   << " " << q[2]
-				   << " " << q[3] << "\n";
+				   << " " << q[2] << "\n";
+//				   << " " << q[3] << "\n";
 
 			++ k;
 		}
+	}
 
 	outfile.close();
 
