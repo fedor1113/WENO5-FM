@@ -318,20 +318,45 @@ std::valarray<Vector4<T>> calcPhysFlux(
 
 
 template <typename T>
-T calcMaxWaveSpeedD(const std::valarray<Vector4<T>>& u_arr, T gamma = 1.4) {
-	/* Calculate df/du. */
-
-	std::size_t k = 0;
-
-	// std::valarray<T> arr_G(1.4, U.size());
-	std::valarray<T> a0(u_arr.size());
-	for (k = 0; k < u_arr.size(); ++ k)
-		a0[k] = gamma * u_arr[k][2] * (gamma-1.) / u_arr[k][0];
-	a0 = std::sqrt(a0);
-
-	return a0.max();
+T calcSoundSpeed(T rho, T rho_E, T gamma = 1.4) {
+	return gamma * rho_E * (gamma - 1.) / rho;
 }
 
+
+template <typename T>
+auto calcMaxWaveSpeedD(const auto& u_arr, T gamma = 1.4) {
+	/* Calculate |df/du| for 1D Euler eq'ns. */
+
+	const std::size_t size = std::ranges::size(u_arr);
+	std::valarray<T> a0(size);
+	std::ranges::transform(std::as_const(u_arr),
+						   std::begin(a0),
+						   [gamma](const auto& u_arr_vec_pt) -> T {
+		return (std::abs(calcSoundSpeed(
+							u_arr_vec_pt[0],
+							u_arr_vec_pt[2], gamma))
+				+ std::abs(u_arr_vec_pt[1] / u_arr_vec_pt[0]));
+	});
+//	std::size_t k = 0;
+//	for (k = 0; k < size; ++ k)
+//		a0[k] = gamma * u_arr[k][2] * (gamma-1.) / u_arr[k][0];
+	// a0 = std::sqrt(std::abs(a0));
+
+	// std::ranges::for_each(a0, [](auto& n) { n = std::abs(n); });
+	std::ranges::for_each(a0, [](auto& n) { n = std::sqrt(n); });
+
+//	std::valarray<T> a1(u_arr.size());
+//	std::valarray<T> a2(u_arr.size());
+//	for (k = 0; k < u_arr.size(); ++ k) {
+//		a1[k] = a0[k] + u_arr[k][1]/u_arr[k][0];
+//		a2[k] = a0[k] - u_arr[k][1]/u_arr[k][0];
+//	}
+
+//	return std::max({a0.max(), a1.max(), a2.max()});
+	// return a1.max();
+	// return a0.max();
+	return *std::ranges::max_element(a0);
+}
 
 
 template <typename T>
@@ -812,26 +837,47 @@ void calcHydroStageWENO5FM(const auto& u,
 
 
 template <typename T>
-void update_ghost_points(auto& U/*,
-						 std::size_t mini,
-						 std::size_t maxi*/) {
-	/* Update ghost points in U. */
+void updateGhostPoints(
+		auto& U,
+		std::size_t left_bound_size = 3,
+		std::optional<std::size_t> right_bound_size = std::nullopt) {
+	/* Update ghost points in U with transmissive b.c.s. */
 
 	//	for (k = nGhostCells; k < nGhostCells + nSize; ++ k) {
 	//			U[k] = ms[k-nGhostCells].W;
 	//	}
 
-	const std::size_t nFullSize = U.size();
-	const std::size_t nGhostCells = 3;  // 3
-	const std::size_t mini = nGhostCells;
-	const std::size_t maxi = nFullSize - nGhostCells - 1;
-	// ... nFullSize-4   nFullSize-3   nFullSize-2   nFullSize-1 ]
-	// ...    maxi
-	// const std::size_t nSize = nFullSize - 2 * nGhostCells;
+	// const std::size_t n_full_size = U.size();
+	// const std::size_t n_ghost_cells = 3;  // 3
+	// const std::size_t mini = n_ghost_cells;
+	// const std::size_t maxi = n_full_size - n_ghost_cells - 1;
+	// ... n_full_size-4   n_full_size-3   n_full_size-2   n_full_size-1 ]
+	// ...     maxi
+	// const std::size_t n_size = n_full_size - 2 * n_ghost_cells;
+	if (!right_bound_size)
+		right_bound_size.emplace(left_bound_size);
+
+	const std::size_t n_full_size = std::ranges::size(U);
+	const std::size_t right_start_index = (n_full_size
+										   - right_bound_size.value());
+	auto left_boundary_start = std::begin(U);
+	auto right_boundary_start = std::begin(U);
+	std::advance(right_boundary_start, right_start_index);
 
 	// Transmissive b.c.s
-	U[2] = U[mini]; U[1] = U[mini]; U[0] = U[mini];
-	U[maxi+1] = U[maxi]; U[maxi+2] = U[maxi]; U[maxi+3] = U[maxi];
+	std::ranges::for_each_n(left_boundary_start,
+							left_bound_size,
+							[&U, left_bound_size](auto& n) {
+		n = U[left_bound_size];
+	});
+	// U[2] = U[mini]; U[1] = U[mini]; U[0] = U[mini];
+
+	std::ranges::for_each_n(right_boundary_start,
+							right_bound_size.value(),
+							[&U, right_start_index](auto& n) {
+		n = U[right_start_index];
+	});
+	// U[maxi+1] = U[maxi]; U[maxi+2] = U[maxi]; U[maxi+3] = U[maxi];
 }
 
 
@@ -950,13 +996,18 @@ std::valarray<Vector4<T>> calcdSpace(const std::valarray<Vector4<T>>& U,
 
 template <typename T>
 void advanceTimestepTVDRK3(
-	std::valarray<Vector4<T>>& U,
-	std::valarray<Vector4<T>>& dflux,
-	std::valarray<Vector4<T>>& Y2,
-	std::valarray<Vector4<T>>& Y3,
-	T t, T dt, T dx,
-	const std::valarray<T>& lam, std::size_t nSize
-) {
+		auto& U,
+		auto& dflux,
+		auto& Y2,
+		auto& Y3,
+		T t, T dt, T dx,
+		const auto& lam,
+		std::size_t n_size
+//		auto& calcdSpace,
+//		auto& updateGhostPoints,
+//		auto& calcFlux,
+//		auto& calcSource,
+		/*auto& opts*/) {
 	/* Optimal 3rd Order 3 Stage Explicit Total Variation Diming
 	 * / Diminishing (Strong Stability Preserving)
 	 * Runge-Kutta Scheme (TVD RK3 / SSPRK(3,3))
@@ -972,38 +1023,59 @@ void advanceTimestepTVDRK3(
 	*/
 
 	// std::slice Nint(3, nSize, 1);
+	dflux.resize(std::ranges::size(U));
 
-	// ------------------------First Stage-----------------------
+	// ------------------------First Stage----------------------------
 	// std::valarray<Vector4<T>> flux = calcFlux(U, t, lam);
-	dflux = calcdSpace<T>(U, t, dx, lam, nSize);  // L1 = L[u^n]
+	dflux = calcdSpace<T>(U, t, dx, lam, n_size);  // L1 = L[u^n]
 	// std::valarray<Vector4<T>> res(Vector4<T>::ZERO, U.size());
 	// L[u] = (-) dF[u]/dx
 
-	Y2 = U + Vector4<T>(dt) * dflux;
+	// Y2 = U + Vector4<T>(dt) * dflux;
+	std::ranges::transform(U,
+						   dflux,
+						   std::begin(Y2),
+						   [dt](const auto u, const auto df) {
+		return u + dt * df;
+	});
 	// u(1) = u^n + Δt L[u^n]
 
-	update_ghost_points<T>(Y2);
+	updateGhostPoints<T>(Y2);
 
 
-	// ------------------------Second Stage----------------------
-	dflux = calcdSpace<T>(Y2, t, dx, lam, nSize);  // L2 = L[u(1)]
+	// ------------------------Second Stage---------------------------
+	dflux = calcdSpace<T>(Y2, t, dx, lam, n_size);  // L2 = L[u(1)]
 
-	Y3 = Vector4<T>(3.)*U + Vector4<T>(dt) * dflux + Y2;
-	Y3 *= Vector4<T>(0.25);
+	// Y3 = Vector4<T>(3.)*U + Vector4<T>(dt) * dflux + Y2;
+	// Y3 *= Vector4<T>(0.25);
+	for (std::size_t k = 0; k < std::ranges::size(U); ++ k)
+		Y3[k] = (3. * U[k] + dt * dflux[k] + Y2[k]) * 0.25;
 	// u(2) = 0.75 * u^n + 0.25 * u(1) + 0.25 * Δt L[u(1)]
 
-	update_ghost_points<T>(Y3);
+	updateGhostPoints<T>(Y3);
 
 
-	// ------------------------Third Stage-----------------------
-	dflux = calcdSpace<T>(Y3, t, dx, lam, nSize);  // L3 = L[u(2)]
+	// ------------------------Third Stage----------------------------
+	dflux = calcdSpace<T>(Y3, t, dx, lam, n_size);  // L3 = L[u(2)]
 
 
-	U += Vector4<T>(2.) * (Y3 + Vector4<T>(dt) * dflux);
-	U *= Vector4<T>(1./3.);
+	// U += Vector4<T>(2.) * (Y3 + Vector4<T>(dt) * dflux);
+	// U *= Vector4<T>(1./3.);
+	std::ranges::transform(Y3,
+						   dflux,
+						   std::begin(Y3),
+						   [dt](const auto u, const auto df) {
+		return 2. * (u + dt * df);
+	});
+	std::ranges::transform(U,
+						   Y3,
+						   std::begin(U),
+						   [dt](const auto u, const auto y) {
+		return (u + y) * (1./3.);
+	});
 	// u^(n+1) = (1/3) * u^n + (2/3) * u(2) + (2/3) * Δt L[u(2)]
 
-	update_ghost_points<T>(U);
+	updateGhostPoints<T>(U);
 
 	// return U;
 	// U = res;
