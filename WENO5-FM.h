@@ -134,7 +134,8 @@ Vector4<T> calcPhysicalFlux(T rho, T u, T p, T last, T gamma) {
 template <typename T>
 Vector4<T> primitiveToConservative(Vector4<T> u, T gamma = 1.4) {
 	// Conservative variables
-	return Vector4<T>(u[0], u[1] / u[0], u[2] / (gamma - 1.), u[3]);
+	return Vector4<T>(u[0], u[0] * u[1],
+		u[2] / (gamma - 1.) + 0.5 * u[0] * u[1] * u[1], u[3]);
 }
 
 
@@ -145,8 +146,9 @@ Vector4<T> conservativeToPrimitive(Vector4<T> q, T gamma) {
 	T u = q[1] / rho;
 	T E = q[2] / rho;
 	T p = (gamma - 1.) * rho * (E - 0.5*u*u);
+	T e = gete(rho, p, gamma);
 
-	return Vector4<T>(rho, u, p, q[3]);
+	return Vector4<T>(rho, u, p, e);
 }
 
 
