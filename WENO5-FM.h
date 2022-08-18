@@ -165,9 +165,10 @@ template <typename T>
 std::valarray<T> operator + (const std::valarray<T>& arr,
 							 auto some_range) {
 	std::valarray<T> res(arr.size());
-	std::transform(std::begin(arr), std::end(arr),
-				   std::ranges::begin(some_range),
-				   std::begin(res), std::plus<>{});
+	std::transform(
+				std::begin(arr), std::end(arr),
+				std::ranges::begin(some_range),
+				std::begin(res), std::plus<>{});
 
 	return res;
 }
@@ -177,9 +178,10 @@ template <typename T>
 std::valarray<T> operator - (const std::valarray<T>& arr,
 							 auto some_range) {
 	std::valarray<T> res(arr.size());
-	std::transform(std::begin(arr), std::end(arr),
-				   std::ranges::begin(some_range),
-				   std::begin(res), std::minus<>{});
+	std::transform(
+				std::begin(arr), std::end(arr),
+				std::ranges::begin(some_range),
+				std::begin(res), std::minus<>{});
 
 	return res;
 }
@@ -187,18 +189,20 @@ std::valarray<T> operator - (const std::valarray<T>& arr,
 
 template <typename T>
 std::valarray<T>& operator += (std::valarray<T>& arr, auto some_range) {
-	std::transform(std::begin(arr), std::end(arr),
-				   std::ranges::begin(some_range),
-				   std::begin(arr), std::plus<>{});
+	std::transform(
+				std::begin(arr), std::end(arr),
+				std::ranges::begin(some_range),
+				std::begin(arr), std::plus<>{});
 	return arr;
 }
 
 
 template <typename T>
 std::valarray<T>& operator -= (std::valarray<T>& arr, auto some_range) {
-	std::transform(std::begin(arr), std::end(arr),
-				   std::ranges::begin(some_range),
-				   std::begin(arr), std::minus<>{});
+	std::transform(
+				std::begin(arr), std::end(arr),
+				std::ranges::begin(some_range),
+				std::begin(arr), std::minus<>{});
 	return arr;
 }
 
