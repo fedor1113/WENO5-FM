@@ -332,9 +332,9 @@ auto calcMaxWaveSpeedD(const auto& u_arr, T gamma = 1.4) {
 	std::ranges::transform(std::as_const(u_arr),
 						   std::begin(a0),
 						   [gamma](const auto& u_arr_vec_pt) -> T {
-		return (std::abs(calcSoundSpeed(
+		return (std::sqrt(std::abs(calcSoundSpeed(
 							u_arr_vec_pt[0],
-							u_arr_vec_pt[2], gamma))
+							u_arr_vec_pt[2], gamma)))
 				+ std::abs(u_arr_vec_pt[1] / u_arr_vec_pt[0]));
 	});
 //	std::size_t k = 0;
@@ -343,7 +343,7 @@ auto calcMaxWaveSpeedD(const auto& u_arr, T gamma = 1.4) {
 	// a0 = std::sqrt(std::abs(a0));
 
 	// std::ranges::for_each(a0, [](auto& n) { n = std::abs(n); });
-	std::ranges::for_each(a0, [](auto& n) { n = std::sqrt(n); });
+	// std::ranges::for_each(a0, [](auto& n) { n = std::sqrt(n); });
 
 //	std::valarray<T> a1(u_arr.size());
 //	std::valarray<T> a2(u_arr.size());
@@ -841,7 +841,7 @@ void updateGhostPoints(
 		auto& U,
 		std::size_t left_bound_size = 3,
 		std::optional<std::size_t> right_bound_size = std::nullopt) {
-	/* Update ghost points in U with transmissive b.c.s. */
+	/* Update ghost points in U with transmissive (Neumann) b.c.s. */
 
 	//	for (k = nGhostCells; k < nGhostCells + nSize; ++ k) {
 	//			U[k] = ms[k-nGhostCells].W;
@@ -984,9 +984,11 @@ std::valarray<Vector4<T>> calcdSpace(const std::valarray<Vector4<T>>& U,
 	std::valarray<Vector4<T>> f_mn = lf[Nweno_shifted_by_neg_1];
 	std::valarray<Vector4<T>> f_pl = lf[Nweno];
 
+
 	dflux[Nweno] = -(f_pl - f_mn) / Vector4<T>(dx);
-	// dflux[3] -= lf[3];
-	// dflux[ghost_point_number-1-3] += lf[ghost_point_number-1-3];
+	// dflux[3] -= lf[0] / Vector4<T>(dx);
+	// dflux[std::ranges::size(U)-1-ghost_point_number]
+	// 	+= lf[std::ranges::size(U)-1-ghost_point_number] / Vector4<T>(dx);
 
 	// dflux += source terms...
 

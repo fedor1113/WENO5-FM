@@ -56,23 +56,23 @@ int main() {
 //		std::cout << n << "\n";
 
 
-	tfinal = 0.2;
-	solve1DRiemannProblemForEulerEq<numeric_val>(
-		u_res, x, gamma,
-		8., 0., 8.,
-		1., 0., 1., 0.5,
-		t, tfinal, 0., L,
-		primitiveToConservativeU<numeric_val>, Nx, cfl
-	);
-
-//  tfinal = 0.15;
+//	tfinal = 0.2;
 //	solve1DRiemannProblemForEulerEq<numeric_val>(
 //		u_res, x, gamma,
-//		1., 0., 1.,
-//		0.125, 0., 0.1, 0.5,
+//		8., 0., 8.,
+//		1., 0., 1., 0.5,
 //		t, tfinal, 0., L,
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
-//	);  // Sod's problem (expansion-contact-shock)
+//	);
+
+  tfinal = 0.15;
+	solve1DRiemannProblemForEulerEq<numeric_val>(
+		u_res, x, gamma,
+		1., 0., 1.,
+		0.125, 0., 0.1, 0.5,
+		t, tfinal, 0., L,
+		primitiveToConservativeU<numeric_val>, Nx, cfl
+	);  // Sod's problem (expansion-contact-shock)
 
 //   tfinal = 0.2;
 //   solve1DRiemannProblemForEulerEq<numeric_val>(
