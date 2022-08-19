@@ -482,6 +482,22 @@ T henrickGMappingForLambda(T lambda_weno_weight,
 }
 
 
+//template <typename T>
+//T henrickGMapping(T omega_weno_weight,
+//				  T d_ideal = 1./3.) {
+//	/* The original mapping function g by Henrick et al. */
+
+//	T d_square = d_ideal * d_ideal;
+//	return omega_weno_weight * (d_ideal
+//								 + d_square
+//								 - 3. * d_ideal * omega_weno_weight
+//								 + omega_weno_weight * omega_weno_weight)
+//							  / (d_square
+//								 + omega_weno_weight
+//								   * (1. - 2.*d_ideal));
+//}
+
+
 template <typename T>
 std::valarray<T> alphaWENO5FMWeights(
 	const std::valarray<T>&& beta_IS_coefs,
@@ -628,6 +644,215 @@ T computeFHatWENO5JSReconstructionKernel(std::span<T, 5> f_stencil,
 //	 beta_IS_coefs = betaSmoothnessIndicatorsMat(f_stencil);
 
 	// The non-matrix variant seems to be faster(?)
+	 beta_IS_coefs = betaSmoothnessIndicators(f_stencil);
+//	beta_IS_coefs[0] = (13.0/12.0)*std::pow(f_stencil[0]-2.0*f_stencil[1]+f_stencil[2], 2)
+//			+ 0.25*std::pow(f_stencil[0]-4.0*f_stencil[1]+3.0*f_stencil[2], 2);
+//	beta_IS_coefs[1] = (13.0/12.0)*std::pow(f_stencil[1]-2.0*f_stencil[2]+f_stencil[3], 2)
+//			+ 0.25*std::pow(f_stencil[1]-f_stencil[3], 2);
+//	beta_IS_coefs[2] = (13.0/12.0)*std::pow(f_stencil[2]-2.0*f_stencil[3]+f_stencil[4], 2)
+//			+ 0.25*std::pow(3.0*f_stencil[2]-4.0*f_stencil[3]+f_stencil[4], 2);
+
+	// non-linear non-scaled (α-)weights
+	std::valarray<T> d_lin_weights = {0.1, 0.6, 0.3};
+	std::valarray<T> alpha_weights = d_lin_weights
+			/ std::pow(eps + beta_IS_coefs, p);
+//	std::valarray<T> alpha_weights(3);
+//	alpha_weights[0] = 1.0e-1/std::pow((eps+beta_IS_coefs[0]), 2);
+//	alpha_weights[1] = 6.0e-1/std::pow((eps+beta_IS_coefs[1]), 2);
+//	alpha_weights[2] = 3.0e-1/std::pow((eps+beta_IS_coefs[2]), 2);
+
+	// scaled (normalized) non-linear (ω-)weights (ENO weights)
+	std::valarray<T> omega_weights = alpha_weights / alpha_weights.sum();
+//	std::valarray<T> omega_weights(3);
+//	omega_weights[0] = alpha_weights[0] / (alpha_weights[0] + alpha_weights[1] + alpha_weights[2]);
+//	omega_weights[1] = alpha_weights[1] / (alpha_weights[0] + alpha_weights[1] + alpha_weights[2]);
+//	omega_weights[2] = alpha_weights[2] / (alpha_weights[0] + alpha_weights[1] + alpha_weights[2]);
+	// vecMatDot<T>(u_..., WmN...) stores a 3-rd order estimate of f_{i+1/2}
+	// via linear combinations with WmNplus coefficients
+	// for each substencil which is then used to calculate
+	// f_hat = ∑ ω * q = [ω] * (WmN(+/-) * [f])
+	// using the nonlinear weights [ω]
+//	f_hat = std::inner_product(
+//		std::begin(omega_weights), std::end(omega_weights),
+//		std::begin(f3OrdReconstructionFromStencil(f_stencil)), 0.
+//	);
+
+	 std::valarray<
+		 T
+	 > eno_reconstructed_f = f3OrdReconstructionFromStencil(f_stencil);
+
+//	 eno_reconstructed_f[0] = f_stencil[0]/3.0 - 7.0/6.0*f_stencil[1] + 11.0/6.0*f_stencil[2];
+//	 eno_reconstructed_f[1] =-f_stencil[1]/6.0 + 5.0/6.0*f_stencil[2] + f_stencil[3]/3.0;
+//	 eno_reconstructed_f[2] = f_stencil[2]/3.0 + 5.0/6.0*f_stencil[3] - f_stencil[4]/6.0;
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2];
+
+
+	return f_hat;
+}
+
+
+template <typename T>
+T computeFHatWENO5JSReconstructionKernelRev(std::span<T, 5> f_stencil,
+											T eps = 1e-40, T p = 2.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical fluxes
+	 * `fhatplus` / `fhatminus` at a point j+0 for a given stencil
+	 * (receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '+'
+	 *                (or [j+3, j+2, j+1, j+0, j-1, ...] for '-')
+	 *                      ^    ^    ^    ^    ^    ^
+	 *                      0    1    2    3    4    |
+	 * in either case for convenience).
+	 *
+	 * I.e. this function implements the upwind reconstruction which
+	 * should be used for positive fluxes (with information propagated
+	 * from left to right) if the nodes are passed in order. However,
+	 * the downwind reconstruction should obviously look the same
+	 * modulo flipping the values with respect to j+0, so that it
+	 * becomes downwind biased and takes one extra point to the right
+	 * instead of taking one extra to the left. In other words, to get
+	 * this to behave as a downwind reconstrution we need to pass
+	 * the points symmetric to those of upwind reconstruction with
+	 * respect to j+0:
+	 * [j+3, j+2, j+1, j+0, j-1, ...]. (We reverse the points in
+	 *      [j-2, j-1, j+0, j+1, j+2] j+3 and get
+	 *                  |
+	 * [j+3, j+2, j+1, j+0, j-1] j-2.)
+	 */
+
+	// `p` controls (increases) the amount of numerical dissipation
+	// (and nothing more in WENO and WENO-(F)M);
+	// but in WENO-Z(M) changing the value of p alters convergence
+	// rates at critical points (it's recommended to take it = r-1
+	// for 2r-1 order schemes, so 2 for WENO5-Z(M)).
+	//
+	// `eps` is a small positive parameter to avoid the denominator
+	// of weights being zero
+	// (though it, too, can be significant for convergence properties
+	// and should ideally be tailored to the specific comp. problem,
+	// as first noted and more or less fully outlined by Henrick et al.)
+
+	// f_stencil = f_plus (or a reversed stencil for f_minus)
+
+	std::valarray<T> beta_IS_coefs(3);
+	// Computationally, we will only need to remember
+	// some 3 weights at each WENO5 reconstruction step,
+	// so this array will be more than enough, but,
+	// for ease of understanding, we will create
+	// a bunch of other arrays.
+//	std::valarray<T> alpha_weights(3);
+//	std::valarray<T> lambda_weights(3);
+//	std::valarray<T> omega_weights(3);
+//	std::valarray<T> eno_reconstructed_f(3);
+
+	T f_hat = 0.;
+
+	// smoothness indicators of the stencil
+	// (measure how smooth u is in the stencil)
+//	 beta_IS_coefs = betaSmoothnessIndicatorsMat(f_stencil);
+
+	// The non-matrix variant seems to be faster(?)
+	beta_IS_coefs = betaSmoothnessIndicators(f_stencil);
+
+	// non-linear non-scaled (α-)weights
+	std::valarray<T> d_lin_weights = {0.3, 0.6, 0.1};
+	std::valarray<T> alpha_weights = d_lin_weights
+			/ std::pow(eps + beta_IS_coefs, p);
+	// — we have no need of them in WENO-FM!
+
+	// scaled (normalized) non-linear (ω-)weights (ENO weights)
+	std::valarray<T> omega_weights = alpha_weights / alpha_weights.sum();
+
+	// vecMatDot<T>(u_..., WmN...) stores a 3-rd order estimate of f_{i+1/2}
+	// via linear combinations with WmNplus coefficients
+	// for each substencil which is then used to calculate
+	// f_hat = ∑ ω * q = [ω] * (WmN(+/-) * [f])
+	// using the nonlinear weights [ω]
+//	f_hat = std::inner_product(
+//		std::begin(omega_weights), std::end(omega_weights),
+//		std::begin(f3OrdReconstructionFromStencil(f_stencil)), 0.
+//	);
+
+	std::valarray<T> eno_reconstructed_f(3);
+	eno_reconstructed_f[0] = (-1. * f_stencil[0]
+						   + 5. * f_stencil[1]
+						   + 2. * f_stencil[2]) / 6.;
+	eno_reconstructed_f[1] = (2. * f_stencil[1]
+						   + 5. * f_stencil[2]
+						   - 1. * f_stencil[3]) / 6.;
+	eno_reconstructed_f[2] = (11. * f_stencil[2]
+						   - 7. * f_stencil[3]
+						   + 2. * f_stencil[4]) / 6.;
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2];
+
+
+	return f_hat;
+}
+
+
+template <typename T>
+T computeFHatWENO5MReconstructionKernel(std::span<T, 5> f_stencil,
+										T eps = 1e-40, T p = 2.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical fluxes
+	 * `fhatplus` / `fhatminus` at a point j+0 for a given stencil
+	 * (receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '+'
+	 *                (or [j+3, j+2, j+1, j+0, j-1, ...] for '-')
+	 *                      ^    ^    ^    ^    ^    ^
+	 *                      0    1    2    3    4    |
+	 * in either case for convenience).
+	 *
+	 * I.e. this function implements the upwind reconstruction which
+	 * should be used for positive fluxes (with information propagated
+	 * from left to right) if the nodes are passed in order. However,
+	 * the downwind reconstruction should obviously look the same
+	 * modulo flipping the values with respect to j+0, so that it
+	 * becomes downwind biased and takes one extra point to the right
+	 * instead of taking one extra to the left. In other words, to get
+	 * this to behave as a downwind reconstrution we need to pass
+	 * the points symmetric to those of upwind reconstruction with
+	 * respect to j+0:
+	 * [j+3, j+2, j+1, j+0, j-1, ...]. (We reverse the points in
+	 *      [j-2, j-1, j+0, j+1, j+2] j+3 and get
+	 *                  |
+	 * [j+3, j+2, j+1, j+0, j-1] j-2.)
+	 */
+
+	// `p` controls (increases) the amount of numerical dissipation
+	// (and nothing more in WENO and WENO-(F)M);
+	// but in WENO-Z(M) changing the value of p alters convergence
+	// rates at critical points (it's recommended to take it = r-1
+	// for 2r-1 order schemes, so 2 for WENO5-Z(M)).
+	//
+	// `eps` is a small positive parameter to avoid the denominator
+	// of weights being zero
+	// (though it, too, can be significant for convergence properties
+	// and should ideally be tailored to the specific comp. problem,
+	// as first noted and more or less fully outlined by Henrick et al.)
+
+	// f_stencil = f_plus (or a reversed stencil for f_minus)
+
+	std::valarray<T> beta_IS_coefs(3);
+	// Computationally, we will only need to remember
+	// some 3 weights at each WENO5 reconstruction step,
+	// so this array will be more than enough, but,
+	// for ease of understanding, we will create
+	// a bunch of other arrays.
+//	std::valarray<T> alpha_weights(3);
+//	std::valarray<T> lambda_weights(3);
+//	std::valarray<T> omega_weights(3);
+//	std::valarray<T> eno_reconstructed_f(3);
+
+	T f_hat = 0.;
+
+	// smoothness indicators of the stencil
+	// (measure how smooth u is in the stencil)
+//	 beta_IS_coefs = betaSmoothnessIndicatorsMat(f_stencil);
+
+	// The non-matrix variant seems to be faster(?)
 	beta_IS_coefs = betaSmoothnessIndicators(f_stencil);
 
 	// non-linear non-scaled (α-)weights
@@ -648,6 +873,16 @@ T computeFHatWENO5JSReconstructionKernel(std::span<T, 5> f_stencil,
 //		std::begin(omega_weights), std::end(omega_weights),
 //		std::begin(f3OrdReconstructionFromStencil(f_stencil)), 0.
 //	);
+
+	std::ranges::transform(
+				omega_weights,
+				d_lin_weights,
+				std::begin(omega_weights),
+				[](auto w, auto d) {
+		return henrickGMappingForLambda(w, d);
+	});  // we obtain a new non-normalized weight alpha*
+
+	omega_weights = omega_weights / omega_weights.sum(); // normalize it
 
 	 std::valarray<
 		 T
@@ -1035,7 +1270,7 @@ void calcHydroStageWENO5FM(const auto& u,
 		fhatminus = computeFHatWENO5FMReconstructionKernel(
 			std::span<T, 5>{std::begin(u_minus), 5}, eps, p
 		);
-//		fhatminus = computeFHatWENO5FMReconstructionKernelRev(
+//		fhatminus = computeFHatWENO5JSReconstructionKernelRev(
 //			std::span<T, 5>{std::begin(u_minus)+1, 5}, eps, p
 //		);
 
@@ -1193,9 +1428,9 @@ std::valarray<Vector4<T>> calcdSpace(const std::valarray<Vector4<T>>& U,
 							   T dx,
 							   const std::valarray<T>& lam,
 							   std::size_t nSize,
-							   T eps = 1e-40,
+							   T eps = 1e-6,
 							   T p = 2.) {
-	std::valarray<Vector4<T>> dflux(Vector4<T>::ZERO, U.size());
+	std::valarray<Vector4<T>> dflux(Vector4<T>(0., 0., 0., 0.), U.size());
 	std::valarray<Vector4<T>> lf = calcFluxComponentWise<T>(
 				U, t, lam, nSize, eps, p
 				);
@@ -1217,6 +1452,12 @@ std::valarray<Vector4<T>> calcdSpace(const std::valarray<Vector4<T>>& U,
 	// 	+= lf[std::ranges::size(U)-1-ghost_point_number] / Vector4<T>(dx);
 
 	// dflux += source terms...
+//	dflux[ghost_point_number] -= lf[ghost_point_number] / dx;
+//	for(std::size_t j = 1; j < nSize; ++ j) {
+//		dflux[j+ghost_point_number-1] += lf[j+ghost_point_number] / dx;
+//		dflux[j+ghost_point_number] -= lf[j+ghost_point_number] / dx;
+//	}
+//	dflux[nSize] += lf[nSize] / dx;
 
 	return dflux;
 }
@@ -1375,7 +1616,7 @@ void prepareRiemannProblem(
 	const std::size_t n_ghost_points = 3;
 	std::size_t full_mesh_size = computational_domain_size
 		+ 2*n_ghost_points;
-	T dx = (l_max - l_min) / mesh_size;  // [L]
+	T dx = (l_max - l_min) / (mesh_size-1);  // [L]
 
 	x = std::valarray<T>(0., full_mesh_size);
 	u_init = std::valarray<Vector4<T>>(Vector4<T>::ZERO, full_mesh_size);
@@ -1399,13 +1640,13 @@ void prepareRiemannProblem(
 // 	T G = gamma;
 	Vector4<T> vec(rho_left, v_left, p_left, 0.);
 	vec = primitiveToConservativeU(vec, gamma);
-	for (k = 0; k <= x0_coord; ++ k) {
+	for (k = 0; k < x0_coord; ++ k) {
 		u_init[k] = vec;
 		// u_init[k][3] = 1. * u_init[k][0];
 	}
 
 	vec = primitiveToConservativeU(Vector4(rho_right, v_right, p_right, 0.), gamma);
-	for (k = x0_coord + 1; k < full_mesh_size; ++ k) {
+	for (k = x0_coord; k < full_mesh_size; ++ k) {
 		u_init[k] = vec;
 		// u_init[k][3] = 1. * u_init[k][0];
 	}
@@ -1439,7 +1680,7 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 								 std::ranges::size(u_init));
 
 	u_init = integrateRiemannProblem<T>(u_init, flux, y2, y3,
-		t0, (l_max-l_min) / mesh_size, mesh_size, t_max, cfl);
+		t0, (l_max-l_min) / (mesh_size-1), mesh_size, t_max, cfl);
 
 	return u_init;
 }
