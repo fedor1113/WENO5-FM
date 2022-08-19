@@ -5,6 +5,7 @@
 #include <iostream>
 #include <iterator>
 #include <numeric>
+#include <optional>
 #include <ranges>
 #include <span>
 // #include <type_traits>
