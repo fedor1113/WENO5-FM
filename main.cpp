@@ -27,7 +27,7 @@ int main() {
 	// Nx = Nx + 6;  // Add in ghost cells
 	numeric_val L = 1.;  // [L]
 
-	numeric_val cfl = 0.55;
+	numeric_val cfl = 0.9;
 	numeric_val t = 0.;
 	numeric_val tfinal = 0.2;  // [T]
 
@@ -65,23 +65,23 @@ int main() {
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);
 
-	tfinal = 0.15;
-	solve1DRiemannProblemForEulerEq<numeric_val>(
-		u_res, x, gamma,
-		1., 0., 1.,
-		0.125, 0., 0.1, 0.5,
-		t, tfinal, 0., L,
-		primitiveToConservativeU<numeric_val>, Nx, cfl
-	);  // Sod's problem (expansion-contact-shock)
+//	tfinal = 0.15;
+//	solve1DRiemannProblemForEulerEq<numeric_val>(
+//		u_res, x, gamma,
+//		1., 0., 1.,
+//		0.125, 0., 0.1, 0.5,
+//		t, tfinal, 0., L,
+//		primitiveToConservativeU<numeric_val>, Nx, cfl
+//	);  // Sod's problem (expansion-contact-shock)
 
-	tfinal = 0.2;
-	solve1DRiemannProblemForEulerEq<numeric_val>(
-		u_res, x, gamma,
-		1., 0.75, 1.,
-		0.125, 0., 0.1, 0.3,
-		t, tfinal, 0., L,
-		primitiveToConservativeU<numeric_val>, Nx, cfl
-	);  // Modified Sod's problem (expansion-contact-shock). Toro-1
+//	tfinal = 0.2;
+//	solve1DRiemannProblemForEulerEq<numeric_val>(
+//		u_res, x, gamma,
+//		1., 0.75, 1.,
+//		0.125, 0., 0.1, 0.3,
+//		t, tfinal, 0., L,
+//		primitiveToConservativeU<numeric_val>, Nx, cfl
+//	);  // Modified Sod's problem (expansion-contact-shock). Toro-1
 
 
 //	tfinal = 0.12;
@@ -129,14 +129,23 @@ int main() {
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);  // Two symmetric rarefaction waves (expansion-contact-expansion). Toro-2
 
-//	tfinal = 0.12;
+	tfinal = 0.012;
+	solve1DRiemannProblemForEulerEq<numeric_val>(
+		u_res, x, gamma,
+		1., 0., 1000.,
+		1., 0., .01, 0.5,
+		t, tfinal, 0., L,
+		primitiveToConservativeU<numeric_val>, Nx, cfl
+	);  // Toro-3
+
+//	tfinal = 0.02;
 //	solve1DRiemannProblemForEulerEq<numeric_val>(
 //		u_res, x, gamma,
-//		1., 0., 1000.,
-//		1., 0., .01, 0.5,
+//		3., 0., 1000.,
+//		2., 0., .1, 0.5,
 //		t, tfinal, 0., L,
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
-//	);  // Toro-3
+//	);  // Left Expansion and right strong shock
 
 //	tfinal = 0.035;
 //	solve1DRiemannProblemForEulerEq<numeric_val>(
@@ -173,8 +182,8 @@ int main() {
 	if (outfile.is_open()) {
 		outfile << "TITLE=\"Riemann Problem 1D slice t="
 				<< tfinal << "\"" << "\n";
-		// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
-		outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
+		outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
+		// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
 		outfile << "ZONE T=\"Numerical\", I="
 				<< N_full << ", F=POINT" << "\n";
 
@@ -196,8 +205,8 @@ int main() {
 			outfile << x[k]
 					<< " " << q[0]
 					<< " " << q[1]
-					<< " " << q[2] << "\n";
-//					<< " " << q[3] << "\n";
+					<< " " << q[2]
+					<< " " << q[3] << "\n";
 
 			++ k;
 		}
