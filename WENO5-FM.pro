@@ -3,6 +3,8 @@ CONFIG += console c++2a
 CONFIG -= app_bundle
 CONFIG -= qt
 
+LIBS += -ltbb
+
 SOURCES += \
         WENO5-FM.h \
         _vector4.cpp \

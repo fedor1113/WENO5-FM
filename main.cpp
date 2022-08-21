@@ -1,6 +1,6 @@
-//#pragma GCC optimize("Ofast")
-//#pragma GCC target("avx,avx2,fma")
-//#pragma GCC optimization("unroll-loops")
+#pragma GCC optimize("Ofast")
+#pragma GCC target("avx,avx2,fma")
+#pragma GCC optimization("unroll-loops")
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -10,26 +10,25 @@
 // #include "vectorfieldcomponentview.h"
 #include "WENO5-FM.h"
 
-using numeric_val = double;
 template class Vector4<numeric_val>;
 using Vec4 = Vector4<numeric_val>;
 
 
-int main() {
+int main(int argc, char **argv) {
 	std::ios::sync_with_stdio(false);
 	// std::cin.tie(nullptr);
 
 	std::size_t k = 0;
 
-	std::size_t Nx = 200;
+	std::size_t Nx = 100;
 	const std::size_t N_ghost_points = 3;
 	std::size_t N_full = Nx + 2*N_ghost_points;
 	// Nx = Nx + 6;  // Add in ghost cells
 	numeric_val L = 1.;  // [L]
 
-	numeric_val cfl = 0.9;
+	numeric_val cfl = 0.55;
 	numeric_val t = 0.;
-	numeric_val tfinal = 0.2;  // [T]
+	numeric_val tfinal = 0.0;  // [T]
 
 	// std::valarray<Vec4> u_init(Vec4::ZERO, N_full);
 	// std::valarray<Vec4> flux(Vec4::ZERO, N_full);
@@ -74,14 +73,17 @@ int main() {
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);  // Sod's problem (expansion-contact-shock)
 
-//	tfinal = 0.2;
-//	solve1DRiemannProblemForEulerEq<numeric_val>(
-//		u_res, x, gamma,
-//		1., 0.75, 1.,
-//		0.125, 0., 0.1, 0.3,
-//		t, tfinal, 0., L,
-//		primitiveToConservativeU<numeric_val>, Nx, cfl
-//	);  // Modified Sod's problem (expansion-contact-shock). Toro-1
+	Nx = 100;
+	L = 1.;
+	cfl = 0.55;
+	tfinal = 0.2;
+	solve1DRiemannProblemForEulerEq<numeric_val>(
+		u_res, x, gamma,
+		1., 0.75, 1.,
+		0.125, 0., 0.1, 0.3,
+		t, tfinal, 0., L,
+		primitiveToConservativeU<numeric_val>, Nx, cfl
+	);  // Modified Sod's problem (expansion-contact-shock). Toro-1
 
 
 //	tfinal = 0.12;
@@ -129,14 +131,14 @@ int main() {
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);  // Two symmetric rarefaction waves (expansion-contact-expansion). Toro-2
 
-	tfinal = 0.012;
-	solve1DRiemannProblemForEulerEq<numeric_val>(
-		u_res, x, gamma,
-		1., 0., 1000.,
-		1., 0., .01, 0.5,
-		t, tfinal, 0., L,
-		primitiveToConservativeU<numeric_val>, Nx, cfl
-	);  // Toro-3
+//	tfinal = 0.012;
+//	solve1DRiemannProblemForEulerEq<numeric_val>(
+//		u_res, x, gamma,
+//		1., 0., 1000.,
+//		1., 0., .01, 0.5,
+//		t, tfinal, 0., L,
+//		primitiveToConservativeU<numeric_val>, Nx, cfl
+//	);  // Toro-3
 
 //	tfinal = 0.02;
 //	solve1DRiemannProblemForEulerEq<numeric_val>(
