@@ -5,10 +5,21 @@ CONFIG -= qt
 
 LIBS += -ltbb
 
+INCLUDEPATH += Eigen/
+
 SOURCES += \
-        WENO5-FM.h \
         _vector4.cpp \
-        main.cpp \
+		main.cpp \
 
 HEADERS += \
-    _vector4.h \
+        _vector4.h \
+		arithmeticwith.h \
+		eno3.h \
+		euler1d.h \
+    eulerforward.h \
+		extrapolation.h \
+		inviscidburgers1d.h \
+		kfr1d.h \
+		ssprk33.h \
+		weno5.h \
+		weno5coefs.h

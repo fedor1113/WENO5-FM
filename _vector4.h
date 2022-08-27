@@ -20,13 +20,6 @@ Adapted from Ogre3D
 */
 
 
-
-//template<class N>
-//concept SignedNumber = std::is_signed_v<N>
-//	&& std::is_arithmetic<N>
-//	&& std::is_floating_point<N>;
-
-
 template <typename N>
 //requires SignedNumber<N>
 class Vector4
@@ -54,8 +47,10 @@ public:
     {
     }
 
-	inline Vector4(std::valarray<N> V) : x(V[0]), y(V[1]), z(V[2]), w(V[3]) {}
-	inline Vector4(std::vector<N> V) : x(V[0]), y(V[1]), z(V[2]), w(V[3]) {}
+	inline explicit Vector4(const std::valarray<N>& V)
+		: x(V[0]), y(V[1]), z(V[2]), w(V[3]) {}
+	inline explicit Vector4(const std::vector<N>& V)
+		: x(V[0]), y(V[1]), z(V[2]), w(V[3]) {}
 
 	inline N square() const
 	{

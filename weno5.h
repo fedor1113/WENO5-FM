@@ -1,3 +1,8 @@
+#ifndef WENO5_H
+#define WENO5_H
+
+#include "weno5coefs.h"
+
 #include <array>
 #include <cmath>
 #include <concepts>
@@ -16,250 +21,12 @@
 #include <vector>
 #include <algorithm>
 
+#include "arithmeticwith.h"
 #include "_vector4.h"
-
-
-template<typename T, typename N>
-concept AddableWith = requires (T x, N y) {
-	x + x; x + y; y + x; x += y;
-};
-
-
-template<typename T, typename N>
-concept SubtractableWith = requires (T x, N y) {
-	x - x; x - y; y - x; x -= y;
-};
-
-
-template<typename T, typename N>
-concept MultipliableWith = requires (T x, N y) {
-	x * x; x * y; y * x; x *= y;
-};
-
-
-template<typename T, typename N>
-concept DivisibleWith = requires (T x, N y) {
-	x / x; x / y; y / x; x *= y;
-};
-
-
-template<typename T, typename N>
-concept ArithmeticWith = AddableWith<T, N>
-		&& SubtractableWith<T, N>
-		&& MultipliableWith<T, N>
-		&& DivisibleWith<T, N>;
-
-
-using numeric_val = double;
 
 // template class Vector4<double>;
 
 // using Vec4 = Vector4<double>;
-
-
-// const std::vector<std::vector<double>> WmAm0 {};
-std::array<std::array<const double, 6>, 6> WmAm0 {{
-	{{0., 0., 0., 0., 0., 0.}},
-	{{0., 0., 0., 0., 0., 0.}},
-	{{0., 0., 0., 0., 0., 0.}},
-	{{0., 0., 0., 20./6, -31./6, 11./6}},
-	{{0., 0., 0., -31./6, 50./6, -19./6}},
-	{{0., 0., 0., 11./6, -19./6, 8./6}}
-}};
-
-
-std::array<std::array<const double, 6>, 6> WmAm1 {{
-	{{0., 0., 0., 0., 0., 0.}},
-	{{0., 0., 0., 0., 0., 0.}},
-	{{0., 0., 8./6, -13./6, 5./6, 0.}},
-	{{0., 0., -13./6, 26./6, -13./6, 0.}},
-	{{0., 0., 5./6, -13./6, 8./6, 0.}},
-	{{0., 0., 0., 0., 0., 0.}}
-}};
-
-std::array<std::array<const double, 6>, 6> WmAm2 {{
-	{{0., 0., 0., 0., 0., 0.}},
-	{{0., 8./6, -19./6, 11./6, 0., 0.}},
-	{{0., -19./6, 50./6, -31./6, 0., 0.}},
-	{{0., 11./6, -31./6, 20./6, 0., 0.}},
-	{{0., 0., 0., 0., 0., 0.}},
-	{{0., 0., 0., 0., 0., 0.}}
-}};
-
-std::array<std::array<const double, 6>, 6> minus_coefs[] = {
-	WmAm0, WmAm1, WmAm2
-};
-
-
-std::array<std::array<const double, 6>, 6> WmAp0 {{
-	{{8./6, -19./6, 11./6, 0., 0., 0.}},
-	{{-19./6, 50./6, -31./6, 0., 0., 0.}},
-	{{11./6, -31./6, 20./6, 0., 0., 0.}},
-	{{0., 0., 0., 0., 0., 0.}},
-	{{0., 0., 0., 0., 0., 0.}},
-	{{0., 0., 0., 0., 0., 0.}}
-}};
-
-std::array<std::array<const double, 6>, 6> WmAp1 {{
-	{{0., 0., 0., 0., 0., 0.}},
-	{{0., 8./6, -13./6, 5./6, 0., 0.}},
-	{{0., -13./6, 26./6, -13./6, 0., 0.}},
-	{{0., 5./6, -13./6, 8./6, 0., 0.}},
-	{{0., 0., 0., 0., 0., 0.}},
-	{{0., 0., 0., 0., 0., 0.}}
-}};
-
-std::array<std::array<const double, 6>, 6> WmAp2 {{
-	{{0., 0., 0., 0., 0., 0.}},
-	{{0., 0., 0., 0., 0., 0.}},
-	{{0., 0., 20./6, -31./6, 11./6, 0.}},
-	{{0., 0., -31./6, 50./6, -19./6, 0.}},
-	{{0., 0., 11./6, -19./6, 8./6, 0}},
-	{{0., 0., 0., 0., 0., 0.}}
-}};
-
-std::array<std::array<const double, 6>, 6> plus_coefs[] = {
-	WmAp0, WmAp1, WmAp2
-};
-
-//	std::array<std::array<const T, 6>, 3> WmNminus {{
-//		{{0., 0., 0., 11./6, -7./6, 2./6}},
-//		{{0., 0., 2./6, 5./6, -1./6, 0.}},
-//		{{0., -1./6, 5./6, 2./6, 0., 0.}}
-//	}};
-
-//	std::array<std::array<const T, 6>, 3> WmNplus {{
-//		{{2./6, -7./6, 11./6, 0., 0., 0.}},
-//		{{0., -1./6, 5./6, 2./6, 0., 0.}},
-//		{{0., 0., 2./6, 5./6, -1./6, 0.}}
-//	}};
-
-
-template <ArithmeticWith<numeric_val> T>
-T gete(T rho, T p, T gamma) {
-	if (rho != 0.)
-		return p / (gamma-1.) / rho;
-
-	return 0.;
-}
-
-
-//template <ArithmeticWith<numeric_val> T>
-//T getp(T rho, T e) {
-//	return (GAMMA-1.) * rho * e;
-//}
-
-
-//template <ArithmeticWith<numeric_val> T>
-//T eFromConservative(T rho, T j, T rhoE) {
-//	return (rhoE - 0.5 * j*j / rho) / rho;
-//}
-
-
-template <ArithmeticWith<numeric_val> T>
-Vector4<T> calcPhysicalFlux(T rho, T u, T p, T last, T gamma) {
-	/* Calculate for a Vector4<T> of conserved variables for
-	 * the 1D Euler equations its corresponding flux.
-	 */
-
-	if (rho == 0) return Vector4<T>::ZERO;
-
-	T e = gete(rho, p, gamma);
-	return Vector4<T>(rho * u, p + rho*u*u,
-				u*(p + rho*(e + 0.5*u*u)),
-				u*last);
-}
-
-
-template <ArithmeticWith<numeric_val> T>
-Vector4<T> primitiveToConservative(Vector4<T> u, T gamma = 1.4) {
-	// Conservative variables
-	return Vector4<T>(u[0], u[0] * u[1],
-		u[2] / (gamma - 1.) + 0.5 * u[0] * u[1] * u[1], u[3]);
-}
-
-
-template <ArithmeticWith<numeric_val> T>
-Vector4<T> conservativeToPrimitive(Vector4<T> q, T gamma) {
-	// Primitive variables
-	T rho = q[0];
-	T u = q[1] / rho;
-	T E = q[2] / rho;
-	T p = (gamma - 1.) * rho * (E - 0.5*u*u);
-	T e = gete(rho, p, gamma);
-
-	return Vector4<T>(rho, u, p, e);
-}
-
-
-template <ArithmeticWith<numeric_val> T>
-Vector4<T> calcPhysicalFluxFromConservativeVec(Vector4<T> u, T gamma) {
-	/* Calculate for a Vector4<T> of conserved variables
-	 * for the 1D Euler equations (rho, j=rho*v, rhoE=rho(e+v^2/2), smth)
-	 * its corresponding flux.
-	 */
-
-//	return calcPhysicalFlux(u[0],
-//			u[1] / u[0],
-//			getp(u[0], eFromConservative(u[0], u[1], u[2])));
-	Vector4<T> prim = conservativeToPrimitive(u, gamma);
-
-	return calcPhysicalFlux(prim[0], prim[1], prim[2], prim[3], gamma);
-}
-
-
-template <typename T>
-std::valarray<T> operator + (
-		const std::valarray<T>& arr,
-		const std::ranges::common_range auto& some_range) {
-	std::valarray<T> res(arr.size());
-	std::transform(
-				std::ranges::begin(arr), std::ranges::end(arr),
-				std::ranges::begin(some_range),
-				std::ranges::begin(res), std::plus<>{});
-
-	return res;
-}
-
-
-template <typename T>
-std::valarray<T> operator - (
-		const std::valarray<T>& arr,
-		const std::ranges::common_range auto& some_range) {
-	std::valarray<T> res(arr.size());
-	std::transform(
-				std::ranges::begin(arr), std::ranges::end(arr),
-				std::ranges::begin(some_range),
-				std::ranges::begin(res), std::minus<>{});
-
-	return res;
-}
-
-
-template <typename T>
-std::valarray<T>& operator += (
-		std::valarray<T>& arr,
-		const std::ranges::common_range auto& some_range) {
-	std::transform(
-				std::ranges::begin(arr), std::ranges::end(arr),
-				std::ranges::begin(some_range),
-				std::ranges::begin(arr), std::plus<>{});
-
-	return arr;
-}
-
-
-template <typename T>
-std::valarray<T>& operator -= (
-		std::valarray<T>& arr,
-		const std::ranges::common_range auto& some_range) {
-	std::transform(
-				std::ranges::begin(arr), std::ranges::end(arr),
-				std::ranges::begin(some_range),
-				std::ranges::begin(arr), std::minus<>{});
-
-	return arr;
-}
 
 
 template <ArithmeticWith<numeric_val> T, typename T1, typename T2>
@@ -280,55 +47,6 @@ std::valarray<T> vecMatDot(const T1& vec, const T2& mat) {
 }
 
 
-template <ArithmeticWith<numeric_val> T>
-std::valarray<Vector4<T>> calcPhysFlux(
-		const std::valarray<Vector4<T>>& u_arr, T gamma = 1.4) {
-	/* Calculate physical fluxes of conservative variables
-	 * in all points in the computation domain u_arr.
-	 */
-
-	std::valarray<Vector4<T>> res(std::ranges::size(u_arr));
-
-	std::transform(std::ranges::begin(u_arr),
-				   std::ranges::end(u_arr),
-				   std::ranges::begin(res),
-				   [&gamma](Vector4<T> v) {
-		return calcPhysicalFluxFromConservativeVec<T>(v, gamma);
-	});
-
-	return res;  // f_arr
-}
-
-
-template <ArithmeticWith<numeric_val> T>
-T calcSquareSoundSpeed(T rho, T rho_v, T rho_E, T gamma = 1.4) {
-	/* Compute the square of sound speed. */
-
-	return gamma * (gamma - 1.)
-			* (rho_E - rho_v * rho_v * 0.5 / rho) / rho;
-}
-
-
-template <ArithmeticWith<numeric_val> T>
-T calcMaxWaveSpeedD(
-		const std::ranges::common_range auto& u_arr,
-		T gamma = 1.4) {
-	/* Calculate |df/du| for 1D Euler eq'ns. */
-
-	const std::size_t size = std::ranges::size(u_arr);
-	std::valarray<T> a0(size);
-	std::ranges::transform(std::as_const(u_arr),
-						   std::ranges::begin(a0),
-						   [gamma](const auto& u_arr_vec_pt) -> T {
-		return (std::sqrt(std::abs(calcSquareSoundSpeed(
-							u_arr_vec_pt[0],
-							u_arr_vec_pt[1],
-							u_arr_vec_pt[2], gamma)))
-				+ std::abs(u_arr_vec_pt[1] / u_arr_vec_pt[0]));
-	});
-
-	return *std::ranges::max_element(a0);
-}
 
 
 template <ArithmeticWith<numeric_val> T>
@@ -367,29 +85,29 @@ std::valarray<T> betaSmoothnessIndicators(std::span<T, 5> f_stencil) {
 }
 
 
-template <ArithmeticWith<numeric_val> T>
-std::valarray<T> betaSmoothnessIndicatorsMat(
-		const std::ranges::common_range auto& f_stencil,
-		std::array<std::array<const T, 6>, 6> _coefs[] = plus_coefs) {
-	/* Return the smoothness indicators beta_k, k=0,1,2
-	 * for each of the 3 substencils of `f_stencil`.
-	 */
+//template <ArithmeticWith<numeric_val> T>
+//std::valarray<T> betaSmoothnessIndicatorsMat(
+//		const std::ranges::common_range auto& f_stencil,
+//		std::array<std::array<const T, 6>, 6> _coefs[] = plus_coefs) {
+//	/* Return the smoothness indicators beta_k, k=0,1,2
+//	 * for each of the 3 substencils of `f_stencil`.
+//	 */
 
-	std::valarray<T> res(3);
+//	std::valarray<T> res(3);
 
-	for (std::size_t k = 0; k < 3; ++ k) {
-		// for (std::size_t k = 0; k < half_size + 1; ++ k)
-		res[k] = std::inner_product(
-			std::ranges::begin(f_stencil),
-			std::ranges::end(f_stencil),
-			std::ranges::begin(vecMatDot(f_stencil, _coefs[k])),
-			0.
-		);
-	}
+//	for (std::size_t k = 0; k < 3; ++ k) {
+//		// for (std::size_t k = 0; k < half_size + 1; ++ k)
+//		res[k] = std::inner_product(
+//			std::ranges::begin(f_stencil),
+//			std::ranges::end(f_stencil),
+//			std::ranges::begin(vecMatDot(f_stencil, _coefs[k])),
+//			0.
+//		);
+//	}
 
 
-	return res;
-}
+//	return res;
+//}
 
 
 template <ArithmeticWith<numeric_val> T>
@@ -653,9 +371,9 @@ T computeFHatWENO5JSReconstructionKernel(std::span<T, 5> f_stencil,
 //		std::ranges::begin(f3OrdReconstructionFromStencil(f_stencil)), 0.
 //	);
 
-	 std::valarray<
-		 T
-	 > eno_reconstructed_f = f3OrdReconstructionFromStencil(f_stencil);
+	std::valarray<
+		T
+	> eno_reconstructed_f = f3OrdReconstructionFromStencil(f_stencil);
 
 //	 eno_reconstructed_f[0] = f_stencil[0]/3.0
 //			 - 7.0/6.0*f_stencil[1] + 11.0/6.0*f_stencil[2];
@@ -847,9 +565,9 @@ T computeFHatWENO5MReconstructionKernel(std::span<T, 5> f_stencil,
 
 	omega_weights = omega_weights / omega_weights.sum(); // normalize it
 
-	 std::valarray<
-		 T
-	 > eno_reconstructed_f = f3OrdReconstructionFromStencil(f_stencil);
+	std::valarray<
+		T
+	> eno_reconstructed_f = f3OrdReconstructionFromStencil(f_stencil);
 
 	f_hat = omega_weights[0] * eno_reconstructed_f[0]
 			+ omega_weights[1] * eno_reconstructed_f[1]
@@ -935,9 +653,9 @@ T computeFHatWENO5FMReconstructionKernel(std::span<T, 5> f_stencil,
 //		std::ranges::begin(f3OrdReconstructionFromStencil(f_stencil)), 0.
 //	);
 
-	 std::valarray<
-		 T
-	 > eno_reconstructed_f = f3OrdReconstructionFromStencil(f_stencil);
+	std::valarray<
+		T
+	> eno_reconstructed_f = f3OrdReconstructionFromStencil(f_stencil);
 
 	f_hat = omega_weights[0] * eno_reconstructed_f[0]
 			+ omega_weights[1] * eno_reconstructed_f[1]
@@ -992,7 +710,7 @@ T computeFHatWENO5FMReconstructionKernel(std::span<T, 5> f_stencil,
 
 //	beta_IS_coefs[1] = ((13./12.) * std::pow(
 //							f_prev1 - 2.*f_curr0 + f_next1, 2)
-//				+ (1./4.) * std::pow((f_prev1 - f_next1), 2));
+//				+ (1./4.) * std::pow((f_/usr/bin/prev1 - f_next1), 2));
 
 //	beta_IS_coefs[2] = ((13./12.) * std::pow(
 //							f_curr0 - 2.*f_next1 + f_next2, 2)
@@ -1073,6 +791,10 @@ std::array<std::valarray<T>, 2> splitFluxAsLaxFriedrichs(
 	 * LF flux splitting remains especially simple, while still
 	 * retaining the necessary number of derivatives,
 	 * so it's perfect for the job.
+	 *
+	 * P. D. Lax, Weak Solutions of Nonlinear Hyperbolic Equations
+	 * and Their Numerical Computation, Commun. Pure and Applied
+	 * Mathematics, 7, 159-193, 1954.
 	 */
 
 	std::array<std::valarray<T>, 2> monotone_lf_flux_components {
@@ -1111,7 +833,7 @@ void calcHydroStageWENO5FM(const std::ranges::common_range auto& u,
 						   T t,
 						   T lam,
 						   auto& numerical_flux,
-						   std::size_t nSize,
+						   std::size_t n_size,
 						   T eps = 1e-40,
 						   T p = 2.) {
 	/* Component-wise finite-difference WENO5FM (WENO5-FM) - space
@@ -1130,9 +852,9 @@ void calcHydroStageWENO5FM(const std::ranges::common_range auto& u,
 	const std::size_t half_size = order / 2;  // 2
 
 	// r = (order + 1) / 2 = 3
-	const std::size_t nGhostCells = (stencil_size + 1) / 2;
-	const std::size_t mini = nGhostCells;
-	const std::size_t maxi = nGhostCells + nSize - 1;
+	const std::size_t n_ghost_cells = (stencil_size + 1) / 2;
+	const std::size_t mini = n_ghost_cells;
+	const std::size_t maxi = n_ghost_cells + n_size - 1;
 	auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 2};
 	// [g      g      g      i      i      i      i      i      i      ...]
 	// {0      1      2      3      4      5}     6      7      8      ...
@@ -1215,13 +937,13 @@ void calcHydroStageWENO5FM(const std::ranges::common_range auto& u,
 		std::copy_n(std::make_reverse_iterator(j_it_m + 1),
 					u_minus.size(), std::ranges::begin(u_minus));
 
-		fhatplus = computeFHatWENO5FMReconstructionKernel(
+		fhatplus = computeFHatWENO5JSReconstructionKernel(
 			std::span<T, 5>{j_it_p, 5}, eps, p
 		);
 
 //		 std::reverse(std::ranges::begin(u_minus),
 //					  std::ranges::end(u_minus));
-		fhatminus = computeFHatWENO5FMReconstructionKernel(
+		fhatminus = computeFHatWENO5JSReconstructionKernel(
 			std::span<T, 5>{std::ranges::begin(u_minus), 5}, eps, p
 		);
 //		fhatminus = computeFHatWENO5JSReconstructionKernelRev(
@@ -1237,7 +959,7 @@ void calcHydroStageWENO5FM(const std::ranges::common_range auto& u,
 
 
 template <ArithmeticWith<numeric_val> T>
-void updateGhostPoints(
+void updateGhostPointsTransmissive(
 		std::ranges::common_range auto& U,
 		std::size_t left_bound_size = 3,
 		std::optional<std::size_t> right_bound_size = std::nullopt) {
@@ -1266,360 +988,53 @@ void updateGhostPoints(
 					right_boundary_start,
 					right_bound_size.value(),
 					[&U, right_start_index](auto& n) {
-		n = U[right_start_index];
+		n = U[right_start_index-1];
 	});
 	// U[maxi+1] = U[maxi]; U[maxi+2] = U[maxi]; U[maxi+3] = U[maxi];
 }
 
 
-template <ArithmeticWith<numeric_val> T>
-std::valarray<Vector4<T>> calcFluxComponentWise(
-		const std::ranges::common_range auto& U,
-		T t, const std::ranges::common_range auto& lam,
-		std::size_t nSize,
-		T eps = 1e-40,
-		T p = 2.) {
-	std::valarray<Vector4<T>> res = calcPhysFlux(U);
-	std::valarray<std::valarray<T>> component_fs(
-				std::valarray<T>(U.size()), 4);
-
-	std::size_t k = 0;
-
-	for (std::size_t j = 0; j < 4; ++ j)
-		for (k = 0; k < U.size(); ++ k) {
-			component_fs[j][k] = res[k][j];
-		}
-
-	auto getVector4Component = [](
-			const Vector4<T>& x,
-			std::size_t k) { return x[k]; };
-
-	auto iv = std::ranges::iota_view{0, 4};
-	std::for_each(
-				std::execution::par_unseq,
-				std::ranges::begin(iv),
-				std::ranges::end(iv),
-				[&](std::size_t k) {
-		auto kThVector4Component = [&k, &getVector4Component](
-				const Vector4<T>& x) {
-			return getVector4Component(x, k);
-		};
-
-		calcHydroStageWENO5FM<T>(
-			std::ranges::views::transform(U, kThVector4Component),
-			t, lam[k],
-			component_fs[k], nSize, eps, p
-		);
-	});
-
-	for (std::size_t j = 0; j < 4; ++ j)
-		for (k = 0; k < U.size(); ++ k)
-			res[k][j] = component_fs[j][k];
-
-	return res;
-}
-
-
-template <ArithmeticWith<numeric_val> T>
-std::valarray<Vector4<T>> calcdSpace(const std::valarray<Vector4<T>>& U,
-							   T t,
-							   T dx,
-							   const std::ranges::common_range auto& lam,
-							   std::size_t nSize,
-							   T eps = 1e-6,
-							   T p = 2.) {
-	std::valarray<Vector4<T>> dflux(Vector4<T>(0., 0., 0., 0.), U.size());
-	std::valarray<Vector4<T>> lf = calcFluxComponentWise<T>(
-				U, t, lam, nSize, eps, p
-				);
-
-	const std::size_t ghost_point_number = 3;
-
-	std::slice Nweno(ghost_point_number, nSize, 1);
-	std::slice Nweno_shifted_by_neg_1(ghost_point_number-1, nSize, 1);
-//	std::slice Nweno(1, U.size()-1, 1);
-//	std::slice Nweno_shifted_by_neg_1(0, U.size()-1, 1);
-
-	std::valarray<Vector4<T>> f_mn = lf[Nweno_shifted_by_neg_1];
-	std::valarray<Vector4<T>> f_pl = lf[Nweno];
-
-
-	dflux[Nweno] = -(f_pl - f_mn) / Vector4<T>(dx);
-
-	// dflux += source terms...
-//	dflux[ghost_point_number] -= lf[ghost_point_number] / dx;
-//	for(std::size_t j = 1; j < nSize; ++ j) {
-//		dflux[j+ghost_point_number-1] += lf[j+ghost_point_number] / dx;
-//		dflux[j+ghost_point_number] -= lf[j+ghost_point_number] / dx;
-//	}
-//	dflux[nSize] += lf[nSize] / dx;
-
-	return dflux;
-}
-
-
-template <ArithmeticWith<numeric_val> T>
-void advanceTimestepTVDRK3(
-		std::ranges::common_range auto& U,
-		std::ranges::common_range auto& dflux,
-		std::ranges::common_range auto& Y2,
-		std::ranges::common_range auto& Y3,
-		T t, T dt, T dx,
-		const std::ranges::common_range auto& lam,
-		std::size_t n_size
-//		auto& calcdSpace,
-//		auto& updateGhostPoints,
-//		auto& calcFlux,
-//		auto& calcSource,
-		/*auto& opts*/) {
-	/* Optimal 3rd Order 3 Stage Explicit Total Variation Diming
-	 * / Diminishing (Strong Stability Preserving)
-	 * Runge-Kutta Scheme (TVD RK3 / SSPRK(3,3))
-	 * to discretize a method-of-lines (MOL) ODE
-	 * du/dt = L[u], where L is some spatial operator.
-	 * This is generally known as the Shu–Osher method.
-	 * It has 3 stages. SSP coefficient = 1.
-	 * See Shu and Osher (1988).
-	 *
-	 * (It is important to note that this method is
-	 * not only strong stability preserving but
-	 * also internally stable.)
-	*/
-
-	// std::slice Nint(3, nSize, 1);
-	dflux.resize(std::ranges::size(U));
-
-	// ------------------------First Stage----------------------------
-	// std::valarray<Vector4<T>> flux = calcFlux(U, t, lam);
-	dflux = calcdSpace<T>(U, t, dx, lam, n_size);  // L1 = L[u^n]
-	// std::valarray<Vector4<T>> res(Vector4<T>::ZERO, U.size());
-	// L[u] = (-) dF[u]/dx
-
-	// Y2 = U + Vector4<T>(dt) * dflux;
-	std::transform(
-				std::execution::par_unseq,
-				std::ranges::begin(U), std::ranges::end(U),
-				std::ranges::begin(dflux),
-				std::ranges::begin(Y2),
-				[dt](const auto u, const auto df) {
-		return u + dt * df;
-	});
-	// u(1) = u^n + Δt L[u^n]
-
-	updateGhostPoints<T>(Y2);
-
-
-	// ------------------------Second Stage---------------------------
-	dflux = calcdSpace<T>(Y2, t, dx, lam, n_size);  // L2 = L[u(1)]
-
-	// Y3 = Vector4<T>(3.)*U + Vector4<T>(dt) * dflux + Y2;
-	// Y3 *= Vector4<T>(0.25);
-	auto iv = std::ranges::iota_view{
-			std::size_t(0), std::ranges::size(U)
-	};
-	std::for_each(
-				std::execution::par_unseq,
-				std::ranges::begin(iv), std::ranges::end(iv),
-				[dt, &Y3, &U, &dflux, &Y2](std::size_t k) {
-		Y3[k] = (3. * U[k] + dt * dflux[k] + Y2[k]) * 0.25;
-	});
-	// u(2) = 0.75 * u^n + 0.25 * u(1) + 0.25 * Δt L[u(1)]
-
-	updateGhostPoints<T>(Y3);
-
-
-	// ------------------------Third Stage----------------------------
-	dflux = calcdSpace<T>(Y3, t, dx, lam, n_size);  // L3 = L[u(2)]
-
-
-	// U += Vector4<T>(2.) * (Y3 + Vector4<T>(dt) * dflux);
-	// U *= Vector4<T>(1./3.);
-	std::transform(
-				std::execution::par_unseq,
-				std::ranges::begin(Y3), std::ranges::end(Y3),
-				std::ranges::begin(dflux),
-				std::ranges::begin(Y3),
-				[dt](const auto u, const auto df) {
-		return 2. * (u + dt * df);
-	});
-	std::transform(
-				std::execution::par_unseq,
-				std::ranges::begin(U), std::ranges::end(U),
-				std::ranges::begin(Y3),
-				std::ranges::begin(U),
-				[dt](const auto u, const auto y) {
-		return (u + y) * (1./3.);
-	});
-	// u^(n+1) = (1/3) * u^n + (2/3) * u(2) + (2/3) * Δt L[u(2)]
-
-	updateGhostPoints<T>(U);
-
-	// return U;
-	// U = res;
-}
-
-
-template <ArithmeticWith<numeric_val> T>
-std::valarray<Vector4<T>> integrateRiemannProblem(
+template <ArithmeticWith<numeric_val> T, typename... Args>
+void timeOperator(
 	std::ranges::common_range auto& U,
 	std::ranges::common_range auto& flux,
-	std::ranges::common_range auto& Y2,
-	std::ranges::common_range auto& Y3,
-	T t0, T dx, std::size_t nSize,
-	T fin_t, T cfl = 0.4
+	std::ranges::common_range auto& intermediate_fluxes,
+	T t0, T dx, std::size_t n_size, T fin_t,
+	auto&& timeStepFunction,
+	auto&& calcMaxWaveSpeed,
+	T cfl = 0.4,
+	Args... opts_args
 ) {
-	/* Time Operator of the Riemann problem: perform the time loop
-	 * and solve it, storing the result in U and the numerical fluxes
-	 * needed for the calculation in flux, Y2 and Y3.
+	/* Time Operator of some problem: perform the time loop
+	 * and solve it, storing the result in `U` and the numerical flux
+	 * needed for the calculation in `flux`.
 	 */
 
 	T t = t0;
+	T dt = 0.;
 
-	T cpu = calcMaxWaveSpeedD<T>(U);
+	T cpu = calcMaxWaveSpeed(U, dt);
 	std::valarray<T> lam = std::valarray(cpu, 4);
 
-	T dt = cfl * dx / lam[0];
+	dt = cfl * dx / lam[0];
 
 	while (t < fin_t) {
 		if (t + dt > fin_t)
 			dt = fin_t - t;
 
-		advanceTimestepTVDRK3<T>(U, flux, Y2, Y3, t, dt, dx, lam, nSize);
-		// std::cout << n*dt << "\n";
-		// std::cout << t << "\n";
+		timeStepFunction(U, flux, intermediate_fluxes,
+				t, dt, dx, lam, n_size, opts_args...);
 
 		t += dt;
 
-		 cpu = calcMaxWaveSpeedD<T>(U);
-		 lam = std::valarray(cpu, 4);
+		cpu = calcMaxWaveSpeed(U, dt);
+		lam = std::valarray(cpu, 4);
 
 		dt = cfl * dx / lam[0];
 	}
 	std::cout << "t = " << t << "\n";
 
-	return U;
+	// return U;
 }
 
-
-template <ArithmeticWith<numeric_val> T>
-std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU
-	= primitiveToConservative<T>;
-
-
-template <ArithmeticWith<numeric_val> T>
-void prepareRiemannProblem(
-	std::ranges::common_range auto& u_init,
-	std::ranges::common_range auto& x,
-	T gamma,
-	T rho_left, T v_left, T p_left, T e_left, T rhoE_left,
-	T rho_right, T v_right, T p_right, T e_rightR, T rhoE_right,
-	T q0, T l_min, T l_max,
-	std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU,
-	std::size_t mesh_size
-) {
-	/* Fill u_init with the Riemann problem data
-	 * at mesh_size number of nodes using Vector4<T>
-	 * to store the data vector field. Fill x
-	 * with the corresponding node coordinates.
-	 */
-
-	std::size_t computational_domain_size = mesh_size;
-	const std::size_t n_ghost_points = 3;
-	std::size_t full_mesh_size = computational_domain_size
-		+ 2*n_ghost_points;
-	T dx = (l_max - l_min) / (mesh_size-1);  // [L]
-
-	x = std::valarray<T>(0., full_mesh_size);
-	u_init = std::valarray<Vector4<T>>(
-				Vector4<T>::ZERO,
-				full_mesh_size);
-
-	std::size_t k = 0;
-	for (k = 0; k < n_ghost_points; ++ k)
-		x[k] = l_min - dx * (n_ghost_points - k);
-
-	x[n_ghost_points] = l_min;
-	for (k = n_ghost_points + 1; k < full_mesh_size; ++ k)
-		x[k] = x[k-1] + dx;
-
-	std::size_t x0_index = 0;
-	while (x[x0_index] < q0)
-		++ x0_index;
-
-	Vector4<T> vec(rho_left, v_left, p_left, 0.);
-	vec = primitiveToConservativeU(vec, gamma);
-	for (k = 0; k < x0_index; ++ k) {
-		u_init[k] = vec;
-	}
-
-	vec = primitiveToConservativeU(
-				Vector4(rho_right, v_right, p_right, 0.),
-				gamma);
-	for (k = x0_index; k < full_mesh_size; ++ k) {
-		u_init[k] = vec;
-	}
-}
-
-
-template <ArithmeticWith<numeric_val> T>
-std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
-	std::ranges::common_range auto& u_init,
-	std::ranges::common_range auto & x,
-	T gamma,
-	T rho_left, T v_left, T p_left, T e_left, T rhoE_left,
-	T rho_right, T v_right, T p_right, T e_rightR, T rhoE_right,
-	T q0, // Initial coordinate of the discontinuity
-	T t0, T t_max, T l_min, T l_max,
-	std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU,
-	std::size_t mesh_size, T cfl = 0.4
-) {
-	/* Solve a given Riemann problem for 1D Euler equations. */
-
-	prepareRiemannProblem<T>(
-		u_init, x, gamma,
-		rho_left, v_left, p_left, e_left, rhoE_left,
-		rho_right, v_right, p_right, e_rightR, rhoE_right,
-		q0, l_min, l_max, primitiveToConservativeU, mesh_size
-	);
-
-	std::valarray<Vector4<T>> flux(Vector4<T>::ZERO,
-								  std::ranges::size(u_init));
-	std::valarray<Vector4<T>> y2(Vector4<T>::ZERO,
-								 std::ranges::size(u_init));
-	std::valarray<Vector4<T>> y3(Vector4<T>::ZERO,
-								 std::ranges::size(u_init));
-
-	u_init = integrateRiemannProblem<T>(u_init, flux, y2, y3,
-		t0, (l_max-l_min) / (mesh_size-1), mesh_size, t_max, cfl);
-
-	return u_init;
-}
-
-
-template <ArithmeticWith<numeric_val> T>
-std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
-	std::ranges::common_range auto& u_init,
-	std::ranges::common_range auto& x,
-	T gamma,
-	T rho_left, T v_left, T p_left,
-	T rho_right, T v_right, T p_right,
-	T q0, // Initial coordinate of the discontinuity
-	T t0, T t_max, T l_min, T l_max,
-	std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU,
-	std::size_t mesh_size, T cfl = 0.4
-) {
-	/* Solve a given Riemann problem for 1D Euler equations. */
-
-	double e_left = p_left / (gamma - 1.) / rho_left;
-	double e_right = p_right / (gamma - 1.) / rho_right;
-	double E_left = (e_left + (v_left*v_left)/2.);
-	double E_right = (e_right + (v_right*v_right)/2.);
-
-	return solve1DRiemannProblemForEulerEq(
-		u_init, x, gamma,
-		rho_left, v_left, p_left, e_left, E_left,
-		rho_right, v_right, p_right, e_right, E_right,
-		q0, t0, t_max, l_min, l_max,
-		primitiveToConservativeU, mesh_size, cfl
-	);
-}
+#endif // WENO5_H
