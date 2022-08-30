@@ -69,7 +69,7 @@ void advanceTimestepTVDRK3(
 				| std::views::take(std::ranges::size(U))
 	);
 	std::for_each(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(iv), std::ranges::end(iv),
 				[dt, &Y3, &U, &dflux, &Y2](std::size_t k) {
 		Y3[k] = (3. * U[k] + dt * dflux[k] + Y2[k]) * 0.25;

@@ -1,6 +1,8 @@
 #include <valarray>
 
+#include <algorithm>
 #include <functional>
+#include <ranges>
 
 
 template <typename T>

@@ -9,6 +9,7 @@
 #include "arithmeticwith.h"
 #include "weno5.h"
 #include "eno3.h"
+#include "exactsolver.h"
 #include "ssprk33.h"
 // #include "eulerforward.h"
 
@@ -16,16 +17,16 @@
 template <ArithmeticWith<numeric_val> T>
 T gete(T rho, T p, T gamma) {
 	if (rho != 0.)
-		return p / (gamma-1.) / rho;
+		return p / (gamma - 1.) / rho;
 
 	return 0.;
 }
 
 
-//template <ArithmeticWith<numeric_val> T>
-//T getp(T rho, T e) {
-//	return (GAMMA-1.) * rho * e;
-//}
+template <ArithmeticWith<numeric_val> T>
+T getP(T rho, T e, T gamma) {
+	return (gamma - 1.) * rho * e;
+}
 
 
 //template <ArithmeticWith<numeric_val> T>
@@ -81,7 +82,7 @@ Vector4<T> calcPhysicalFluxFromConservativeVec(
 
 //	return calcPhysicalFlux(u[0],
 //			u[1] / u[0],
-//			getp(u[0], eFromConservative(u[0], u[1], u[2])));
+//			getP(u[0], eFromConservative(u[0], u[1], u[2])));
 	Vector4<T> prim = conservativeToPrimitive(u, gamma);
 
 	return calcPhysicalFlux(prim[0], prim[1], prim[2], prim[3],
@@ -202,11 +203,20 @@ std::valarray<Vector4<T>> calcFluxComponentWiseFVENO3(
 	});
 
 	std::valarray<Vector4<T>> res(Vector4<T>::ZERO, U.size());
-	calcLaxFriedrichsNumericalFlux(u_plus, u_minus, res,
-		[gamma](const Vector4<T> u) {
-			return calcPhysicalFluxFromConservativeVec<T>(u, gamma);
-		},
-		lam[0]);
+//	calcLaxFriedrichsNumericalFlux(u_plus, u_minus, res,
+//		[gamma](const Vector4<T> u) {
+//			return calcPhysicalFluxFromConservativeVec<T>(u, gamma);
+//		},
+//		lam[0]);
+	std::transform(
+				std::ranges::begin(u_plus), std::ranges::end(u_plus),
+				std::ranges::begin(u_minus),
+				std::ranges::begin(res),
+				[gamma](const auto u_pl, const auto u_mn) {
+					return calcExactFlux<T>(
+							u_pl[0], u_pl[1], u_pl[2],
+							u_mn[0], u_mn[1], u_mn[2], gamma);
+				});
 
 	return res;
 }
@@ -431,20 +441,20 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 				[gamma](
 						const std::valarray<Vector4<T>>& u,
 						T t, const std::valarray<T>& lam,
-						std::size_t n_size,
-						T eps = 1e-40, T p = 2.) {
-					return calcFluxComponentWiseWENO5<T>(
-						u, t, lam, n_size, eps, p);
-//					return calcFluxComponentWiseFVENO3<T>(
-//						u, t, lam, n_size, gamma);
+						std::size_t n_size/*,
+						T eps = 1e-40, T p = 2.*/) {
+//					return calcFluxComponentWiseWENO5<T>(
+//						u, t, lam, n_size, eps, p);
+					return calcFluxComponentWiseFVENO3<T>(
+						u, t, lam, n_size, gamma);
 				},
 				[](
 						const std::valarray<Vector4<T>>& u,
 						std::valarray<Vector4<T>>& f,
 						std::valarray<Vector4<T>>&& x = {}) {
 					addEmptySource<T>(u, f, x);
-				},
-				1e-40, 2.
+				}/*,
+				1e-40, 2.*/
 			);
 		},
 		[](std::valarray<Vector4<T>>& u) {

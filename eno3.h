@@ -186,8 +186,10 @@ void calcHydroStageENO3(
 //					which_stencil
 //				);
 		uhatminus = computeENO3ReconstructionKernel<T>(
-					std::ranges::views::counted(
-						u_plus | std::ranges::views::reverse, 5),
+					std::ranges::subrange(
+						std::begin(u_plus | std::ranges::views::reverse),
+						std::end(u_plus | std::ranges::views::reverse)-1
+					),
 					2 - which_stencil
 					);
 
