@@ -3,13 +3,14 @@
 
 #include <algorithm>
 #include <cstddef>
+// #include <iostream>
 #include <ranges>
 #include <span>
 #include <valarray>
 #include <vector>
 
 #include "arithmeticwith.h"
-#include "weno5.h"
+// #include "weno5.h"
 
 
 // template <ArithmeticWith<numeric_val> T>
@@ -34,7 +35,7 @@
 
 
 template <ArithmeticWith<numeric_val> T>
-short chooseENO3Stencil(std::span<T, 5> u_stencil) {
+short chooseENO3Stencil(const std::ranges::sized_range auto&& u_stencil) {
 	/* TO DO */
 
 	if (std::abs(u_stencil[2] - u_stencil[1])
@@ -58,7 +59,8 @@ short chooseENO3Stencil(std::span<T, 5> u_stencil) {
 
 template <ArithmeticWith<numeric_val> T>
 T computeENO3ReconstructionKernel(
-		std::span<T, 5> u_stencil, short which_stencil) {
+		const std::ranges::sized_range auto&& u_stencil,
+		short which_stencil) {
 	/* 3rd order ENO reconstructions of f(j) from all the 3 3-element
 	 * substencils of `f_stencil` (f_plus or reversed f_minus:
 	 * receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '+'
@@ -91,7 +93,8 @@ T computeENO3ReconstructionKernel(
 
 template <ArithmeticWith<numeric_val> T>
 T computeENO3ReconstructionKernelRev(
-		std::span<T, 5> u_stencil, short which_stencil) {
+		const std::ranges::sized_range auto&& u_stencil,
+		short which_stencil) {
 	/* 3rd order ENO reconstructions of f(j) from all the 3 3-element
 	 * substencils of `f_stencil` (f_minus or reversed f_plus:
 	 * receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '-'
@@ -124,10 +127,10 @@ T computeENO3ReconstructionKernelRev(
 
 template <ArithmeticWith<numeric_val> T>
 void calcHydroStageENO3(
-		const std::ranges::common_range auto& u,
+		const std::ranges::common_range auto&& u,
 		T t,
-		std::ranges::common_range auto& u_plus_rec,
-		std::ranges::common_range auto& u_minus_rec,
+		std::ranges::common_range auto&& u_plus_rec,
+		std::ranges::common_range auto&& u_minus_rec,
 		std::size_t n_size) {
 	/* Simple finite-volume essentially non-oscillatory 3-rd order
 	 * (FV ENO-3) reconstruction.
@@ -152,42 +155,41 @@ void calcHydroStageENO3(
 	auto j_it_p = std::ranges::begin(u);  // f_plus
 	// auto j_it_m = std::ranges::begin(u);  // f_minus
 
-	std::vector<T> u_plus(_actual_stencil_size);
+	// std::vector<T> u_plus(_actual_stencil_size);
 	// std::vector<T> u_minus(_actual_stencil_size);
 
 	std::advance(j_it_p, mini - 1 + half_size + 1 - stencil_size - 1);
-	std::copy_n(j_it_p, u_plus.size(), std::ranges::begin(u_plus));
-	short which_stencil = chooseENO3Stencil(std::span<T, 5>{
-		std::begin(u_plus), 5});
+	auto u_plus = std::ranges::views::counted(j_it_p, 6);
+	short which_stencil = chooseENO3Stencil<T>(
+				std::ranges::views::counted(std::ranges::begin(u_plus), 5)
+				);
 
 	for (std::size_t j : shifted_index_range) {
 		j_it_p = std::ranges::begin(u);  // u_plus
 		std::advance(j_it_p, j + half_size + 1 - stencil_size - 1);
-		std::copy_n(j_it_p, u_plus.size(), std::ranges::begin(u_plus));
+		u_plus = std::ranges::views::counted(j_it_p, 6);
 
-//		j_it_m = std::ranges::begin(u);  // u_minus
-//		std::advance(j_it_m, j + half_size + 1);
-//		std::copy_n(std::make_reverse_iterator(j_it_m + 1),
-//					u_minus.size(), std::ranges::begin(u_minus));
+		uhatplus = computeENO3ReconstructionKernel<T>(
+					std::ranges::views::counted(
+						std::ranges::begin(u_plus), 5),
+					which_stencil
+					);
 
-		uhatplus = computeENO3ReconstructionKernel(
-			std::span<T, 5>{std::ranges::begin(u_plus), 5},
-			which_stencil
-		);
+		which_stencil = chooseENO3Stencil<T>(
+					std::ranges::views::counted(
+						std::ranges::begin(u_plus) + 1, 5)
+					);
 
-//		std::ranges::reverse(u_plus);  // u_minus
-//		std::copy_n(j_it_p+1, u_plus.size(), std::ranges::begin(u_plus));
-		which_stencil = chooseENO3Stencil(std::span<T, 5>{
-			std::ranges::begin(u_plus/* u_minus */)+1, 5});
-//		uhatminus = computeENO3ReconstructionKernelRev(
-//			std::span<T, 5>{std::ranges::begin(u_plus), 5},
-//			which_stencil
-//		);
-		// std::ranges::reverse(u_plus);  // u_minus
-		uhatminus = computeENO3ReconstructionKernelRev(
-			std::span<T, 5>{std::ranges::begin(u_plus/* u_minus */)+1, 5},
-			which_stencil
-		);
+//		uhatminus = computeENO3ReconstructionKernelRev<T>(
+//					std::ranges::views::counted(
+//						std::ranges::begin(u_plus)+1, 5),
+//					which_stencil
+//				);
+		uhatminus = computeENO3ReconstructionKernel<T>(
+					std::ranges::views::counted(
+						u_plus | std::ranges::views::reverse, 5),
+					2 - which_stencil
+					);
 
 		u_plus_rec[j] = uhatplus;
 		u_minus_rec[j] = uhatminus;

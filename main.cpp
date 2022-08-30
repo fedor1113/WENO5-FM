@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
 
 	std::size_t k = 0;
 
-	std::size_t Nx = 200;
+	std::size_t Nx = 201;
 	const std::size_t N_ghost_points = 3;
 	std::size_t N_full = Nx + 2*N_ghost_points;
 	// Nx = Nx + 6;  // Add in ghost cells
@@ -66,6 +66,9 @@ int main(int argc, char **argv) {
 	// 	t, tfinal, 0., L,
 	// 	primitiveToConservativeU<numeric_val>, Nx, cfl
 	// );
+	// Nx = 11; N_full = Nx + 2*N_ghost_points;
+	// L = 1.;
+	// cfl = 0.9;
 	// tfinal = 0.5;
 	// solve1DInviscidBurgersProblem<numeric_val>(
 	// 	u_res, x, 0., 0.5, -1., 1.,  Nx, cfl
@@ -80,19 +83,19 @@ int main(int argc, char **argv) {
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);  // Sod's problem (expansion-contact-shock)
 
-//	Nx = 200;
-//	L = 1.;
-//	cfl = 0.55;
-//	tfinal = 0.2;
-//	solve1DRiemannProblemForEulerEq<numeric_val>(
-//		u_res, x, gamma,
-//		1., 0.75, 1.,
-//		0.125, 0., 0.1, 0.3,
-//		t, tfinal, 0., L,
-//		primitiveToConservativeU<numeric_val>, Nx, cfl
-//	);  // Modified Sod's problem (expansion-contact-shock). Toro-1
+	Nx = 200; N_full = Nx + 2*N_ghost_points;
+	L = 1.;
+	cfl = 0.55;
+	tfinal = 0.2;
+	solve1DRiemannProblemForEulerEq<numeric_val>(
+		u_res, x, gamma,
+		1., 0.75, 1.,
+		0.125, 0., 0.1, 0.3,
+		t, tfinal, 0., L,
+		primitiveToConservativeU<numeric_val>, Nx, cfl
+	);  // Modified Sod's problem (expansion-contact-shock). Toro-1
 
-	// Nx = 801;
+	// Nx = 801; N_full = Nx + 2*N_ghost_points;
 	// N_full = Nx + 2 * N_ghost_points;
 	// L = 10.;
 	// cfl = 0.4;
@@ -155,7 +158,7 @@ int main(int argc, char **argv) {
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);  // Two symmetric rarefaction waves (expansion-contact-expansion). Toro-2
 
-//	Nx = 200;
+//	Nx = 200; N_full = Nx + 2*N_ghost_points;
 //	L = 1.;
 //	cfl = 0.55;
 //	tfinal = 0.012;
@@ -176,7 +179,7 @@ int main(int argc, char **argv) {
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);  // Left Expansion and right strong shock
 
-//	Nx = 200;
+//	Nx = 200; N_full = Nx + 2*N_ghost_points;
 //	L = 1.;
 //	cfl = 0.55;
 //	tfinal = 0.035;
@@ -188,7 +191,7 @@ int main(int argc, char **argv) {
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);  // Toro-4
 
-//	Nx = 200;
+//	Nx = 200; N_full = Nx + 2*N_ghost_points;
 //	L = 1.;
 //	cfl = 0.55;
 //	tfinal = 0.012;
@@ -215,13 +218,13 @@ int main(int argc, char **argv) {
 
 	k = 0;
 	if (outfile.is_open()) {
-		 outfile << "TITLE=\"Riemann Problem 1D slice t="
+		outfile << "TITLE=\"Riemann Problem 1D slice t="
 				<< tfinal << "\"" << "\n";
-		 outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
+		outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
+		// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
 //		outfile << "TITLE=\"Detonation Problem 1D slice t="
 //				<< tfinal << "\"" << "\n";
 //		outfile << "VARIABLES=\"x\",\"u\"" << "\n";
-		// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
 		outfile << "ZONE T=\"Numerical\", I="
 				<< N_full << ", F=POINT" << "\n";
 
@@ -240,7 +243,7 @@ int main(int argc, char **argv) {
 //					<< " " << u[1]/u[0]
 //					<< " " << (u[2]-u[1]*(u[1]/u[0])/2)*(G-1)
 //					<< " " << u[3]/u[0] << "\n";
-			 outfile << x[k]
+			outfile << x[k]
 					<< " " << q[0]
 					<< " " << q[1]
 					<< " " << q[2]

@@ -1,6 +1,16 @@
+#ifndef EULER1D_H
+#define EULER1D_H
+
+#include <algorithm>
+#include <execution>
+#include <ranges>
+
+#include "_vector4.h"
+#include "arithmeticwith.h"
 #include "weno5.h"
 #include "eno3.h"
 #include "ssprk33.h"
+// #include "eulerforward.h"
 
 
 template <ArithmeticWith<numeric_val> T>
@@ -114,19 +124,16 @@ T calcMaxWaveSpeedD(
 		T gamma = 1.4) {
 	/* Calculate |df/du| for 1D Euler eq'ns. */
 
-	const std::size_t size = std::ranges::size(u_arr);
-	std::valarray<T> a0(size);
-	std::ranges::transform(std::as_const(u_arr),
-						   std::ranges::begin(a0),
-						   [gamma](const auto& u_arr_vec_pt) -> T {
-		return (std::sqrt(std::abs(calcSquareSoundSpeed(
-							u_arr_vec_pt[0],
-							u_arr_vec_pt[1],
-							u_arr_vec_pt[2], gamma)))
-				+ std::abs(u_arr_vec_pt[1] / u_arr_vec_pt[0]));
-	});
-
-	return *std::ranges::max_element(a0);
+	return std::ranges::max(std::ranges::transform_view(
+		std::as_const(u_arr),
+		[gamma](const auto& u_arr_vec_pt) -> T {
+			return (std::sqrt(std::abs(calcSquareSoundSpeed(
+								u_arr_vec_pt[0],
+								u_arr_vec_pt[1],
+								u_arr_vec_pt[2], gamma)))
+					+ std::abs(u_arr_vec_pt[1] / u_arr_vec_pt[0]));
+		}
+	));
 }
 
 
@@ -134,46 +141,30 @@ template <ArithmeticWith<numeric_val> T>
 std::valarray<Vector4<T>> calcFluxComponentWiseWENO5(
 		const std::ranges::common_range auto& U,
 		T t, const std::ranges::common_range auto& lam,
-		std::size_t nSize,
+		std::size_t n_size,
 		T eps = 1e-40,
 		T p = 2.) {
 	std::valarray<Vector4<T>> res = calcPhysFlux(U);
-	std::valarray<std::valarray<T>> component_fs(
-				std::valarray<T>(U.size()), 4);
-
-	std::size_t k = 0;
-
-	for (std::size_t j = 0; j < 4; ++ j)
-		for (k = 0; k < U.size(); ++ k) {
-			component_fs[j][k] = res[k][j];
-		}
-
-	auto getVector4Component = [](
-			const Vector4<T>& x,
-			std::size_t k) { return x[k]; };
 
 	// auto iv = std::ranges::iota_view{0, 4};
-	std::array<std::size_t, 4> iv = { 0, 1, 2, 3 };
+	auto components = {
+		&Vector4<T>::x,
+		&Vector4<T>::y,
+		&Vector4<T>::z,
+		&Vector4<T>::w
+	};
 	std::for_each(
-				std::execution::par_unseq,
-				std::ranges::begin(iv),
-				std::ranges::end(iv),
-				[&](std::size_t k) {
-		auto kThVector4Component = [&k, &getVector4Component](
-				const Vector4<T>& x) {
-			return getVector4Component(x, k);
-		};
-
-		calcHydroStageWENO5FM<T>(
-			std::ranges::views::transform(U, kThVector4Component),
-			t, lam[k],
-			component_fs[k], nSize, eps, p
-		);
+			std::execution::par_unseq,
+			std::ranges::begin(components),
+			std::ranges::end(components),
+			[&](auto kth_vector_component) {
+		calcHydroStageFDWENO5FM<T>(
+			U | std::ranges::views::transform(kth_vector_component),
+			t, lam[0],
+			res | std::ranges::views::transform(kth_vector_component),
+			n_size, eps, p
+			);
 	});
-
-	for (std::size_t j = 0; j < 4; ++ j)
-		for (k = 0; k < U.size(); ++ k)
-			res[k][j] = component_fs[j][k];
 
 	return res;
 }
@@ -186,48 +177,31 @@ std::valarray<Vector4<T>> calcFluxComponentWiseFVENO3(
 		std::size_t n_size, T gamma = 1.4) {
 	// std::valarray<Vector4<T>> res = calcPhysFlux(U);
 
-	std::valarray<Vector4<T>> u_plus = std::valarray<Vector4<T>>(Vector4<T>::ZERO, U.size());
-	std::valarray<Vector4<T>> u_minus = std::valarray<Vector4<T>>(Vector4<T>::ZERO, U.size());
-
-	std::valarray<std::valarray<T>> component_us_p(
-				std::valarray<T>(0., U.size()), 4);
-
-	std::valarray<std::valarray<T>> component_us_m(
-				std::valarray<T>(0., U.size()), 4);
-
-	std::size_t k = 0;
-
-	auto getVector4Component = [](
-			const Vector4<T>& x,
-			std::size_t k) { return x[k]; };
+	std::valarray<Vector4<T>> u_plus(Vector4<T>::ZERO, U.size());
+	std::valarray<Vector4<T>> u_minus(Vector4<T>::ZERO, U.size());
 
 	// auto iv = std::ranges::iota_view{0, 4};
-	std::array<std::size_t, 4> iv = { 0, 1, 2, 3 };
+	auto components = {
+		&Vector4<T>::x,
+		&Vector4<T>::y,
+		&Vector4<T>::z,
+		&Vector4<T>::w
+	};
 	std::for_each(
-				std::execution::par_unseq,
-				std::ranges::begin(iv),
-				std::ranges::end(iv),
-				[&](std::size_t k) {
-		auto kThVector4Component = [&k, &getVector4Component](
-				const Vector4<T>& x) {
-			return getVector4Component(x, k);
-		};
-
+			std::execution::par_unseq,
+			std::ranges::begin(components),
+			std::ranges::end(components),
+			[&](auto kth_vector_component) {
 		calcHydroStageENO3<T>(
-			std::ranges::views::transform(U, kThVector4Component),
+			U | std::ranges::views::transform(kth_vector_component),
 			t,
-			component_us_p[k], component_us_m[k],
+			u_plus | std::ranges::views::transform(kth_vector_component),
+			u_minus | std::ranges::views::transform(kth_vector_component),
 			n_size
-		);
+			);
 	});
 
-	for (std::size_t j = 0; j < 4; ++ j)
-		for (k = 0; k < U.size(); ++ k) {
-			u_plus[k][j] = component_us_p[j][k];
-			u_minus[k][j] = component_us_m[j][k];
-		}
-
-	std::valarray<Vector4<T>> res(Vector4<T>::ZERO, std::ranges::size(U));
+	std::valarray<Vector4<T>> res(Vector4<T>::ZERO, U.size());
 	calcLaxFriedrichsNumericalFlux(u_plus, u_minus, res,
 		[gamma](const Vector4<T> u) {
 			return calcPhysicalFluxFromConservativeVec<T>(u, gamma);
@@ -407,6 +381,10 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 				u, dflux, fluxes[0].get(), fluxes[1].get(),
 				t, dt, dx, lam, n_size,
 				updateGhostPoints, calcdSpace);
+			/*EulerForward<T>(
+				u, dflux,
+				t, dt, dx, lam, n_size,
+				updateGhostPoints, calcdSpace);*/
 		}, cfl);
 
 	return u_init;
@@ -453,20 +431,20 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 				[gamma](
 						const std::valarray<Vector4<T>>& u,
 						T t, const std::valarray<T>& lam,
-						std::size_t n_size/* ,
-						T eps = 1e-40, T p = 2. */) {
-					// return calcFluxComponentWiseWENO5<T>(
-					// 	u, t, lam, n_size, eps, p);
-					return calcFluxComponentWiseFVENO3<T>(
-						u, t, lam, n_size, gamma);
+						std::size_t n_size,
+						T eps = 1e-40, T p = 2.) {
+					return calcFluxComponentWiseWENO5<T>(
+						u, t, lam, n_size, eps, p);
+//					return calcFluxComponentWiseFVENO3<T>(
+//						u, t, lam, n_size, gamma);
 				},
 				[](
 						const std::valarray<Vector4<T>>& u,
 						std::valarray<Vector4<T>>& f,
 						std::valarray<Vector4<T>>&& x = {}) {
 					addEmptySource<T>(u, f, x);
-				}/* ,
-				1e-40, 2. */
+				},
+				1e-40, 2.
 			);
 		},
 		[](std::valarray<Vector4<T>>& u) {
@@ -475,3 +453,5 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 		mesh_size, cfl
 	);
 }
+
+#endif // EULER1D_H

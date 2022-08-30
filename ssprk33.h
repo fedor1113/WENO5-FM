@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <execution>
+#include <numeric>
 #include <ranges>
 
 #include "arithmeticwith.h"
@@ -63,9 +64,10 @@ void advanceTimestepTVDRK3(
 
 	// Y3 = Vector4<T>(3.)*U + Vector4<T>(dt) * dflux + Y2;
 	// Y3 *= Vector4<T>(0.25);
-	auto iv = std::ranges::iota_view{
-			std::size_t(0), std::ranges::size(U)
-	};
+	auto iv = std::ranges::common_view(
+			std::ranges::views::iota(std::size_t(0))
+				| std::views::take(std::ranges::size(U))
+	);
 	std::for_each(
 				std::execution::par_unseq,
 				std::ranges::begin(iv), std::ranges::end(iv),

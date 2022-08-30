@@ -1,28 +1,27 @@
 #ifndef WENO5_H
 #define WENO5_H
 
-#include "weno5coefs.h"
+// #include "weno5coefs.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <concepts>
 #include <execution>
-#include <fstream>
+// #include <fstream>
 #include <functional>
 #include <iostream>
 #include <iterator>
 #include <numeric>
 #include <optional>
 #include <ranges>
-#include <span>
+// #include <span>
 // #include <type_traits>
 #include <utility>
 #include <valarray>
 #include <vector>
-#include <algorithm>
 
 #include "arithmeticwith.h"
-#include "_vector4.h"
 
 // template class Vector4<double>;
 
@@ -51,7 +50,8 @@ std::valarray<T> vecMatDot(const T1& vec, const T2& mat) {
 
 template <ArithmeticWith<numeric_val> T>
 //std::array<T, 3> smoothness_indicators(const T1& f_stencil) {
-std::valarray<T> betaSmoothnessIndicators(std::span<T, 5> f_stencil) {
+std::valarray<T> betaSmoothnessIndicators(
+		const std::ranges::sized_range auto& f_stencil) {
 	/* Return the WENO5 smoothness indicators of Jiang and Shu (1996)
 	 * for each of the 3 substencils.
 	 * That is the sum of the normalized squares of the scaled
@@ -112,7 +112,7 @@ std::valarray<T> betaSmoothnessIndicators(std::span<T, 5> f_stencil) {
 
 template <ArithmeticWith<numeric_val> T>
 std::valarray<T> f3OrdReconstructionFromStencil(
-		std::span<T, 5> f_stencil) {
+		const std::ranges::sized_range auto& f_stencil) {
 	/* 3rd order reconstructions of f(j) from all the 3 3-element
 	 * substencils of `f_stencil` (f_plus or reversed f_minus:
 	 * receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '+'
@@ -279,8 +279,9 @@ std::ranges::common_range auto omegaWENO5FMWeights(
 
 
 template <ArithmeticWith<numeric_val> T>
-T computeFHatWENO5JSReconstructionKernel(std::span<T, 5> f_stencil,
-										 T eps = 1e-40, T p = 2.) {
+T computeFHatWENO5JSReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-40, T p = 2.) {
 	/* Calculate (reconstruct) one of the two split monotone numerical
 	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
 	 * (receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '+'
@@ -328,7 +329,7 @@ T computeFHatWENO5JSReconstructionKernel(std::span<T, 5> f_stencil,
 //	 beta_IS_coefs = betaSmoothnessIndicatorsMat(f_stencil);
 
 	// The non-matrix variant seems to be faster(?)
-	beta_IS_coefs = betaSmoothnessIndicators(f_stencil);
+	beta_IS_coefs = betaSmoothnessIndicators<T>(f_stencil);
 //	beta_IS_coefs[0] = (13.0/12.0)*std::pow(
 //				f_stencil[0]-2.0*f_stencil[1]+f_stencil[2], 2)
 //			+ 0.25*std::pow(
@@ -371,9 +372,8 @@ T computeFHatWENO5JSReconstructionKernel(std::span<T, 5> f_stencil,
 //		std::ranges::begin(f3OrdReconstructionFromStencil(f_stencil)), 0.
 //	);
 
-	std::valarray<
-		T
-	> eno_reconstructed_f = f3OrdReconstructionFromStencil(f_stencil);
+	std::valarray<T> eno_reconstructed_f
+			= f3OrdReconstructionFromStencil<T>(f_stencil);
 
 //	 eno_reconstructed_f[0] = f_stencil[0]/3.0
 //			 - 7.0/6.0*f_stencil[1] + 11.0/6.0*f_stencil[2];
@@ -391,8 +391,9 @@ T computeFHatWENO5JSReconstructionKernel(std::span<T, 5> f_stencil,
 
 
 template <ArithmeticWith<numeric_val> T>
-T computeFHatWENO5JSReconstructionKernelRev(std::span<T, 5> f_stencil,
-											T eps = 1e-40, T p = 2.) {
+T computeFHatWENO5JSReconstructionKernelRev(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-40, T p = 2.) {
 	/* Calculate (reconstruct) one of the two split monotone numerical
 	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
 	 * (receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '+'
@@ -431,7 +432,7 @@ T computeFHatWENO5JSReconstructionKernelRev(std::span<T, 5> f_stencil,
 
 	// f_stencil = f_plus (or a reversed stencil for f_minus)
 
-	std::valarray<T> beta_IS_coefs(3);;
+	std::valarray<T> beta_IS_coefs(3);
 
 	T f_hat = 0.;
 
@@ -440,7 +441,7 @@ T computeFHatWENO5JSReconstructionKernelRev(std::span<T, 5> f_stencil,
 //	 beta_IS_coefs = betaSmoothnessIndicatorsMat(f_stencil);
 
 	// The non-matrix variant seems to be faster(?)
-	beta_IS_coefs = betaSmoothnessIndicators(f_stencil);
+	beta_IS_coefs = betaSmoothnessIndicators<T>(f_stencil);
 
 	// non-linear non-scaled (α-)weights
 	std::valarray<T> d_lin_weights = {0.3, 0.6, 0.1};
@@ -482,8 +483,9 @@ T computeFHatWENO5JSReconstructionKernelRev(std::span<T, 5> f_stencil,
 
 
 template <ArithmeticWith<numeric_val> T>
-T computeFHatWENO5MReconstructionKernel(std::span<T, 5> f_stencil,
-										T eps = 1e-40, T p = 2.) {
+T computeFHatWENO5MReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-40, T p = 2.) {
 	/* Calculate (reconstruct) one of the two split monotone numerical
 	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
 	 * (receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '+'
@@ -531,7 +533,7 @@ T computeFHatWENO5MReconstructionKernel(std::span<T, 5> f_stencil,
 //	 beta_IS_coefs = betaSmoothnessIndicatorsMat(f_stencil);
 
 	// The non-matrix variant seems to be faster(?)
-	beta_IS_coefs = betaSmoothnessIndicators(f_stencil);
+	beta_IS_coefs = betaSmoothnessIndicators<T>(f_stencil);
 
 	// non-linear non-scaled (α-)weights
 	std::valarray<T> d_lin_weights = {0.1, 0.6, 0.3};
@@ -565,9 +567,8 @@ T computeFHatWENO5MReconstructionKernel(std::span<T, 5> f_stencil,
 
 	omega_weights = omega_weights / omega_weights.sum(); // normalize it
 
-	std::valarray<
-		T
-	> eno_reconstructed_f = f3OrdReconstructionFromStencil(f_stencil);
+	std::valarray<T> eno_reconstructed_f
+			= f3OrdReconstructionFromStencil<T>(f_stencil);
 
 	f_hat = omega_weights[0] * eno_reconstructed_f[0]
 			+ omega_weights[1] * eno_reconstructed_f[1]
@@ -578,8 +579,9 @@ T computeFHatWENO5MReconstructionKernel(std::span<T, 5> f_stencil,
 
 
 template <ArithmeticWith<numeric_val> T>
-T computeFHatWENO5FMReconstructionKernel(std::span<T, 5> f_stencil,
-										 T eps = 1e-40, T p = 2.) {
+T computeFHatWENO5FMReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-40, T p = 2.) {
 	/* Calculate (reconstruct) one of the two split monotone numerical
 	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
 	 * (receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '+'
@@ -627,7 +629,7 @@ T computeFHatWENO5FMReconstructionKernel(std::span<T, 5> f_stencil,
 //	 beta_IS_coefs = betaSmoothnessIndicatorsMat(f_stencil);
 
 	// The non-matrix variant seems to be faster(?)
-	beta_IS_coefs = betaSmoothnessIndicators(f_stencil);
+	beta_IS_coefs = betaSmoothnessIndicators<T>(f_stencil);
 
 	std::array<T, 3> alpha_weights;
 	std::ranges::transform(
@@ -653,9 +655,8 @@ T computeFHatWENO5FMReconstructionKernel(std::span<T, 5> f_stencil,
 //		std::ranges::begin(f3OrdReconstructionFromStencil(f_stencil)), 0.
 //	);
 
-	std::valarray<
-		T
-	> eno_reconstructed_f = f3OrdReconstructionFromStencil(f_stencil);
+	std::valarray<T> eno_reconstructed_f
+			= f3OrdReconstructionFromStencil<T>(f_stencil);
 
 	f_hat = omega_weights[0] * eno_reconstructed_f[0]
 			+ omega_weights[1] * eno_reconstructed_f[1]
@@ -829,13 +830,14 @@ std::array<std::valarray<T>, 2> splitFluxAsLaxFriedrichs(
 // and 'An improved WENO-Z scheme with symmetry-preserving mapping'
 // by Zheng Hong, Zhengyin Ye and Kun Ye, 2020
 template <ArithmeticWith<numeric_val> T>
-void calcHydroStageWENO5FM(const std::ranges::common_range auto& u,
-						   T t,
-						   T lam,
-						   auto& numerical_flux,
-						   std::size_t n_size,
-						   T eps = 1e-40,
-						   T p = 2.) {
+void calcHydroStageFDWENO5FM(
+		const std::ranges::common_range auto&& u,
+		T t,
+		T lam,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_size,
+		T eps = 1e-40,
+		T p = 2.) {
 	/* Component-wise finite-difference WENO5FM (WENO5-FM) - space
 	 * reconstruction method with the global Lax-Friedrichs (LF) flux
 	 * splitting.
@@ -855,11 +857,11 @@ void calcHydroStageWENO5FM(const std::ranges::common_range auto& u,
 	const std::size_t n_ghost_cells = (stencil_size + 1) / 2;
 	const std::size_t mini = n_ghost_cells;
 	const std::size_t maxi = n_ghost_cells + n_size - 1;
-	auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 2};
+	auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 1};
 	// [g      g      g      i      i      i      i      i      i      ...]
 	// {0      1      2      3      4      5}     6      7      8      ...
-	//                |             |
-	//                j        nGhostCells
+	//  |             |      |      |
+	// itr            j nGhostCells end()
 
 	// WENO5 stencils
 
@@ -880,7 +882,7 @@ void calcHydroStageWENO5FM(const std::ranges::common_range auto& u,
 	// for convenience and uniformity we represent both using the
 	// same combined structure of    [j-2, j-1, j, j+1, j+2, j+3].
 	// std::valarray<T> u_plus(_actual_stencil_size);   // f_plus
-	std::valarray<T> u_minus(_actual_stencil_size);  // f_minus
+	// std::valarray<T> u_minus(_actual_stencil_size);  // f_minus
 
 	// For the purpose of linear stability (upwinding),
 	// a flux splitting, f = fplus + fminus (dfplus/du >= 0 and
@@ -925,29 +927,37 @@ void calcHydroStageWENO5FM(const std::ranges::common_range auto& u,
 //			std::ranges::begin(f), [](const auto fp, const auto fm) {
 
 //	})
+	std::advance(j_it_p, mini - 1 + half_size + 1 - stencil_size);
+	std::advance(j_it_m, mini - 1 + half_size + 1 - stencil_size);
+	auto u_plus = std::ranges::views::counted(j_it_p, 6);
+	auto u_minus = std::ranges::views::counted(j_it_m, 6)
+					| std::ranges::views::reverse;
 
 	for (std::size_t j : shifted_index_range) {
 		j_it_p = std::ranges::begin(
-					monotone_flux_components[0]); // f_plus
+					monotone_flux_components[0]);  // f_plus
 		std::advance(j_it_p, j + half_size + 1 - stencil_size);
+		u_plus = std::ranges::views::counted(j_it_p, 6);
 
 		j_it_m = std::ranges::begin(
 					monotone_flux_components[1]);  // f_minus
-		std::advance(j_it_m, j + half_size + 1);
-		std::copy_n(std::make_reverse_iterator(j_it_m + 1),
-					u_minus.size(), std::ranges::begin(u_minus));
+		std::advance(j_it_m, j + half_size + 1 - stencil_size);
+		u_minus = std::ranges::views::counted(j_it_m, 6)
+					| std::ranges::views::reverse;
 
-		fhatplus = computeFHatWENO5JSReconstructionKernel(
-			std::span<T, 5>{j_it_p, 5}, eps, p
+		fhatplus = computeFHatWENO5FMReconstructionKernel<T>(
+			std::ranges::views::counted(
+						std::ranges::begin(u_plus), 5), eps, p
 		);
 
-//		 std::reverse(std::ranges::begin(u_minus),
-//					  std::ranges::end(u_minus));
-		fhatminus = computeFHatWENO5JSReconstructionKernel(
-			std::span<T, 5>{std::ranges::begin(u_minus), 5}, eps, p
+		fhatminus = computeFHatWENO5FMReconstructionKernel<T>(
+			std::ranges::subrange(
+				std::ranges::begin(u_minus),
+						std::ranges::end(u_minus)-1), eps, p
 		);
-//		fhatminus = computeFHatWENO5JSReconstructionKernelRev(
-//			std::span<T, 5>{std::ranges::begin(u_minus)+1, 5}, eps, p
+//		fhatminus = computeFHatWENO5JSReconstructionKernelRev<T>(
+//			std::ranges::views::counted(
+//						std::ranges::begin(u_minus)+1, 5), eps, p
 //		);
 
 		numerical_flux[j] = fhatplus + fhatminus;
@@ -960,7 +970,7 @@ void calcHydroStageWENO5FM(const std::ranges::common_range auto& u,
 
 template <ArithmeticWith<numeric_val> T>
 void updateGhostPointsTransmissive(
-		std::ranges::common_range auto& U,
+		std::ranges::common_range auto&& U,
 		std::size_t left_bound_size = 3,
 		std::optional<std::size_t> right_bound_size = std::nullopt) {
 	/* Update ghost points in U with transmissive (Neumann) b.c.s. */
