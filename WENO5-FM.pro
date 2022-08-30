@@ -22,6 +22,8 @@ HEADERS += \
 		extrapolation.h \
 		inviscidburgers1d.h \
 		kfr1d.h \
+    ssprk10_4.h \
 		ssprk33.h \
+    twoderrk3_5.h \
 		weno5.h \
 		weno5coefs.h

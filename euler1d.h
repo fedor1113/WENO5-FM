@@ -11,6 +11,7 @@
 #include "eno3.h"
 #include "exactsolver.h"
 #include "ssprk33.h"
+#include "ssprk10_4.h"
 // #include "eulerforward.h"
 
 
@@ -196,8 +197,10 @@ std::valarray<Vector4<T>> calcFluxComponentWiseFVENO3(
 		calcHydroStageENO3<T>(
 			U | std::ranges::views::transform(kth_vector_component),
 			t,
-			u_plus | std::ranges::views::transform(kth_vector_component),
-			u_minus | std::ranges::views::transform(kth_vector_component),
+			u_plus
+				| std::ranges::views::transform(kth_vector_component),
+			u_minus
+				| std::ranges::views::transform(kth_vector_component),
 			n_size
 			);
 	});
@@ -387,10 +390,14 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 			const std::valarray<T>& lam,
 			std::size_t n_size
 		) {
-			advanceTimestepTVDRK3<T>(
-				u, dflux, fluxes[0].get(), fluxes[1].get(),
+			advanceTimestepSSPRK10_4<T>(
+				u, dflux, fluxes[0].get(),
 				t, dt, dx, lam, n_size,
 				updateGhostPoints, calcdSpace);
+			/*advanceTimestepTVDRK3<T>(
+				u, dflux, fluxes[0].get(), fluxes[1].get(),
+				t, dt, dx, lam, n_size,
+				updateGhostPoints, calcdSpace);*/
 			/*EulerForward<T>(
 				u, dflux,
 				t, dt, dx, lam, n_size,
