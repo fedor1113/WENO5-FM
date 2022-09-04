@@ -126,7 +126,95 @@ T computeENO3ReconstructionKernelRev(
 
 
 template <ArithmeticWith<numeric_val> T>
-void calcHydroStageENO3(
+void calcHydroStageFDENO3(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_size) {
+	/* Simple finite-difference essentially non-oscillatory 3-rd order
+	 * (FD ENO-3) reconstruction (flux-split version).
+	 */
+
+	const std::size_t stencil_size = 5;
+	const std::size_t _actual_stencil_size = stencil_size + 1;  // 6
+	const std::size_t half_size = _actual_stencil_size / 2;  // 3
+
+	// r = (order + 1) / 2 = 3
+	const std::size_t n_ghost_cells = (stencil_size + 1) / 2;
+	const std::size_t mini = n_ghost_cells;  // 3
+	const std::size_t maxi = n_ghost_cells + n_size - 1;
+	auto shifted_index_range = std::ranges::iota_view{
+		mini - 1,
+		maxi + 1
+	};
+
+	T uhatminus = 0.;
+	T uhatplus = 0.;
+
+	auto j_it_p = std::ranges::begin(f_plus);  // f_plus
+	auto j_it_m = std::ranges::begin(f_minus);  // f_minus
+
+	// std::vector<T> u_plus(_actual_stencil_size);
+	// std::vector<T> u_minus(_actual_stencil_size);
+
+	std::advance(j_it_p, mini - 1 + half_size + 1 - stencil_size - 1);
+	std::advance(j_it_m, mini - 1 + half_size + 1 - stencil_size - 1);
+	auto u_plus = std::ranges::views::counted(j_it_p, 6);
+	auto u_minus = std::ranges::views::counted(j_it_m, 6)
+					| std::ranges::views::reverse;
+	short which_stencil_pl;
+	short which_stencil_mn;
+
+	for (std::size_t j : shifted_index_range) {
+		j_it_p = std::ranges::begin(f_plus);  // u_plus
+		j_it_m = std::ranges::begin(f_minus);  // u_minus
+		std::advance(j_it_p, j + half_size + 1 - stencil_size - 1);
+		std::advance(j_it_m, j + half_size + 1 - stencil_size - 1);
+		u_plus = std::ranges::views::counted(j_it_p, 6);
+		u_minus = std::ranges::views::counted(j_it_m, 6)
+					| std::ranges::views::reverse;
+
+		which_stencil_pl = chooseENO3Stencil<T>(
+						std::ranges::views::counted(
+							std::ranges::begin(u_plus), 5)
+						);
+
+		uhatplus = computeENO3ReconstructionKernel<T>(
+					std::ranges::views::counted(
+						std::ranges::begin(u_plus), 5),
+					which_stencil_pl
+					);
+
+		which_stencil_mn = chooseENO3Stencil<T>(
+						std::ranges::subrange(
+							std::ranges::begin(u_minus),
+							std::ranges::end(u_minus) - 1)
+						);
+
+//		uhatminus = computeENO3ReconstructionKernelRev<T>(
+//					std::ranges::views::counted(
+//						std::ranges::begin(u_plus)+1, 5),
+//					which_stencil
+//				);
+		uhatminus = computeENO3ReconstructionKernel<T>(
+					std::ranges::subrange(
+						std::begin(u_minus),
+						std::end(u_minus) - 1
+					),
+					2 - which_stencil_mn
+					);
+
+		numerical_flux[j] = uhatplus + uhatminus;
+
+//		std::cout << (u_minus_rec[j]-u_plus_rec[j])*(u[j]-u[j+1])
+//					<< "\n";
+	}
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFVENO3(
 		const std::ranges::common_range auto&& u,
 		T t,
 		std::ranges::common_range auto&& u_plus_rec,
@@ -160,6 +248,7 @@ void calcHydroStageENO3(
 
 	std::advance(j_it_p, mini - 1 + half_size + 1 - stencil_size - 1);
 	auto u_plus = std::ranges::views::counted(j_it_p, 6);
+	auto u_minus = u_plus | std::ranges::views::reverse;
 	short which_stencil = chooseENO3Stencil<T>(
 				std::ranges::views::counted(std::ranges::begin(u_plus), 5)
 				);
@@ -168,6 +257,7 @@ void calcHydroStageENO3(
 		j_it_p = std::ranges::begin(u);  // u_plus
 		std::advance(j_it_p, j + half_size + 1 - stencil_size - 1);
 		u_plus = std::ranges::views::counted(j_it_p, 6);
+		u_minus = u_plus | std::ranges::views::reverse;
 
 		uhatplus = computeENO3ReconstructionKernel<T>(
 					std::ranges::views::counted(
@@ -187,8 +277,8 @@ void calcHydroStageENO3(
 //				);
 		uhatminus = computeENO3ReconstructionKernel<T>(
 					std::ranges::subrange(
-						std::begin(u_plus | std::ranges::views::reverse),
-						std::end(u_plus | std::ranges::views::reverse)-1
+						std::begin(u_minus),
+						std::end(u_minus) - 1
 					),
 					2 - which_stencil
 					);
@@ -199,43 +289,6 @@ void calcHydroStageENO3(
 //		std::cout << (u_minus_rec[j]-u_plus_rec[j])*(u[j]-u[j+1])
 //					<< "\n";
 	}
-}
-
-template <ArithmeticWith<numeric_val> T>
-void calcLaxFriedrichsNumericalFlux(
-		const std::ranges::common_range auto& u_p,
-		const std::ranges::common_range auto& u_m,
-		std::ranges::common_range auto& res_f,
-		auto&& calcPhysFlux,
-		T alpha) {
-	/* Global Lax-Friedrichs (LF) numerical flux.
-	 *
-	 * P. D. Lax, Weak Solutions of Nonlinear Hyperbolic Equations
-	 * and Their Numerical Computation, Commun. Pure and Applied
-	 * Mathematics, 7, 159-193, 1954.
-	 */
-
-	std::transform(std::ranges::begin(u_p), std::ranges::end(u_p),
-		// std::ranges::begin(res_f),
-		std::ranges::begin(res_f),
-		[alpha, &calcPhysFlux](auto u_pt /* , T nf */) {
-		return /* nf + */ 0.5 * (calcPhysFlux(u_pt) + alpha * u_pt);
-	});
-
-	// for (std::size_t k = 0; k < std::ranges::size(u_p); ++ k) {
-	// 	res_f[k] = 0.5 * (calcPhysFlux(u_p[k], k) + alpha * u_p[k]);
-	// }
-
-	std::transform(std::ranges::begin(u_m), std::ranges::end(u_m),
-		std::ranges::begin(res_f),
-		std::ranges::begin(res_f),
-		[alpha, &calcPhysFlux](auto u_pt, const auto nf) {
-		return nf + 0.5 * (calcPhysFlux(u_pt) - alpha * u_pt);
-	});
-
-	// for (std::size_t k = 0; k < std::ranges::size(u_p); ++ k) {
-	// 	res_f[k] += 0.5 * (calcPhysFlux(u_m[k], k) + alpha * u_m[k]);
-	// }
 }
 
 #endif // ENO3_H

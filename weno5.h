@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cmath>
 #include <concepts>
 #include <execution>
@@ -779,49 +780,6 @@ T computeFHatWENO5FMReconstructionKernel(
 //}
 
 
-template <ArithmeticWith<numeric_val> T>
-std::array<std::valarray<T>, 2> splitFluxAsLaxFriedrichs(
-		const std::ranges::common_range auto& u,
-		const std::ranges::common_range auto& f,
-		T alpha) {
-	/* Global Lax-Friedrichs (LF) flux splitting.
-	 *
-	 * For the purpose of linear stability (upwinding),
-	 * a flux splitting, f = fplus + fminus (dfplus/du >= 0 and
-	 * dfminus/du <= 0), needs to be performed in FD WENO5.
-	 * LF flux splitting remains especially simple, while still
-	 * retaining the necessary number of derivatives,
-	 * so it's perfect for the job.
-	 *
-	 * P. D. Lax, Weak Solutions of Nonlinear Hyperbolic Equations
-	 * and Their Numerical Computation, Commun. Pure and Applied
-	 * Mathematics, 7, 159-193, 1954.
-	 */
-
-	std::array<std::valarray<T>, 2> monotone_lf_flux_components {
-		std::valarray<T>(std::ranges::size(f)),
-		std::valarray<T>(std::ranges::size(f))
-	};
-
-	std::transform(std::ranges::begin(f), std::ranges::end(f),
-		std::ranges::begin(u),
-		std::ranges::begin(monotone_lf_flux_components[0]),
-		[&alpha](T f_pt, T u_pt) {
-		return 0.5 * (f_pt + alpha * u_pt);
-	});
-
-	std::valarray<T> f_minus(std::ranges::size(f));
-	std::transform(std::ranges::begin(f), std::ranges::end(f),
-		std::ranges::begin(u),
-		std::ranges::begin(monotone_lf_flux_components[1]),
-		[&alpha](T f_pt, T u_pt) {
-		return 0.5 * (f_pt - alpha * u_pt);
-	});
-
-	return monotone_lf_flux_components;
-}
-
-
 // FD WENO5FM (WENO5-FM) - method
 // Reconstruction based on LF flux splitting + improved mapped WENO
 // of 5th order
@@ -831,14 +789,14 @@ std::array<std::valarray<T>, 2> splitFluxAsLaxFriedrichs(
 // by Zheng Hong, Zhengyin Ye and Kun Ye, 2020
 template <ArithmeticWith<numeric_val> T>
 void calcHydroStageFDWENO5FM(
-		const std::ranges::common_range auto&& u,
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
 		T t,
-		T lam,
 		std::ranges::common_range auto&& numerical_flux,
-		std::size_t n_size,
+		std::size_t n_ghost_cells = 3,
 		T eps = 1e-40,
 		T p = 2.) {
-	/* Component-wise finite-difference WENO5FM (WENO5-FM) - space
+	/* Component-wise finite-difference WENO5FM (FD WENO5-FM) - space
 	 * reconstruction method with the global Lax-Friedrichs (LF) flux
 	 * splitting.
 	 *
@@ -854,9 +812,12 @@ void calcHydroStageFDWENO5FM(
 	const std::size_t half_size = order / 2;  // 2
 
 	// r = (order + 1) / 2 = 3
-	const std::size_t n_ghost_cells = (stencil_size + 1) / 2;
+	assert(n_ghost_cells >= 3);
+	// const std::size_t n_ghost_cells = (stencil_size + 1) / 2;
 	const std::size_t mini = n_ghost_cells;
-	const std::size_t maxi = n_ghost_cells + n_size - 1;
+	// const std::size_t maxi = n_ghost_cells + n_size - 1;
+	const std::size_t maxi = std::ranges::size(
+				numerical_flux) - n_ghost_cells - 1;
 	auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 1};
 	// [g      g      g      i      i      i      i      i      i      ...]
 	// {0      1      2      3      4      5}     6      7      8      ...
@@ -893,16 +854,9 @@ void calcHydroStageFDWENO5FM(
 	// is chosen here. `f_plus` uses a biased stencil with 1 point to
 	// the left, while `f_minus` uses a biased stencil with 1 point to
 	// the right.
-	T alpha = std::abs(lam);  // α = max |df/du|
 
 	T fhatminus = 0.;
 	T fhatplus = 0.;
-
-	std::array<
-			std::valarray<T>, 2
-			> monotone_flux_components = splitFluxAsLaxFriedrichs(
-				u, numerical_flux, alpha
-				);
 
 	// So an LF flux	`numerical_flux`, f_hat(u_minus, u_plus),
 	// a monotone numerical flux consistent with the physical one
@@ -916,10 +870,8 @@ void calcHydroStageFDWENO5FM(
 	// std::valarray<T> numerical_flux(0., u.size());
 	// f = std::valarray<T>(u.size());
 
-	auto j_it_p = std::ranges::begin(
-				monotone_flux_components[0]);  // f_plus
-	auto j_it_m = std::ranges::begin(
-				monotone_flux_components[1]);  // f_minus
+	auto j_it_p = std::ranges::begin(f_plus);  // f_plus
+	auto j_it_m = std::ranges::begin(f_minus);  // f_minus
 
 //	std::ranges::transform(
 //			monotone_flux_components[0],
@@ -934,13 +886,11 @@ void calcHydroStageFDWENO5FM(
 					| std::ranges::views::reverse;
 
 	for (std::size_t j : shifted_index_range) {
-		j_it_p = std::ranges::begin(
-					monotone_flux_components[0]);  // f_plus
+		j_it_p = std::ranges::begin(f_plus);  // f_plus
 		std::advance(j_it_p, j + half_size + 1 - stencil_size);
 		u_plus = std::ranges::views::counted(j_it_p, 6);
 
-		j_it_m = std::ranges::begin(
-					monotone_flux_components[1]);  // f_minus
+		j_it_m = std::ranges::begin(f_minus);  // f_minus
 		std::advance(j_it_m, j + half_size + 1 - stencil_size);
 		u_minus = std::ranges::views::counted(j_it_m, 6)
 					| std::ranges::views::reverse;
@@ -953,7 +903,7 @@ void calcHydroStageFDWENO5FM(
 		fhatminus = computeFHatWENO5FMReconstructionKernel<T>(
 			std::ranges::subrange(
 				std::ranges::begin(u_minus),
-						std::ranges::end(u_minus)-1), eps, p
+						std::ranges::end(u_minus) - 1), eps, p
 		);
 //		fhatminus = computeFHatWENO5JSReconstructionKernelRev<T>(
 //			std::ranges::views::counted(
@@ -964,6 +914,124 @@ void calcHydroStageFDWENO5FM(
 	}
 
 	// return numerical_flux;
+	// std::cout << " done!" << "\n";
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFVWENO5FM(
+		const std::ranges::common_range auto&& u,
+		T t,
+		std::ranges::common_range auto&& u_plus_rec,
+		std::ranges::common_range auto&& u_minus_rec,
+		std::size_t n_ghost_cells = 3,
+		T eps = 1e-40,
+		T p = 2.) {
+	/* Component-wise finite-volume WENO5FM (FV WENO5-FM) - space
+	 * reconstruction method with the global Lax-Friedrichs (LF) flux
+	 * splitting.
+	 *
+	 * Usually, componentwise reconstruction produces satisfactory
+	 * results for schemes up to third-order accuracy, while characteristic
+	 * reconstruction produces better nonoscillatory results for
+	 * higher-order accuracy, albeit with an increased computational cost.
+	 */
+
+	const unsigned order = 5;
+	const std::size_t stencil_size = order;
+	// const std::size_t _actual_stencil_size = stencil_size + 1;  // 6
+	const std::size_t half_size = order / 2;  // 2
+
+	// r = (order + 1) / 2 = 3
+	assert(n_ghost_cells >= 3);
+	// const std::size_t n_ghost_cells = (stencil_size + 1) / 2;  // 3
+	const std::size_t mini = n_ghost_cells;  // at least 3
+	// const std::size_t maxi = n_ghost_cells + n_size - 1;
+	const std::size_t maxi = std::ranges::size(u) - n_ghost_cells - 1;
+	auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 1};
+	// [g      g      g      i      i      i      i      i      i      ...]
+	// {0      1      2      3      4      5}     6      7      8      ...
+	//  |             |      |      |
+	// itr            j nGhostCells end()
+
+	// WENO5 stencils
+
+	// Coefficients WmN(+/-) before fluxes at the stencil nodes
+	// to find component stencils
+	// [q_k] = WmN(+/-) * [ f[j-2] ... f[j+2] ]
+	// of the WENO interpolator.
+	// So 3rd order approximation coefficients associated with
+	// the substencils.
+
+	// Calculation of f_hat, the numerical flux of u (whichever
+	// is chosen), requires the approximation of u that uses at
+	// the j-th cell of u-discretization a group of cell average
+	// values on the left (`u_minus`) and on the right (`u_plus`).
+	// So left- and right-biased approximations respectively.
+	// `u_plus` represents the cells [j-2, j-1, j, j+1, j+2],
+	// and `u_minus` represents the cells [j-1, j, j+1, j+2, j+3];
+	// for convenience and uniformity we represent both using the
+	// same combined structure of    [j-2, j-1, j, j+1, j+2, j+3].
+	// std::valarray<double> u_plus(_actual_stencil_size);   // f_plus
+	// std::valarray<double> u_minus(_actual_stencil_size);  // f_minus
+
+	// For the purpose of linear stability (upwinding),
+	// a flux splitting, f = fplus + fminus (dfplus/du >= 0 and
+	// dfminus/du <= 0), is performed.
+	// Lax-Friedrichs (LF) flux splitting (because it is the simplest
+	// and smooth - we need the positive and negative fluxes to have
+	// as many derivatives as the order of our finite-difference WENO)
+	// is chosen here. `f_plus` uses a biased stencil with 1 point to
+	// the left, while `f_minus` uses a biased stencil with 1 point to
+	// the right.
+
+	// So an LF flux	`numerical_flux`, f_hat(u_minus, u_plus),
+	// a monotone numerical flux consistent with the physical one
+	// (f_hat(u, u) = f(u)), will be construced at the end of
+	// the loop below from `fhatminus` and `fhatplus` using
+	// `f_minus` and `f_plus`.
+	// N.B.! This can be replaced by an exact or approximate
+	// Riemann solver (see Toro, 2009). Somehow...
+	// Not every monotone flux can be writtenin the flux split form.
+	// For example, the Godunov flux cannot.
+	// std::valarray<double> numerical_flux(0., u.size());
+	// f = std::valarray<double>(u.size());
+
+	auto j_it_p = std::ranges::begin(u);  // f_plus
+
+//	std::ranges::transform(
+//			monotone_flux_components[0],
+//			monotone_flux_components[1],
+//			std::ranges::begin(f), [](const auto fp, const auto fm) {
+
+//	})
+	std::advance(j_it_p, mini - 1 + half_size + 1 - stencil_size);
+	auto u_plus = std::ranges::views::counted(j_it_p, 6);
+	auto u_minus = u_plus | std::ranges::views::reverse;
+
+	for (std::size_t j : shifted_index_range) {
+		j_it_p = std::ranges::begin(u);  // f_plus
+		std::advance(j_it_p, j + half_size + 1 - stencil_size);
+		u_plus = std::ranges::views::counted(j_it_p, 6);
+
+		u_plus_rec[j] = computeFHatWENO5FMReconstructionKernel(
+			std::ranges::views::counted(
+						std::ranges::begin(u_plus), 5), eps, p
+		);
+
+
+		u_minus = u_plus | std::ranges::views::reverse;
+		u_minus_rec[j] = computeFHatWENO5FMReconstructionKernel(
+			std::ranges::subrange(
+				std::ranges::begin(u_minus),
+						std::ranges::end(u_minus) - 1), eps, p
+		);
+//		u_minus_rec[j] = computeFHatWENO5JSReconstructionKernelRev(
+//			std::ranges::views::counted(
+//						std::ranges::begin(u_minus)+1, 5), eps, p
+//		);
+	}
+
 	// std::cout << " done!" << "\n";
 }
 
