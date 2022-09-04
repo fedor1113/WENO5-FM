@@ -20,8 +20,11 @@ HEADERS += \
     eulerforward.h \
     exactsolver.h \
 		extrapolation.h \
+    inviscidburgers1d.h \
 		inviscidburgers1d.h \
+    kfr1d.h \
 		kfr1d.h \
+    lf_flux.h \
     ssprk10_4.h \
 		ssprk33.h \
     twoderrk3_5.h \
