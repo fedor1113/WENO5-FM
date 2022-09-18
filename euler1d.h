@@ -193,7 +193,7 @@ std::valarray<Vector4<T>> calcFluxComponentWiseFDWENO5(
 		calcHydroStageFDWENO5FM<T>(
 			monotone_flux_components[0], monotone_flux_components[1], t,
 			res | std::ranges::views::transform(kth_vector_component),
-			n_size, eps, p
+			3, eps, p
 			);
 	});
 
@@ -278,7 +278,7 @@ std::valarray<Vector4<T>> calcFluxComponentWiseFVWENO5(
 									u_plus_rec),
 								std::forward<decltype(u_minus_rec)>(
 									u_minus_rec),
-								n_size,
+								3,
 								eps,
 								p);
 				},

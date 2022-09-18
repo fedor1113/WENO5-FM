@@ -241,7 +241,7 @@ std::valarray<T> calcFluxForKFR(
 	calcHydroStageFDWENO5FM<T>(
 		std::views::all(monotone_flux_components[0]),
 		std::views::all(monotone_flux_components[1]),
-		t, res, n_size, eps, p);
+		t, res, 3, eps, p);
 
 	return res;
 }
