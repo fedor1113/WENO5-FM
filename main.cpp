@@ -1,11 +1,15 @@
 #pragma GCC optimize("Ofast")
 #pragma GCC target("avx,avx2,fma")
 #pragma GCC optimization("unroll-loops")
+
+#include <algorithm>
 #include <cstdio>
 #include <fstream>
+// #include <initializer_list>
 #include <iostream>
 #include <numeric>
 #include <valarray>
+#include <vector>
 
 // #include "vectorfieldcomponentview.h"
 // #include "euler1d.h"
@@ -37,7 +41,7 @@ int main(int argc, char **argv) {
 	// std::valarray<Vec4> Y2(Vec4::ZERO, N_full);
 	// std::valarray<Vec4> Y3(Vec4::ZERO, N_full);
 
-	numeric_val gamma = 1.4;
+	// numeric_val gamma = 1.4;
 
 //	std::valarray<numeric_val> s1(static_cast<numeric_val>(0.), N_full);
 //	for (k = 0; k < N_full; ++ k)
@@ -51,9 +55,6 @@ int main(int argc, char **argv) {
 	// for (auto n : Ts) {
 
 	// std::valarray<Vec4> u_res(Vec4::ZERO, N_full);
-	std::valarray<numeric_val> u_res(0., N_full);
-	// u_res[0][3] = 1.;
-	std::valarray<numeric_val> x(0., N_full);
 //	for (auto n : VectorFieldComponentView<std::valarray<Vec4>>(u_res, 3))
 //		std::cout << n << "\n";
 
@@ -94,20 +95,6 @@ int main(int argc, char **argv) {
 //		t, tfinal, 0., L,
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);  // Modified Sod's problem (expansion-contact-shock). Toro-1
-
-	Nx = 201; N_full = Nx + 2 * N_ghost_points;
-	L = 10.;
-	cfl = 0.4;
-	tfinal = 3000.;
-	u_res.resize(N_full);
-	x.resize(N_full);
-	solve1DDetonationProfileProblem<numeric_val>(
-		u_res, x,
-		3.9, 0.1, 0.0, 0.0,
-		1e-6,
-		0., tfinal, -L, 0.,
-		Nx, cfl
-	);
 
 //	tfinal = 0.12;
 //	solve1DRiemannProblemForEulerEq<numeric_val>(
@@ -211,51 +198,99 @@ int main(int argc, char **argv) {
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);  // Shu-Osher test - not a Riemann problem, so no dice
 
-	std::ofstream outfile;
+	for (std::size_t j
+		 : {1501, 2000}) {
+		Nx = j; N_full = Nx + 2 * N_ghost_points;
+		L = 10.;
+		cfl = 0.4;
+		tfinal = 3000.;
 
-	outfile.open("res.dat");
 
-	k = 0;
-	if (outfile.is_open()) {
-		// outfile << "TITLE=\"Riemann Problem 1D slice t="
-		// 		<< tfinal << "\"" << "\n";
-		// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
-		// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
-		outfile << "TITLE=\"Detonation Problem 1D slice t="
-				<< tfinal << "\"" << "\n";
-		outfile << "VARIABLES=\"x\",\"u\"" << "\n";
-		outfile << "ZONE T=\"Numerical\", I="
-				<< N_full << ", F=POINT" << "\n";
+		std::valarray<numeric_val> u_res(0., N_full);
+		std::size_t guessed_length = static_cast<std::size_t>(
+					(tfinal - t) / (cfl * L / Nx / 10)
+					);
+		std::vector<numeric_val> u_s(guessed_length, 0.);
+		std::vector<numeric_val> times(u_s.size(), 0.);
+		std::valarray<numeric_val> x(0., N_full);
 
-		for (auto u : u_res) {
-			// Vec4 q = conservativeToPrimitive(u, gamma);
-			// std::cout << u << "\n";
+		solve1DDetonationProfileProblem<numeric_val>(
+					u_res, x,
+					4.5, 0.1, 0.05, 0.01,
+					u_s, times,
+					1e-40,
+					0., tfinal, -L, 0.,
+					Nx, cfl
+					);
 
-//			std::cout << x[k]
-//					  << " " << q[0]
-//					  << " " << q[1]
-//					  << " " << q[2]
-//					  << " " << q[3] << "\n";
-//			G = (u[3]/u[0]*cp1+(1-u[3]/u[0])*cp2)/(u[3]/u[0]*cv1+(1-u[3]/u[0])*cv2);
-//			outfile << x[k]
-//					<< " " << q[0]
-//					<< " " << u[1]/u[0]
-//					<< " " << (u[2]-u[1]*(u[1]/u[0])/2)*(G-1)
-//					<< " " << u[3]/u[0] << "\n";
-			// outfile << x[k]
-			// 		<< " " << q[0]
-			// 		<< " " << q[1]
-			// 		<< " " << q[2]
-			// 		<< " " << q[3] << "\n";
-			outfile << x[k] << " " << u << "\n";
+		std::ofstream outfile;
 
-			++ k;
+		outfile.open("res_n_" + std::to_string(j) + ".dat");
+
+		k = 0;
+		if (outfile.is_open()) {
+			// outfile << "TITLE=\"Riemann Problem 1D slice t="
+			// 		<< tfinal << "\"" << "\n";
+			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
+			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
+			outfile << "TITLE=\"Detonation Problem 1D slice t="
+					<< tfinal << "\"" << "\n";
+			outfile << "VARIABLES=\"x\",\"u\"" << "\n";
+			outfile << "ZONE T=\"Numerical\", I="
+					<< N_full << ", F=POINT" << "\n";
+
+			for (auto u : u_res) {
+				// Vec4 q = conservativeToPrimitive(u, gamma);
+				// std::cout << u << "\n";
+
+				//			std::cout << x[k]
+				//					  << " " << q[0]
+				//					  << " " << q[1]
+				//					  << " " << q[2]
+				//					  << " " << q[3] << "\n";
+				//			G = (u[3]/u[0]*cp1+(1-u[3]/u[0])*cp2)/(u[3]/u[0]*cv1+(1-u[3]/u[0])*cv2);
+				//			outfile << x[k]
+				//					<< " " << q[0]
+				//					<< " " << u[1]/u[0]
+				//					<< " " << (u[2]-u[1]*(u[1]/u[0])/2)*(G-1)
+				//					<< " " << u[3]/u[0] << "\n";
+				// outfile << x[k]
+				// 		<< " " << q[0]
+				// 		<< " " << q[1]
+				// 		<< " " << q[2]
+				// 		<< " " << q[3] << "\n";
+				outfile << x[k] << " " << u << "\n";
+
+				++ k;
+			}
 		}
+
+		outfile.close();
+
+
+		outfile.open("u_res_n_" + std::to_string(j) + ".dat");
+
+		k = 0;
+		if (outfile.is_open()) {
+			// outfile << "TITLE=\"Riemann Problem 1D slice t="
+			// 		<< tfinal << "\"" << "\n";
+			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
+			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
+			outfile << "TITLE=\"Detonation Problem u_s time evolution"
+					<< tfinal << "\"" << "\n";
+			outfile << "VARIABLES=\"x\",\"u\"" << "\n";
+			outfile << "ZONE T=\"Numerical\", I="
+					<< times.size() << ", F=POINT" << "\n";
+
+			for (std::size_t k = 0; k < times.size(); ++ k) {
+				outfile << times[k] << " " << u_s[k] << "\n";
+			}
+		}
+
+		outfile.close();
+
+
+		std::cout << "Done!" << "\n";
 	}
-
-	outfile.close();
-
-	std::cout << "Done!" << "\n";
-
 	return 0;
 }

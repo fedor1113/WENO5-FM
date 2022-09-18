@@ -3,6 +3,8 @@
 #include <iostream>
 #include <span>
 #include <ranges>
+#include <valarray>
+#include <vector>
 
 #include "arithmeticwith.h"
 #include "extrapolation.h"
@@ -332,6 +334,8 @@ template <ArithmeticWith<numeric_val> T>
 void integrate1DDetonationProfileProblem(
 	std::ranges::common_range auto& u_sol,
 	std::ranges::common_range auto& flux,
+	std::ranges::common_range auto& u_s_sol,
+	std::ranges::common_range auto& times,
 	T t0, T dx, std::size_t n_size, T t_fin,
 	T amp, T wn,
 	auto&& timeStepFunction,
@@ -350,11 +354,16 @@ void integrate1DDetonationProfileProblem(
 
 	T x0_lab = 0;
 	std::valarray<T> a0(std::ranges::size(u_sol));
+	std::size_t time_index = 0;
 
 	timeOperator<T>(
 		u_sol, flux, fluxes, t0, dx, n_size, t_fin,
 		timeStepFunction,
-		[amp, wn, &a0, &x0_lab](const decltype(u_sol)& u, T dt) {
+		[amp, wn, &a0, &x0_lab,
+		&time_index,
+		&u_sol, &u_s_sol, &times, t0](
+				const decltype(u_sol)& u, T dt) -> T {
+			T u_s = u[std::ranges::size(u)-1-3];
 			T D = calcDshock<T>(
 							u[std::ranges::size(u)-1-3],
 							amp, std::ref(x0_lab), wn);
@@ -368,11 +377,26 @@ void integrate1DDetonationProfileProblem(
 
 			x0_lab += D * dt;
 
-			return *std::ranges::max_element(a0);
+			if (std::ranges::size(u_s_sol) <= time_index) {
+				u_s_sol.resize(2 * std::ranges::size(u_s_sol));
+				times.resize(2 * std::ranges::size(times));
+			}
+
+			u_s_sol[time_index] = u_s;
+			if (time_index > 0)
+				times[time_index] = times[time_index - 1] + dt;
+			else
+			 	times[0] = t0;
+			++ time_index;
+
+			return std::ranges::max(a0);
 		},
 		cfl,
 		std::ref(x0_lab)
 	);
+
+	u_s_sol.resize(time_index);
+	times.resize(time_index);
 }
 
 
@@ -384,6 +408,8 @@ std::valarray<T> solve1DDetonationProfileProblem(
 	T beta,
 	T amp,
 	T wn,
+	std::ranges::common_range auto& u_s_sol,
+	std::ranges::common_range auto& times,
 	T epsilon=1e-6,
 	// T q0, // Initial coordinate of the discontinuity
 	T t0 = 0., T t_max = 3000, T l_min = -10., T l_max = 0.,
@@ -430,7 +456,7 @@ std::valarray<T> solve1DDetonationProfileProblem(
 										x_el, u_s, alpha, beta, amp);
 					});
 				},
-				x0_lab, 1e-6, 2.
+				x0_lab, 1e-40, 2.
 		);
 	};
 
@@ -449,6 +475,7 @@ std::valarray<T> solve1DDetonationProfileProblem(
 	std::valarray<T> flux(0., std::ranges::size(u_init));
 
 	integrate1DDetonationProfileProblem<T>(u_init, flux,
+		u_s_sol, times,
 		t0, dx, mesh_size, t_max, amp, wn,
 		[&spaceOp, &updateGhostPoints](
 			std::valarray<T>& u,
