@@ -10,6 +10,7 @@
 #include "weno5.h"
 #include "eno3.h"
 #include "exactsolver.h"
+#include "lf_flux.h"
 #include "ssprk33.h"
 #include "ssprk10_4.h"
 // #include "eulerforward.h"
@@ -140,13 +141,35 @@ T calcMaxWaveSpeedD(
 
 
 template <ArithmeticWith<numeric_val> T>
-std::valarray<Vector4<T>> calcFluxComponentWiseWENO5(
-		const std::ranges::common_range auto& U,
+auto calcExactEulerFlux = [](auto& u_plus, auto& u_minus, auto gamma) {
+	std::valarray<Vector4<T>> res(std::ranges::size(u_plus));
+	std::transform(
+				std::ranges::begin(u_plus), std::ranges::end(u_plus),
+				std::ranges::begin(u_minus),
+				std::ranges::begin(res),
+				[gamma](const auto u_pl, const auto u_mn) {
+					return calcExactFlux(
+							u_pl[0], u_pl[1], u_pl[2],
+							u_mn[0], u_mn[1], u_mn[2], gamma);
+				});
+
+	return res;
+};
+
+
+template <ArithmeticWith<numeric_val> T>
+std::valarray<Vector4<T>> calcFluxComponentWiseFDWENO5(
+		const std::ranges::common_range auto& u,
 		T t, const std::ranges::common_range auto& lam,
 		std::size_t n_size,
+		T gamma = 1.4,
 		T eps = 1e-40,
 		T p = 2.) {
-	std::valarray<Vector4<T>> res = calcPhysFlux(U);
+	std::valarray<Vector4<T>> res = calcPhysFlux(u, gamma);
+	std::array<std::valarray<T>, 2> monotone_flux_components = {
+		std::valarray<T>(std::ranges::size(u)),
+		std::valarray<T>(std::ranges::size(u)),
+	};
 
 	// auto iv = std::ranges::iota_view{0, 4};
 	auto components = {
@@ -160,9 +183,15 @@ std::valarray<Vector4<T>> calcFluxComponentWiseWENO5(
 			std::ranges::begin(components),
 			std::ranges::end(components),
 			[&](auto kth_vector_component) {
+		monotone_flux_components
+				= splitFluxAsLaxFriedrichs(
+					u | std::ranges::views::transform(
+						kth_vector_component),
+					res, lam[0]
+					);
+
 		calcHydroStageFDWENO5FM<T>(
-			U | std::ranges::views::transform(kth_vector_component),
-			t, lam[0],
+			monotone_flux_components[0], monotone_flux_components[1], t,
 			res | std::ranges::views::transform(kth_vector_component),
 			n_size, eps, p
 			);
@@ -173,14 +202,14 @@ std::valarray<Vector4<T>> calcFluxComponentWiseWENO5(
 
 
 template <ArithmeticWith<numeric_val> T>
-std::valarray<Vector4<T>> calcFluxComponentWiseFVENO3(
-		const std::ranges::common_range auto& U,
+std::valarray<Vector4<T>> calcFluxComponentWiseFV(
+		const std::ranges::common_range auto& u,
 		T t, const std::ranges::common_range auto& lam,
-		std::size_t n_size, T gamma = 1.4) {
-	// std::valarray<Vector4<T>> res = calcPhysFlux(U);
-
-	std::valarray<Vector4<T>> u_plus(Vector4<T>::ZERO, U.size());
-	std::valarray<Vector4<T>> u_minus(Vector4<T>::ZERO, U.size());
+		std::size_t n_size,
+		auto&& calcStage,
+		auto&& calcFlux) {
+	std::valarray<Vector4<T>> u_plus(Vector4<T>::ZERO, u.size());
+	std::valarray<Vector4<T>> u_minus(Vector4<T>::ZERO, u.size());
 
 	// auto iv = std::ranges::iota_view{0, 4};
 	auto components = {
@@ -194,8 +223,8 @@ std::valarray<Vector4<T>> calcFluxComponentWiseFVENO3(
 			std::ranges::begin(components),
 			std::ranges::end(components),
 			[&](auto kth_vector_component) {
-		calcHydroStageENO3<T>(
-			U | std::ranges::views::transform(kth_vector_component),
+		calcStage(
+			u | std::ranges::views::transform(kth_vector_component),
 			t,
 			u_plus
 				| std::ranges::views::transform(kth_vector_component),
@@ -205,23 +234,96 @@ std::valarray<Vector4<T>> calcFluxComponentWiseFVENO3(
 			);
 	});
 
-	std::valarray<Vector4<T>> res(Vector4<T>::ZERO, U.size());
-//	calcLaxFriedrichsNumericalFlux(u_plus, u_minus, res,
-//		[gamma](const Vector4<T> u) {
-//			return calcPhysicalFluxFromConservativeVec<T>(u, gamma);
-//		},
-//		lam[0]);
-	std::transform(
-				std::ranges::begin(u_plus), std::ranges::end(u_plus),
-				std::ranges::begin(u_minus),
-				std::ranges::begin(res),
-				[gamma](const auto u_pl, const auto u_mn) {
-					return calcExactFlux<T>(
-							u_pl[0], u_pl[1], u_pl[2],
-							u_mn[0], u_mn[1], u_mn[2], gamma);
-				});
+	std::valarray<Vector4<T>> res = calcFlux(u_plus, u_minus);
 
 	return res;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+std::valarray<Vector4<T>> calcFluxComponentWiseFVWENO5(
+		const std::ranges::common_range auto& u,
+		T t, const std::ranges::common_range auto& lam,
+		std::size_t n_size,
+		T gamma = 1.4,
+		T eps = 1e-40,
+		T p = 2.) {
+
+//	auto calcExactFluxLambda = [gamma](auto& u_plus, auto& u_minus) {
+//		return calcExactEulerFlux<T>(u_plus, u_minus, gamma);
+//	};
+
+	auto calcLFLambda = [gamma, &lam](auto& u_plus, auto& u_minus) {
+		std::valarray<Vector4<T>> res(std::ranges::size(u_plus));
+		calcLaxFriedrichsNumericalFlux(u_plus, u_minus, res,
+			[gamma, &lam](const Vector4<T>& u) {
+				return calcPhysicalFluxFromConservativeVec<T>(u, gamma);
+			},
+			lam[0]);
+
+		return res;
+	};
+
+	return calcFluxComponentWiseFV(
+				u, t, lam, n_size,
+				[eps, p](const auto&& u,
+						auto t,
+						auto&& u_plus_rec,
+						auto&& u_minus_rec,
+						auto n_size) {
+					calcHydroStageFVWENO5FM<T>(
+								std::forward<decltype(u)>(u),
+								t,
+								std::forward<decltype(u_plus_rec)>(
+									u_plus_rec),
+								std::forward<decltype(u_minus_rec)>(
+									u_minus_rec),
+								n_size,
+								eps,
+								p);
+				},
+				calcLFLambda/*calcExactFluxLambda*/);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+std::valarray<Vector4<T>> calcFluxComponentWiseFVENO3(
+		const std::ranges::common_range auto& u,
+		T t, const std::ranges::common_range auto& lam,
+		std::size_t n_size, T gamma = 1.4) {
+
+//	auto calcExactFluxLambda = [gamma](auto& u_plus, auto& u_minus) {
+//		return calcExactEulerFlux<T>(u_plus, u_minus, gamma);
+//	};
+
+	auto calcLFLambda = [gamma, &lam](auto& u_plus, auto& u_minus) {
+		std::valarray<Vector4<T>> res(std::ranges::size(u_plus));
+		calcLaxFriedrichsNumericalFlux(u_plus, u_minus, res,
+			[gamma, &lam](const Vector4<T> u) {
+				return calcPhysicalFluxFromConservativeVec<T>(u, gamma);
+			},
+			lam[0]);
+
+		return res;
+	};
+
+	return calcFluxComponentWiseFV(
+				u, t, lam, n_size,
+				[](const auto&& u,
+						auto t,
+						auto&& u_plus_rec,
+						auto&& u_minus_rec,
+						auto n_size) {
+					calcHydroStageFVENO3<T>(
+								std::forward<decltype(u)>(u),
+								t,
+								std::forward<decltype(u_plus_rec)>(
+									u_plus_rec),
+								std::forward<decltype(u_minus_rec)>(
+									u_minus_rec),
+								n_size);
+				},
+				calcLFLambda/*calcExactFluxLambda*/);
 }
 
 
@@ -448,20 +550,22 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 				[gamma](
 						const std::valarray<Vector4<T>>& u,
 						T t, const std::valarray<T>& lam,
-						std::size_t n_size/*,
-						T eps = 1e-40, T p = 2.*/) {
-//					return calcFluxComponentWiseWENO5<T>(
-//						u, t, lam, n_size, eps, p);
-					return calcFluxComponentWiseFVENO3<T>(
-						u, t, lam, n_size, gamma);
+						std::size_t n_size,
+						T eps = 1e-40, T p = 2.) {
+//					return calcFluxComponentWiseFDWENO5<T>(
+//						u, t, lam, n_size, gamma, eps, p);
+					return calcFluxComponentWiseFVWENO5<T>(
+						u, t, lam, n_size, gamma, eps, p);
+//					return calcFluxComponentWiseFVENO3<T>(
+//						u, t, lam, n_size, gamma);
 				},
 				[](
 						const std::valarray<Vector4<T>>& u,
 						std::valarray<Vector4<T>>& f,
 						std::valarray<Vector4<T>>&& x = {}) {
 					addEmptySource<T>(u, f, x);
-				}/*,
-				1e-40, 2.*/
+				},
+				1e-40, 2.
 			);
 		},
 		[](std::valarray<Vector4<T>>& u) {
