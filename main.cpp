@@ -8,12 +8,12 @@
 #include <valarray>
 
 // #include "vectorfieldcomponentview.h"
-#include "euler1d.h"
-// #include "kfr1d.h"
+// #include "euler1d.h"
+#include "kfr1d.h"
 // #include "inviscidburgers1d.h"
 
 // template class Vector4<numeric_val>;
-using Vec4 = Vector4<numeric_val>;
+// using Vec4 = Vector4<numeric_val>;
 
 
 int main(int argc, char **argv) {
@@ -50,8 +50,8 @@ int main(int argc, char **argv) {
 
 	// for (auto n : Ts) {
 
-	std::valarray<Vec4> u_res(Vec4::ZERO, N_full);
-	// std::valarray<numeric_val> u_res(0., N_full);
+	// std::valarray<Vec4> u_res(Vec4::ZERO, N_full);
+	std::valarray<numeric_val> u_res(0., N_full);
 	// u_res[0][3] = 1.;
 	std::valarray<numeric_val> x(0., N_full);
 //	for (auto n : VectorFieldComponentView<std::valarray<Vec4>>(u_res, 3))
@@ -83,32 +83,31 @@ int main(int argc, char **argv) {
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);  // Sod's problem (expansion-contact-shock)
 
-	Nx = 200; N_full = Nx + 2*N_ghost_points;
-	L = 1.;
-	cfl = 0.55;
-	tfinal = 0.2;
-	solve1DRiemannProblemForEulerEq<numeric_val>(
-		u_res, x, gamma,
-		1., 0.75, 1.,
-		0.125, 0., 0.1, 0.3,
-		t, tfinal, 0., L,
-		primitiveToConservativeU<numeric_val>, Nx, cfl
-	);  // Modified Sod's problem (expansion-contact-shock). Toro-1
+//	Nx = 200; N_full = Nx + 2*N_ghost_points;
+//	L = 1.;
+//	cfl = 0.55;
+//	tfinal = 0.2;
+//	solve1DRiemannProblemForEulerEq<numeric_val>(
+//		u_res, x, gamma,
+//		1., 0.75, 1.,
+//		0.125, 0., 0.1, 0.3,
+//		t, tfinal, 0., L,
+//		primitiveToConservativeU<numeric_val>, Nx, cfl
+//	);  // Modified Sod's problem (expansion-contact-shock). Toro-1
 
-	// Nx = 801; N_full = Nx + 2*N_ghost_points;
-	// N_full = Nx + 2 * N_ghost_points;
-	// L = 10.;
-	// cfl = 0.4;
-	// tfinal = 3000.;
-	// u_res.resize(N_full);
-	// x.resize(N_full);
-	// solve1DDetonationProfileProblem<numeric_val>(
-	// 	u_res, x,
-	// 	4.5, 0.1, 0.01, 0.1,
-	// 	1e-6,
-	// 	0., tfinal, -L, 0.,
-	// 	Nx, cfl
-	// );
+	Nx = 201; N_full = Nx + 2 * N_ghost_points;
+	L = 10.;
+	cfl = 0.4;
+	tfinal = 3000.;
+	u_res.resize(N_full);
+	x.resize(N_full);
+	solve1DDetonationProfileProblem<numeric_val>(
+		u_res, x,
+		3.9, 0.1, 0.0, 0.0,
+		1e-6,
+		0., tfinal, -L, 0.,
+		Nx, cfl
+	);
 
 //	tfinal = 0.12;
 //	solve1DRiemannProblemForEulerEq<numeric_val>(
@@ -146,7 +145,7 @@ int main(int argc, char **argv) {
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);  // High Mach flow test (shock-contact-shock)
 
-//	Nx = 200;
+//	Nx = 200; N_full = Nx + 2 * N_ghost_points;
 //	L = 1.;
 //	cfl = 0.55;
 //	tfinal = 0.15;
@@ -158,7 +157,7 @@ int main(int argc, char **argv) {
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);  // Two symmetric rarefaction waves (expansion-contact-expansion). Toro-2
 
-//	Nx = 200; N_full = Nx + 2*N_ghost_points;
+//	Nx = 200; N_full = Nx + 2 * N_ghost_points;
 //	L = 1.;
 //	cfl = 0.55;
 //	tfinal = 0.012;
@@ -218,18 +217,18 @@ int main(int argc, char **argv) {
 
 	k = 0;
 	if (outfile.is_open()) {
-		outfile << "TITLE=\"Riemann Problem 1D slice t="
-				<< tfinal << "\"" << "\n";
-		outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
+		// outfile << "TITLE=\"Riemann Problem 1D slice t="
+		// 		<< tfinal << "\"" << "\n";
+		// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
 		// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
-//		outfile << "TITLE=\"Detonation Problem 1D slice t="
-//				<< tfinal << "\"" << "\n";
-//		outfile << "VARIABLES=\"x\",\"u\"" << "\n";
+		outfile << "TITLE=\"Detonation Problem 1D slice t="
+				<< tfinal << "\"" << "\n";
+		outfile << "VARIABLES=\"x\",\"u\"" << "\n";
 		outfile << "ZONE T=\"Numerical\", I="
 				<< N_full << ", F=POINT" << "\n";
 
 		for (auto u : u_res) {
-			Vec4 q = conservativeToPrimitive(u, gamma);
+			// Vec4 q = conservativeToPrimitive(u, gamma);
 			// std::cout << u << "\n";
 
 //			std::cout << x[k]
@@ -243,12 +242,12 @@ int main(int argc, char **argv) {
 //					<< " " << u[1]/u[0]
 //					<< " " << (u[2]-u[1]*(u[1]/u[0])/2)*(G-1)
 //					<< " " << u[3]/u[0] << "\n";
-			outfile << x[k]
-					<< " " << q[0]
-					<< " " << q[1]
-					<< " " << q[2]
-					<< " " << q[3] << "\n";
-			// outfile << x[k] << " " << u << "\n";
+			// outfile << x[k]
+			// 		<< " " << q[0]
+			// 		<< " " << q[1]
+			// 		<< " " << q[2]
+			// 		<< " " << q[3] << "\n";
+			outfile << x[k] << " " << u << "\n";
 
 			++ k;
 		}
