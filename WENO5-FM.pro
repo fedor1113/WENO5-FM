@@ -27,6 +27,11 @@ HEADERS += \
     lf_flux.h \
     ssprk10_4.h \
 		ssprk33.h \
+    tdrk3_5.h \
     twoderrk3_5.h \
 		weno5.h \
 		weno5coefs.h
+
+DISTFILES += \
+    .gitignore \
+    plot.gnuplot

@@ -167,8 +167,8 @@ void calcHydroStageFDENO3(
 	short which_stencil_mn;
 
 	for (std::size_t j : shifted_index_range) {
-		j_it_p = std::ranges::begin(u);  // u_plus
-		j_it_m = std::ranges::begin(u);  // u_minus
+		j_it_p = std::ranges::begin(f_plus);  // u_plus
+		j_it_m = std::ranges::begin(f_minus);  // u_minus
 		std::advance(j_it_p, j + half_size + 1 - stencil_size - 1);
 		std::advance(j_it_m, j + half_size + 1 - stencil_size - 1);
 		u_plus = std::ranges::views::counted(j_it_p, 6);

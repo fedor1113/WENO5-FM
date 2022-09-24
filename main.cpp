@@ -13,8 +13,8 @@
 
 // #include "vectorfieldcomponentview.h"
 // #include "euler1d.h"
-#include "kfr1d.h"
-// #include "inviscidburgers1d.h"
+// #include "kfr1d.h"
+#include "inviscidburgers1d.h"
 
 // template class Vector4<numeric_val>;
 // using Vec4 = Vector4<numeric_val>;
@@ -199,29 +199,49 @@ int main(int argc, char **argv) {
 //	);  // Shu-Osher test - not a Riemann problem, so no dice
 
 	for (std::size_t j
-		 : {1501, 2000}) {
+//		 : {51, 101, 151, 201, 251, 501, 751, 801,
+//			1001, 1101, 1251, 1501,
+//			10001}) {
+		 : {101}) {
 		Nx = j; N_full = Nx + 2 * N_ghost_points;
 		L = 10.;
-		cfl = 0.4;
+		// L = 1.;
+		cfl = 0.8;
 		tfinal = 3000.;
+		// tfinal = 1.5;
 
 
 		std::valarray<numeric_val> u_res(0., N_full);
-		std::size_t guessed_length = static_cast<std::size_t>(
-					(tfinal - t) / (cfl * L / Nx / 10)
-					);
-		std::vector<numeric_val> u_s(guessed_length, 0.);
-		std::vector<numeric_val> times(u_s.size(), 0.);
+//		std::size_t guessed_length = static_cast<std::size_t>(
+//					(tfinal - t) / (cfl * L / Nx / 10)
+//					);
+//		std::vector<numeric_val> u_s(guessed_length, 0.);
+//		std::vector<numeric_val> times(u_s.size(), 0.);
 		std::valarray<numeric_val> x(0., N_full);
 
-		solve1DDetonationProfileProblem<numeric_val>(
-					u_res, x,
-					4.5, 0.1, 0.05, 0.01,
-					u_s, times,
-					1e-40,
-					0., tfinal, -L, 0.,
-					Nx, cfl
-					);
+//		solve1DDetonationProfileProblem<numeric_val>(
+//					u_res, x,
+//					4.5, 0.1, 0.05, 0.01,
+//					u_s, times,
+//					1e-40,
+//					0., tfinal, -L, 0.,
+//					Nx, cfl
+//					);
+//		solve1DInviscidBurgersProblem<numeric_val>(
+//			u_res, x, 0., 0.5, -1., 1.,  Nx, cfl
+//		);
+//		solve1DInviscidBurgersProblem<numeric_val>(
+//			u_res, x,
+//			0., 0.5/std::numbers::pi_v<numeric_val>, -1., 1.,
+//			Nx, cfl
+//		);
+		tfinal = 1.;
+		L = 1.;
+		solve1DInviscidBurgersProblem<numeric_val>(
+			u_res, x,
+			0., tfinal, -L, L,
+			Nx, cfl, 1
+		);  // Toro-1
 
 		std::ofstream outfile;
 
@@ -268,26 +288,26 @@ int main(int argc, char **argv) {
 		outfile.close();
 
 
-		outfile.open("u_res_n_" + std::to_string(j) + ".dat");
+//		outfile.open("u_res_n_" + std::to_string(j) + ".dat");
 
-		k = 0;
-		if (outfile.is_open()) {
-			// outfile << "TITLE=\"Riemann Problem 1D slice t="
-			// 		<< tfinal << "\"" << "\n";
-			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
-			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
-			outfile << "TITLE=\"Detonation Problem u_s time evolution"
-					<< tfinal << "\"" << "\n";
-			outfile << "VARIABLES=\"x\",\"u\"" << "\n";
-			outfile << "ZONE T=\"Numerical\", I="
-					<< times.size() << ", F=POINT" << "\n";
+//		k = 0;
+//		if (outfile.is_open()) {
+//			// outfile << "TITLE=\"Riemann Problem 1D slice t="
+//			// 		<< tfinal << "\"" << "\n";
+//			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
+//			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
+//			outfile << "TITLE=\"Detonation Problem u_s time evolution"
+//					<< tfinal << "\"" << "\n";
+//			outfile << "VARIABLES=\"x\",\"u\"" << "\n";
+//			outfile << "ZONE T=\"Numerical\", I="
+//					<< times.size() << ", F=POINT" << "\n";
 
-			for (std::size_t k = 0; k < times.size(); ++ k) {
-				outfile << times[k] << " " << u_s[k] << "\n";
-			}
-		}
+//			for (std::size_t k = 0; k < times.size(); ++ k) {
+//				outfile << times[k] << " " << u_s[k] << "\n";
+//			}
+//		}
 
-		outfile.close();
+//		outfile.close();
 
 
 		std::cout << "Done!" << "\n";
