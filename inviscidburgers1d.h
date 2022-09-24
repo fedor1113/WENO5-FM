@@ -1,4 +1,6 @@
-﻿#include <array>
+﻿#include <algorithm>
+#include <array>
+#include <execution>
 #include <ranges>
 #include <span>
 #include <valarray>
@@ -8,6 +10,7 @@
 #include "eno3.h"
 #include "lf_flux.h"
 #include "ssprk33.h"
+// #include "tdrk3_5.h"
 
 
 template <ArithmeticWith<numeric_val> T>
@@ -20,13 +23,22 @@ T calcInviscidBurgersFlux(T u) {
 
 
 template <ArithmeticWith<numeric_val> T>
+T calcInviscidBurgersFluxDerivative(T u) {
+	/* Calculate inviscid Bateman-Burgers' flux derivative.
+	 */
+
+	return u;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
 T calcInviscidBurgersMaxWaveSpeed(
 		const /* std::ranges::common_range auto */std::valarray<T>& u_arr
 		) {
 	/* Calculate max |df/du| for the inviscid Bateman-Burgers' eq'n. */
 
 	// return *std::ranges::max_element(std::abs(u_arr));
-	return std::abs(u_arr).max();
+	return std::abs(calcInviscidBurgersFluxDerivative(u_arr)).max();
 }
 
 
@@ -42,7 +54,7 @@ T BurgersSource(T x) {
 
 template <ArithmeticWith<numeric_val> T>
 std::valarray<T> calcFluxInviscidBurgersFVENO3(
-		const std::ranges::common_range auto& U,
+		const std::ranges::common_range auto U,
 		T t, const std::ranges::common_range auto& lam,
 		std::size_t n_size) {
 	// std::valarray<Vector4<T>> res = calcPhysFlux(U);
@@ -50,7 +62,10 @@ std::valarray<T> calcFluxInviscidBurgersFVENO3(
 	std::valarray<T> u_plus = std::valarray<T>(0., U.size());
 	std::valarray<T> u_minus = std::valarray<T>(0., U.size());
 
-	calcHydroStageFVENO3<T>(U, t, u_plus, u_minus, n_size);
+	calcHydroStageFVWENO5FM<T>(std::ranges::views::all(U),
+							t, u_plus, u_minus, 3, 1e-40, 2.);
+//	calcHydroStageFVENO3<T>(std::ranges::views::all(U),
+//							t, u_plus, u_minus, n_size);
 
 	std::valarray<T> res(0., std::ranges::size(U));
 	calcLaxFriedrichsNumericalFlux(u_plus, u_minus, res,
@@ -109,9 +124,11 @@ void integrate1DInviscidBurgersProblem(
 	 */
 
 	std::valarray<T> y2(0., std::ranges::size(u_sol));
+	std::valarray<T> dy2(0., std::ranges::size(u_sol));
 	std::valarray<T> y3(0., std::ranges::size(u_sol));
-	std::array<std::reference_wrapper<std::valarray<T>>, 2> fluxes = {
-		std::ref(y2), std::ref(y3)
+	std::valarray<T> dy3(0., std::ranges::size(u_sol));
+	std::array<std::reference_wrapper<std::valarray<T>>, 4> fluxes = {
+		std::ref(y2), std::ref(dy2), std::ref(y3), std::ref(dy3)
 	};
 
 	timeOperator<T>(
@@ -157,8 +174,9 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 	for (k = number_of_ghost_points;
 			k < mesh_size + number_of_ghost_points;
 			++ k) {
-		u_init[k] = (std::abs(x[k]) < 1 / 3.0) * 1.
-			+ (std::abs(x[k]) >= 1 / 3.0) * (0.);
+//		u_init[k] = (std::abs(x[k]) < 1 / 3.0) * 1.
+//			+ (std::abs(x[k]) >= 1 / 3.0) * (0.);
+		u_init[k] = 0.5 + std::sin(std::numbers::pi_v<T> * x[k]);
 	}
 	updateGhostPointsTransmissive<T>(u_init);
 //	u_init[0] = -2;
@@ -178,7 +196,7 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 			T t, T dx, const std::valarray<T>& max_eigenvalues,
 			T n_size) {
 		return calcdSpaceInviscidBurgers<T>(
-				u, std::span{x},
+				std::ranges::views::all(u), std::span{x},
 				t, dx, max_eigenvalues, n_size,
 				[](
 					std::span<T> u,
@@ -212,15 +230,37 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 	};
 
 	std::valarray<T> flux(0., std::ranges::size(u_init));
+	std::valarray<T> ddflux(0., std::ranges::size(u_init));
+	std::valarray<T> ddflux_temp(0., std::ranges::size(u_init));
+
+	auto secondDerivative = [&ddflux_temp](
+			std::span<T> const u, std::span<T> const du,
+			T t, T dx, const std::valarray<T>& max_eigenvalues,
+			T n_size) {
+//		auto a0 = std::ranges::views::transform(
+//					[](auto u_pt) {
+//						return calcInviscidBurgersFluxDerivative(u_pt);
+//					});
+
+		std::transform(
+					std::execution::par_unseq,
+					std::ranges::begin(du),
+					std::ranges::end(du),
+					std::ranges::begin(ddflux_temp),
+					[](auto dup) { return dup * dup; }
+					);
+
+		return ddflux_temp;
+	};
 
 	integrate1DInviscidBurgersProblem<T>(u_init, flux,
 		t0, dx, mesh_size, t_max,
-		[&spaceOp, &updateGhostPoints](
+		[&spaceOp, &secondDerivative, &updateGhostPoints, &ddflux](
 			std::valarray<T>& u,
 			std::valarray<T>& dflux,
 			std::array<
 				std::reference_wrapper<std::valarray<T>
-			>, 2> fluxes,
+			>, 4> fluxes,
 			T t, T dt, T dx,
 			const std::valarray<T>& lam,
 			std::size_t n_size
@@ -229,6 +269,13 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 				u, dflux, fluxes[0].get(), fluxes[1].get(),
 				t, dt, dx, lam,
 				n_size, spaceOp, updateGhostPoints);
+//			advanceTimestepTDRK3_5<T>(
+//				u, dflux, ddflux,
+//				fluxes[0].get(), fluxes[1].get(),
+//				fluxes[2].get(), fluxes[3].get(),
+//				t, dt, dx, lam,
+//				n_size, spaceOp, secondDerivative,
+//				updateGhostPoints);
 		}, cfl);
 
 	return u_init;

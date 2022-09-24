@@ -13,10 +13,11 @@
 #include "arithmeticwith.h"
 
 
-template <ArithmeticWith<numeric_val> T, std::size_t N>
+template <ArithmeticWith<numeric_val> T, std::size_t N = 4>
 void polyfit(std::span<T> const argument_data,
 		std::span<T> const function_value_data,
-		std::span<T, N+1> fitted_polynomial_coefficients) {
+		std::span<T, N + 1> fitted_polynomial_coefficients,
+		Eigen::Matrix<double, Eigen::Dynamic, N + 1>& vandermonde_mat) {
 	/* Efficient linear least square polynomial fit using
 	 * Eigen for fast matrix operations.
 	 *
@@ -46,6 +47,10 @@ void polyfit(std::span<T> const argument_data,
 	 *        + fitted_polynomial_coefficients[order] * std::pow(x,
 	 *                                                          order);`
 	 * at a point (with the argument) x.
+	 *
+	 * The Vandermonde matrix used for computation is stored in
+	 * `vandermonde_mat`, so it should be a matrix of size
+	 * 'number of nodes' x 'order of polynomial + 1'.
 	 */
 
 	const std::size_t order = N;
@@ -53,11 +58,14 @@ void polyfit(std::span<T> const argument_data,
 	// Create Matrix Placeholder of size
 	// 'number of nodes' x 'order of polynomial + 1' ('+1' to store
 	// the constant coefficient, i.e. c * (x^0)):
-	Eigen::MatrixXd vandermonde_mat(argument_data.size(), order + 1);
-	Eigen::VectorXd values_vec = Eigen::VectorXd::Map(
+	// Eigen::MatrixXd vandermonde_mat(argument_data.size(), order + 1);
+	Eigen::Matrix<
+		T, Eigen::Dynamic, 1
+	> values_vec = Eigen::Matrix<T, Eigen::Dynamic, 1>::Map(
 			&function_value_data.front(), function_value_data.size());
-	Eigen::VectorXd result_vec;
+	Eigen::Matrix<T, N + 1, 1> result_vec;
 
+	assert(vandermonde_mat.rows() == argument_data.size());
 	assert(argument_data.size() == function_value_data.size());
 	assert(argument_data.size() >= order + 1);
 

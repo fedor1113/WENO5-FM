@@ -2,7 +2,7 @@
 #define LF_FLUX_H
 
 #include <algorithm>
-// #include <execution>
+#include <execution>
 #include <ranges>
 
 #include "arithmeticwith.h"
@@ -78,7 +78,8 @@ std::array<std::valarray<T>, 2> splitFluxAsLaxFriedrichs(
 		std::valarray<T>(std::ranges::size(f))
 	};
 
-	std::transform(std::ranges::begin(f), std::ranges::end(f),
+	std::transform(std::execution::par_unseq,
+		std::ranges::begin(f), std::ranges::end(f),
 		std::ranges::begin(u),
 		std::ranges::begin(monotone_lf_flux_components[0]),
 		[&alpha](T f_pt, T u_pt) {
@@ -86,7 +87,8 @@ std::array<std::valarray<T>, 2> splitFluxAsLaxFriedrichs(
 	});
 
 	std::valarray<T> f_minus(std::ranges::size(f));
-	std::transform(std::ranges::begin(f), std::ranges::end(f),
+	std::transform(std::execution::par_unseq,
+		std::ranges::begin(f), std::ranges::end(f),
 		std::ranges::begin(u),
 		std::ranges::begin(monotone_lf_flux_components[1]),
 		[&alpha](T f_pt, T u_pt) {
