@@ -1,3 +1,7 @@
+#pragma GCC optimize("Ofast")
+#pragma GCC target("avx,avx2,fma")
+#pragma GCC optimize("unroll-loops")
+
 #ifndef WENO5_H
 #define WENO5_H
 
@@ -818,7 +822,10 @@ void calcHydroStageFDWENO5FM(
 	// const std::size_t maxi = n_ghost_cells + n_size - 1;
 	const std::size_t maxi = std::ranges::size(
 				numerical_flux) - n_ghost_cells - 1;
-	auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 1};
+	// auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 1};
+	auto shifted_index_range = std::ranges::common_view(
+				std::views::iota(mini - 1)
+					| std::views::take(maxi + 1 - (mini - 1) + 1));
 	// [g      g      g      i      i      i      i      i      i      ...]
 	// {0      1      2      3      4      5}     6      7      8      ...
 	//  |             |      |      |
@@ -885,7 +892,10 @@ void calcHydroStageFDWENO5FM(
 	auto u_minus = std::ranges::views::counted(j_it_m, 6)
 					| std::ranges::views::reverse;
 
-	for (std::size_t j : shifted_index_range) {
+	std::for_each(std::execution::par,
+				std::ranges::begin(shifted_index_range),
+				std::ranges::end(shifted_index_range),
+				  [&](std::size_t j){
 		j_it_p = std::ranges::begin(f_plus);  // f_plus
 		std::advance(j_it_p, j + half_size + 1 - stencil_size);
 		u_plus = std::ranges::views::counted(j_it_p, 6);
@@ -895,12 +905,12 @@ void calcHydroStageFDWENO5FM(
 		u_minus = std::ranges::views::counted(j_it_m, 6)
 					| std::ranges::views::reverse;
 
-		fhatplus = computeFHatWENO5FMReconstructionKernel<T>(
+		fhatplus = computeFHatWENO5JSReconstructionKernel<T>(
 			std::ranges::views::counted(
 						std::ranges::begin(u_plus), 5), eps, p
 		);
 
-		fhatminus = computeFHatWENO5FMReconstructionKernel<T>(
+		fhatminus = computeFHatWENO5JSReconstructionKernel<T>(
 			std::ranges::subrange(
 				std::ranges::begin(u_minus),
 						std::ranges::end(u_minus) - 1), eps, p
@@ -911,7 +921,7 @@ void calcHydroStageFDWENO5FM(
 //		);
 
 		numerical_flux[j] = fhatplus + fhatminus;
-	}
+	});
 
 	// return numerical_flux;
 	// std::cout << " done!" << "\n";
@@ -1014,14 +1024,14 @@ void calcHydroStageFVWENO5FM(
 		std::advance(j_it_p, j + half_size + 1 - stencil_size);
 		u_plus = std::ranges::views::counted(j_it_p, 6);
 
-		u_plus_rec[j] = computeFHatWENO5FMReconstructionKernel(
+		u_plus_rec[j] = computeFHatWENO5JSReconstructionKernel(
 			std::ranges::views::counted(
 						std::ranges::begin(u_plus), 5), eps, p
 		);
 
 
 		u_minus = u_plus | std::ranges::views::reverse;
-		u_minus_rec[j] = computeFHatWENO5FMReconstructionKernel(
+		u_minus_rec[j] = computeFHatWENO5JSReconstructionKernel(
 			std::ranges::subrange(
 				std::ranges::begin(u_minus),
 						std::ranges::end(u_minus) - 1), eps, p
