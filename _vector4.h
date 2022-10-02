@@ -53,7 +53,7 @@ public:
 	inline explicit Vector4(const std::vector<N>& V)
 		: x(V[0]), y(V[1]), z(V[2]), w(V[3]) {}
 
-	inline explicit Vector4(const Vector4& V)
+	inline /*explicit*/ Vector4(const Vector4& V)
 		: x(V[0]), y(V[1]), z(V[2]), w(V[3]) {}  // copy ctor
 
 	inline N square() const
