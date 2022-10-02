@@ -163,7 +163,7 @@ T henrickGMappingForLambda(T lambda_weno_weight,
 			   + lambda_weno_weight * lambda_weno_weight)
 			/ (square_ideal
 			   + lambda_weno_weight
-			   * (1. - 2.*square_ideal));
+			   * (1. - 2. * lambda_ideal));
 }
 
 
@@ -233,8 +233,47 @@ void lambdaWENO5FMWeights(
 
 
 template <ArithmeticWith<numeric_val> T>
+std::valarray<T> prediscretizeWENO5LambdaMapping(std::size_t N) {
+	/* Pre-discrete mapping method for WENO5-FM
+	 * (idea due to Hong et al.) to increase performace.
+	 * Construct the lambda mapping `valarray` of size `N + 1`
+	 * for lambdas in the range [0..1].
+	 */
+
+	std::valarray<T> res_lookup_table(N + 1);
+
+//	auto ns = std::ranges::common_view(
+//			std::ranges::views::iota(std::size_t(0))
+//				| std::views::take(N + 1)
+//	);
+
+//	std::transform(
+//				std::execution::par_unseq,
+//				std::ranges::begin(ns),
+//				std::ranges::end(ns),
+//				std::ranges::begin(res_lookup_table),
+//				[N](std::size_t n) {
+//		return henrickGMappingForLambda<T>(
+//					static_cast<T>(n) / static_cast<T>(N));
+//	});
+
+	for (std::size_t n = 0; n <= N; ++ n)
+		res_lookup_table[n] = henrickGMappingForLambda<T>(
+					static_cast<T>(n) / static_cast<T>(N));
+
+	return res_lookup_table;
+}
+
+
+std::valarray<numeric_val> DISCRETE_LAMBDA
+			= prediscretizeWENO5LambdaMapping<numeric_val>(1000000/*00*/);
+
+
+template <ArithmeticWith<numeric_val> T>
 std::ranges::common_range auto omegaWENO5FMWeights(
-		const std::ranges::common_range auto&& lambda_weights) {
+		const std::ranges::common_range auto&& lambda_weights,
+		const std::valarray<numeric_val>& discrete_lambda
+					= DISCRETE_LAMBDA) {
 	/* From Henrick et al.'s mappings of g(λ_k) for the improved
 	 * symmetric normalized lambda-weights of Hong, Ye & Ye
 	 * and linear weights d_k we get the new corrected resultant
@@ -262,15 +301,25 @@ std::ranges::common_range auto omegaWENO5FMWeights(
 
 	// And only to the λ-weights a mapping in the spirit of
 	// Henrick et al. is applied:
-	auto gMap = [](T x) -> T {
-		return henrickGMappingForLambda(x);
-	};
+//	auto gMap = [](T x) -> T {
+//		return henrickGMappingForLambda(x);
+//	};
 
+//	std::valarray<T> alpha_weights(3);
+//	std::ranges::transform(
+//				lambda_weights,
+//				std::ranges::begin(alpha_weights),
+//				gMap);
+	const std::size_t n = std::ranges::size(discrete_lambda) - 1;
 	std::valarray<T> alpha_weights(3);
 	std::ranges::transform(
 				lambda_weights,
 				std::ranges::begin(alpha_weights),
-				gMap);
+				[n, &discrete_lambda](T lambda) -> T {
+		return discrete_lambda[
+				static_cast<std::size_t>(
+					static_cast<T>(n) * lambda)];
+	});
 	// α*-weights
 
 	// From α*=g(λ_k) and d_k we get the new corrected resultant
@@ -497,7 +546,8 @@ T computeFHatWENO5MReconstructionKernel(
 	 *                (or [j+3, j+2, j+1, j+0, j-1, ...] for '-')
 	 *                      ^    ^    ^    ^    ^    ^
 	 *                      0    1    2    3    4    |
-	 * in either case for convenience).
+	 * in either case for convenience). Use the WENO-HAP (WENO5-M)
+	 * procedure.
 	 *
 	 * I.e. this function implements the upwind reconstruction which
 	 * should be used for positive fluxes (with information propagated
@@ -570,7 +620,8 @@ T computeFHatWENO5MReconstructionKernel(
 		return henrickGMappingForLambda(w, d);
 	});  // we obtain a new non-normalized weight alpha*
 
-	omega_weights = omega_weights / omega_weights.sum(); // normalize it
+	omega_weights = omega_weights
+			/ omega_weights.sum();  // normalize it
 
 	std::valarray<T> eno_reconstructed_f
 			= f3OrdReconstructionFromStencil<T>(f_stencil);
@@ -581,6 +632,120 @@ T computeFHatWENO5MReconstructionKernel(
 
 	return f_hat;
 }
+
+
+//template <ArithmeticWith<numeric_val> T>
+//T computeFHatWENO5MReconstructionKernel(
+//		const std::ranges::sized_range auto&& f_stencil,
+//		T eps = 1e-40, T p = 2.) {
+//	/* Calculate (reconstruct) one of the two split monotone numerical
+//	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
+//	 * (receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '+'
+//	 *                (or [j+3, j+2, j+1, j+0, j-1, ...] for '-')
+//	 *                      ^    ^    ^    ^    ^    ^
+//	 *                      0    1    2    3    4    |
+//	 * in either case for convenience).
+//	 *
+//	 * I.e. this function implements the upwind reconstruction which
+//	 * should be used for positive fluxes (with information propagated
+//	 * from left to right) if the nodes are passed in order. However,
+//	 * the downwind reconstruction should obviously look the same
+//	 * modulo flipping the values with respect to j+0, so that it
+//	 * becomes downwind biased and takes one extra point to the right
+//	 * instead of taking one extra to the left. In other words, to get
+//	 * this to behave as a downwind reconstrution we need to pass
+//	 * the points symmetric to those of upwind reconstruction with
+//	 * respect to j+0:
+//	 * [j+3, j+2, j+1, j+0, j-1, ...]. (We reverse the points in
+//	 *      [j-2, j-1, j+0, j+1, j+2] j+3 and get
+//	 *                  |
+//	 * [j+3, j+2, j+1, j+0, j-1] j-2.)
+//	 */
+
+//	T beta0 = (13./12.)
+//			* (f_stencil[0] - 2. * f_stencil[1] + f_stencil[2])
+//			* (f_stencil[0] - 2. * f_stencil[1] + f_stencil[2])
+//			+ (1./4.)
+//			* (f_stencil[0] - 4. * f_stencil[1] + 3. * f_stencil[2])
+//			* (f_stencil[0] - 4. * f_stencil[1] + 3. * f_stencil[2]);
+
+//	T beta1 = (13./12.)
+//			* (f_stencil[1] - 2. * f_stencil[2] + f_stencil[3])
+//			* (f_stencil[1] - 2. * f_stencil[2] + f_stencil[3])
+//			+ (1./4.)
+//			* (f_stencil[3] - f_stencil[1])
+//			* (f_stencil[3] - f_stencil[1]);
+
+//	T beta2 = (13./12.)
+//			* (f_stencil[2] - 2. * f_stencil[3] + f_stencil[4])
+//			* (f_stencil[2] - 2. * f_stencil[3] + f_stencil[4])
+//			+ (1./4.)
+//			* (3. * f_stencil[2] - 4. * f_stencil[3] + f_stencil[4])
+//			* (3. * f_stencil[2] - 4. * f_stencil[3] + f_stencil[4]);
+
+//	T f_hat = 0.;
+
+////	T alpha0 = 	(1./10.) / std::pow(eps + beta0, p);
+////	T alpha1 = 	(6./10.) / std::pow(eps + beta1, p);
+////	T alpha2 = 	(3./10.) / std::pow(eps + beta2, p);
+//	T alpha0 = 	(1./10.) / (1e-40 + beta0) / (1e-40 + beta0);
+//	T alpha1 = 	(6./10.) / (1e-40 + beta1) / (1e-40 + beta1);
+//	T alpha2 = 	(3./10.) / (1e-40 + beta2) / (1e-40 + beta2);
+
+//	T alpha_sum = alpha0 + alpha1 + alpha2;
+
+//	T omega0_ast = alpha0 / alpha_sum;
+//	T omega1_ast = alpha1 / alpha_sum;
+//	T omega2_ast = alpha2 / alpha_sum;
+
+//	T alpha0_g_ast = omega0_ast
+//			* ((1./10.)
+//			   + (1./10.) * (1./10.)
+//			   - 3. * (1./10.) * omega0_ast
+//			   + omega0_ast * omega0_ast)
+//			/ ((1./10.) * (1./10.)
+//			   + (1. - 2. * (1./10.)) * omega0_ast);
+
+//	T alpha1_g_ast = omega1_ast
+//			* ((6./10.)
+//			   + (6./10.) * (6./10.)
+//			   - 3. * (6./10.) * omega1_ast
+//			   + omega1_ast * omega1_ast)
+//			/ ((6./10.) * (6./10.)
+//			   + (1. - 2. * (6./10.)) * omega1_ast);
+
+//	T alpha2_g_ast = omega2_ast
+//			* ((3./10.)
+//			   + (3./10.) * (3./10.)
+//			   - 3. * (3./10.) * omega2_ast
+//			   + omega2_ast * omega2_ast)
+//			/ ((3./10.) * (3./10.)
+//			   + (1. - 2. * (3./10.)) * omega2_ast);
+////	T alpha0_g_ast = henrickGMappingForLambda<T>(omega0_ast, 0.1);
+////	T alpha1_g_ast = henrickGMappingForLambda<T>(omega1_ast, 0.6);
+////	T alpha2_g_ast = henrickGMappingForLambda<T>(omega2_ast, 0.3);
+
+//	T alpha_ast_sum = alpha0_g_ast + alpha1_g_ast + alpha2_g_ast;
+//	T omega0 = alpha0_g_ast / alpha_ast_sum;
+//	T omega1 = alpha1_g_ast / alpha_ast_sum;
+//	T omega2 = alpha2_g_ast / alpha_ast_sum;
+
+//	T q0 = (1./6.) * (2. * f_stencil[0]
+//			- 7. * f_stencil[1]
+//			+ 11. * f_stencil[2]);
+//	T q1 = (1./6.) * (-1. * f_stencil[1]
+//			+ 5. * f_stencil[2]
+//			+ 2. * f_stencil[3]);
+//	T q2 = (1./6.) * (2. * f_stencil[2]
+//			+ 5. * f_stencil[3]
+//			- 1. * f_stencil[4]);
+
+//	f_hat = omega0 * q0
+//			+ omega1 * q1
+//			+ omega2 * q2;
+
+//	return f_hat;
+//}
 
 
 template <ArithmeticWith<numeric_val> T>
@@ -892,10 +1057,10 @@ void calcHydroStageFDWENO5FM(
 	auto u_minus = std::ranges::views::counted(j_it_m, 6)
 					| std::ranges::views::reverse;
 
-	std::for_each(std::execution::par,
+	std::for_each(std::execution::par_unseq,
 				std::ranges::begin(shifted_index_range),
 				std::ranges::end(shifted_index_range),
-				  [&](std::size_t j){
+				  [&](std::size_t j) {
 		j_it_p = std::ranges::begin(f_plus);  // f_plus
 		std::advance(j_it_p, j + half_size + 1 - stencil_size);
 		u_plus = std::ranges::views::counted(j_it_p, 6);
@@ -905,12 +1070,12 @@ void calcHydroStageFDWENO5FM(
 		u_minus = std::ranges::views::counted(j_it_m, 6)
 					| std::ranges::views::reverse;
 
-		fhatplus = computeFHatWENO5JSReconstructionKernel<T>(
+		fhatplus = computeFHatWENO5FMReconstructionKernel<T>(
 			std::ranges::views::counted(
 						std::ranges::begin(u_plus), 5), eps, p
 		);
 
-		fhatminus = computeFHatWENO5JSReconstructionKernel<T>(
+		fhatminus = computeFHatWENO5FMReconstructionKernel<T>(
 			std::ranges::subrange(
 				std::ranges::begin(u_minus),
 						std::ranges::end(u_minus) - 1), eps, p
@@ -923,8 +1088,29 @@ void calcHydroStageFDWENO5FM(
 		numerical_flux[j] = fhatplus + fhatminus;
 	});
 
+//	std::valarray<T> u_plus(6);
+//	std::valarray<T> u_minus(6);
+//	for (std::size_t j = mini - 1; j < maxi + 1; ++ j) {
+//		u_plus[0] = f_plus[j - 2];
+//		u_plus[1] = f_plus[j - 1];
+//		u_plus[2] = f_plus[j + 0];
+//		u_plus[3] = f_plus[j + 1];
+//		u_plus[4] = f_plus[j + 2];
+
+//		u_minus[0] = f_minus[j + 3];
+//		u_minus[1] = f_minus[j + 2];
+//		u_minus[2] = f_minus[j + 1];
+//		u_minus[3] = f_minus[j + 0];
+//		u_minus[4] = f_minus[j - 1];
+
+//		numerical_flux[j] = computeFHatWENO5MReconstructionKernel<T>(
+//					std::ranges::views::all(u_plus), eps, p)
+//				+ computeFHatWENO5MReconstructionKernel<T>(
+//					std::ranges::views::all(u_minus), eps, p);
+//	}
+
 	// return numerical_flux;
-	// std::cout << " done!" << "\n";
+	// std::cout << " done!" << "\n";std::ranges::views::all|
 }
 
 
@@ -1024,14 +1210,14 @@ void calcHydroStageFVWENO5FM(
 		std::advance(j_it_p, j + half_size + 1 - stencil_size);
 		u_plus = std::ranges::views::counted(j_it_p, 6);
 
-		u_plus_rec[j] = computeFHatWENO5JSReconstructionKernel(
+		u_plus_rec[j] = computeFHatWENO5FMReconstructionKernel(
 			std::ranges::views::counted(
 						std::ranges::begin(u_plus), 5), eps, p
 		);
 
 
 		u_minus = u_plus | std::ranges::views::reverse;
-		u_minus_rec[j] = computeFHatWENO5JSReconstructionKernel(
+		u_minus_rec[j] = computeFHatWENO5FMReconstructionKernel(
 			std::ranges::subrange(
 				std::ranges::begin(u_minus),
 						std::ranges::end(u_minus) - 1), eps, p
@@ -1044,6 +1230,19 @@ void calcHydroStageFVWENO5FM(
 
 	// std::cout << " done!" << "\n";
 }
+
+
+//template <ArithmeticWith<numeric_val> T>
+//void calcHydroStageCharWiseFV(
+//		const std::ranges::common_range auto&& u,
+//		T t,
+//		std::ranges::common_range auto&& u_plus_rec,
+//		std::ranges::common_range auto&& u_minus_rec,
+//		std::size_t n_ghost_cells = 3,
+//		T eps = 1e-40,
+//		T p = 2.) {
+
+//}
 
 
 template <ArithmeticWith<numeric_val> T>
@@ -1082,6 +1281,58 @@ void updateGhostPointsTransmissive(
 }
 
 
+template <ArithmeticWith<numeric_val> T>
+void updateGhostPointsPeriodic(
+		std::ranges::common_range auto&& U,
+		std::size_t left_bound_size = 3,
+		std::optional<std::size_t> right_bound_size = std::nullopt) {
+	/* Update ghost points in U with periodic b.c.s. */
+
+	if (!right_bound_size)
+		right_bound_size.emplace(left_bound_size);
+
+	const std::size_t n_full_size = std::ranges::size(U);
+//	const std::size_t right_start_index = (n_full_size
+//										   - right_bound_size.value());
+//	const std::size_t left_start_index = left_bound_size;
+
+	// Periodic b.c.s
+//	std::ranges::transform(
+//				U | std::ranges::views::take(left_bound_size),
+//				std::ranges::begin(U | std::ranges::views::drop(
+//						right_start_index - right_bound_size.value())),
+//				[](const auto& u) {
+//		return u;
+//	});
+//	std::cout << "Left\n";
+//	std::cout << U[0] << " " << U[1] << " " << U[2] << "\n";
+//	std::cout << U[n_full_size-2-3-1]
+//			<< " " << U[n_full_size-1-3-1]
+//			<< " " << U[n_full_size-3-1] << "\n";
+	U[0] = U[n_full_size-2-3-1];
+	U[1] = U[n_full_size-1-3-1];
+	U[2] = U[n_full_size-3-1];
+
+//	std::ranges::transform(
+//				U | std::ranges::views::drop(right_start_index),
+//				std::ranges::begin(U | std::ranges::views::take(
+//						left_bound_size + left_bound_size)),
+//				[](const auto& u) {
+//		return u;
+//	});
+//	std::cout << "Right\n";
+//	std::cout << U[n_full_size-2-1]
+//			<< " " << U[n_full_size-1-1]
+//			<< " " << U[n_full_size-1] << "\n";
+//	std::cout << U[3]
+//			<< " " << U[4]
+//			<< " " << U[5] << "\n";
+	U[n_full_size-2-1] = U[3];
+	U[n_full_size-1-1] = U[4];
+	U[n_full_size-1] = U[5];
+}
+
+
 template <ArithmeticWith<numeric_val> T, typename... Args>
 void timeOperator(
 	std::ranges::common_range auto& U,
@@ -1105,6 +1356,7 @@ void timeOperator(
 	std::valarray<T> lam = std::valarray(cpu, 4);
 
 	dt = cfl * dx / lam[0];
+	// dt = 8. * std::pow(dx, 5./3.);
 
 	while (t < fin_t) {
 		if (t + dt > fin_t)
@@ -1119,6 +1371,7 @@ void timeOperator(
 		lam = std::valarray(cpu, 4);
 
 		dt = cfl * dx / lam[0];
+		// dt = 8. * std::pow(dx, 5./3.);
 	}
 	std::cout << "t = " << t << "\n";
 
