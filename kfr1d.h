@@ -9,7 +9,8 @@
 #include "arithmeticwith.h"
 #include "extrapolation.h"
 #include "lf_flux.h"
-#include "ssprk33.h"
+#include "rk6_5.h"
+// #include "ssprk33.h"
 // #include "ssprk10_4.h"
 // #include "tdrk3_5.h"
 #include "weno5.h"
@@ -159,10 +160,10 @@ template
 void polyfit<numeric_val, 5>(std::span<numeric_val> const argument_data,
 			std::span<numeric_val> const function_value_data,
 			std::span<numeric_val, 5 + 1> fitted_polynomial_coefficients,
-			Eigen::Matrix<double, Eigen::Dynamic, 5 + 1>& vandermonde_mat);
+			Eigen::Matrix<numeric_val, Eigen::Dynamic, 5 + 1>& vandermonde_mat);
 
 
-Eigen::Matrix<double, Eigen::Dynamic, 5 + 1> VANDERMONDE_MAT(5 + 1, 5 + 1);
+Eigen::Matrix<numeric_val, Eigen::Dynamic, 5 + 1> VANDERMONDE_MAT(5 + 1, 5 + 1);
 
 
 template <typename T>
@@ -272,12 +273,13 @@ std::valarray<T> calcFDSplitFlux(
 		T p = 2.) {
 
 
-	std::array<std::valarray<T>, 2> monotone_flux_components
-			= splitFluxAsLaxFriedrichs(std::views::all(u), u_flux, lam[0]);
+	auto [monotone_flux_component_pl,
+			monotone_flux_component_mn] = splitFluxAsLaxFriedrichs(
+				std::views::all(u), u_flux, lam[0]);
 
 	calcHydroStageFDWENO5FM<T>(
-		std::views::all(monotone_flux_components[0]),
-		std::views::all(monotone_flux_components[1]),
+		std::views::all(monotone_flux_component_pl),
+		std::views::all(monotone_flux_component_mn),
 		t, u_flux, number_of_ghost_points, eps, p);
 
 //	const std::size_t u_size = std::ranges::size(u);
@@ -362,7 +364,8 @@ T sourceTimeDerForKFR(T x, T u_s, T alpha, T beta, T amp) {
 	T xinv = (x * (-1. / xi) + 1.);
 
 	return 0.5 * alpha * xi * xi * xinv
-			* std::pow(reactiveBurgersSource(0., u_s, alpha, beta, amp),
+			* std::pow(reactiveBurgersSource(
+						   static_cast<T>(0.), u_s, alpha, beta, amp),
 					   xinv * xinv) / beta / u_s;
 }
 
@@ -378,7 +381,7 @@ std::valarray<T> calcSpatialOperatorTimeDerivativeForKFR(
 		T wn,
 		T alpha,
 		T beta,
-		T eps = 1e40,
+		T eps = 1e-40,
 		T p = 2.) {
 	const std::size_t u_size = std::ranges::size(u);
 
@@ -413,7 +416,7 @@ std::valarray<T> calcSpatialOperatorTimeDerivativeForKFR(
 				[&](std::size_t k) {
 		res[k] = res[k] * du[k]
 				- u[k] * 0.5 * (du_s + du_a_over_dt)
-				+ du_s * sourceTimeDerForKFR(x[k], u_s, alpha, beta, amp);
+				+ du_s * sourceTimeDerForKFR<T>(x[k], u_s, alpha, beta, amp);
 	});
 
 	return res;
@@ -434,14 +437,30 @@ std::valarray<T> calcdSpaceDet(
 
 	const std::size_t ghost_point_number = 3;
 
-	std::slice Nweno(ghost_point_number, n_size, 1);
-	std::slice Nweno_shifted_by_neg_1(ghost_point_number-1, n_size, 1);
+	// std::slice Nweno(ghost_point_number, n_size, 1);
+	// std::slice Nweno_shifted_by_neg_1(ghost_point_number-1, n_size, 1);
 
-	std::valarray<T> f_mn = lf[Nweno_shifted_by_neg_1];
-	std::valarray<T> f_pl = lf[Nweno];
+	// std::valarray<T> f_mn = lf[Nweno_shifted_by_neg_1];
+	// std::valarray<T> f_pl = lf[Nweno];
+	auto interior_view = std::views::drop(ghost_point_number)
+			| std::views::take(n_size)
+			| std::ranges::views::common;
+	auto interior_view_shifted_by_neg_1
+			= std::views::drop(ghost_point_number - 1)
+				| std::views::take(n_size)
+				| std::ranges::views::common;
 
+	std::transform(
+				std::execution::par_unseq,
+				std::ranges::begin(lf | interior_view),
+				std::ranges::end(lf | interior_view),
+				std::ranges::begin(lf | interior_view_shifted_by_neg_1),
+				std::ranges::begin(dflux | interior_view),
+				[dx](const auto f_pl, const auto f_mn) {
+		return -(f_pl - f_mn) / dx;
+	});
 
-	dflux[Nweno] = -(f_pl - f_mn) / dx;
+	// dflux[Nweno] = -(f_pl - f_mn) / dx;
 
 	// dflux += source term:
 	addSource(u, dflux, x);
@@ -519,15 +538,26 @@ void integrate1DDetonationProfileProblem(
 	 * flux needed for the calculation in `flux`.
 	 */
 
+	std::valarray<T> y1(0., std::ranges::size(u_sol));
 	std::valarray<T> y2(0., std::ranges::size(u_sol));
 	std::valarray<T> y3(0., std::ranges::size(u_sol));
+	std::valarray<T> y4(0., std::ranges::size(u_sol));
+	std::valarray<T> y5(0., std::ranges::size(u_sol));
 //	std::array<std::reference_wrapper<std::valarray<T>>, 2> fluxes = {
 //		std::ref(y2), std::ref(y3)
 //	};
+	std::valarray<T> dy1(0., std::ranges::size(u_sol));
 	std::valarray<T> dy2(0., std::ranges::size(u_sol));
 	std::valarray<T> dy3(0., std::ranges::size(u_sol));
-	std::array<std::reference_wrapper<std::valarray<T>>, 4> fluxes = {
-		std::ref(y2), std::ref(dy2), std::ref(y3), std::ref(dy3)
+	std::valarray<T> dy4(0., std::ranges::size(u_sol));
+	std::valarray<T> dy5(0., std::ranges::size(u_sol));
+
+	std::array<std::reference_wrapper<std::valarray<T>>, 10> fluxes = {
+		std::ref(y1), std::ref(dy1),
+		std::ref(y2), std::ref(dy2),
+		std::ref(y3), std::ref(dy3),
+		std::ref(y4), std::ref(dy4),
+		std::ref(y5), std::ref(dy5)
 	};
 
 	T x0_lab = 0;
@@ -605,7 +635,12 @@ std::valarray<T> solve1DDetonationProfileProblem(
 		dx, /* T q0, */ l_min, l_max,
 		alpha, beta, amp, epsilon);
 
-	auto spaceOp = [alpha, beta, amp, wn, &x](
+//	std::array<std::valarray<T>, 2> monotone_flux_components {
+//		std::valarray<T>(std::ranges::size(u_init)),
+//		std::valarray<T>(std::ranges::size(u_init))
+//	};
+
+	auto spaceOp = [alpha, beta, amp, wn, &x/*, &monotone_flux_components*/](
 			std::span<T> const u,
 			T t, T dx, const std::valarray<T>& max_eigenvalues,
 			T n_size, T x0_lab) {
@@ -640,17 +675,17 @@ std::valarray<T> solve1DDetonationProfileProblem(
 		);
 	};
 
-	std::valarray<T> ddflux(0., std::ranges::size(u_init));
+//	std::valarray<T> ddflux(0., std::ranges::size(u_init));
 
-	auto secondDerivative = [alpha, beta, amp, wn, &x](
-			std::span<T> const u, std::span<T> const du,
-			T t, T dx, const std::valarray<T>& max_eigenvalues,
-			T n_size, T x0_lab) {
-		return calcSpatialOperatorTimeDerivativeForKFR<T>(
-			u, du, x,
-			t, max_eigenvalues, x0_lab,
-			amp, wn, alpha, beta);
-	};
+//	auto secondDerivative = [alpha, beta, amp, wn, &x](
+//			std::span<T> const u, std::span<T> const du,
+//			T t, T dx, const std::valarray<T>& max_eigenvalues,
+//			T n_size, T x0_lab) {
+//		return calcSpatialOperatorTimeDerivativeForKFR<T>(
+//			u, du, x,
+//			t, max_eigenvalues, x0_lab,
+//			amp, wn, alpha, beta);
+//	};
 
 	auto updateGhostPoints = [&x, number_of_ghost_points, dx](
 			std::valarray<T>& u) {
@@ -669,7 +704,7 @@ std::valarray<T> solve1DDetonationProfileProblem(
 	integrate1DDetonationProfileProblem<T>(u_init, flux,
 		u_s_sol, times,
 		t0, dx, mesh_size, t_max, amp, wn,
-		[&spaceOp, &secondDerivative, &updateGhostPoints, &ddflux](
+		[&spaceOp, /*&secondDerivative, */&updateGhostPoints/*, &ddflux*/](
 //		[&spaceOp, &updateGhostPoints](
 			std::valarray<T>& u,
 			std::valarray<T>& dflux,
@@ -678,16 +713,16 @@ std::valarray<T> solve1DDetonationProfileProblem(
 //			>, 2> fluxes,
 			std::array<
 				std::reference_wrapper<std::valarray<T>
-			>, 4> fluxes,
+			>, 10> fluxes,
 			T t, T dt, T dx,
 			const std::valarray<T>& lam,
 			std::size_t n_size,
 			T& x0_lab
 		) {
-			advanceTimestepTVDRK3<T>(
-				u, dflux, fluxes[0].get(), fluxes[1].get(),
-				t, dt, dx, lam,
-				n_size, spaceOp, updateGhostPoints, x0_lab);
+//			advanceTimestepTVDRK3<T>(
+//				u, dflux, fluxes[0].get(), fluxes[1].get(),
+//				t, dt, dx, lam,
+//				3, spaceOp, updateGhostPoints, x0_lab);
 //			advanceTimestepSSPRK10_4<T>(
 //				u, dflux, fluxes[0].get(),
 //				t, dt, dx, lam,
@@ -699,6 +734,16 @@ std::valarray<T> solve1DDetonationProfileProblem(
 //				t, dt, dx, lam,
 //				n_size, spaceOp, secondDerivative,
 //				updateGhostPoints, x0_lab);
+			advanceTimestepRK6_5<T>(
+				u,
+				dflux,
+				fluxes[0].get(), fluxes[1].get(),
+				fluxes[2].get(), fluxes[3].get(),
+				fluxes[4].get(), fluxes[5].get(),
+				fluxes[6].get(), fluxes[7].get(),
+				fluxes[8].get(), fluxes[9].get(),
+				t, dt, dx, lam,
+				3, spaceOp, updateGhostPoints, x0_lab);
 		}, cfl);
 
 	return u_init;

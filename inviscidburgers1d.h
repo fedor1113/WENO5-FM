@@ -3,14 +3,18 @@
 #include <execution>
 #include <ranges>
 #include <span>
+#include <string>
 #include <valarray>
 // #include <vector>
 
+#include "arithmeticwith.h"
 #include "weno5.h"
 #include "eno3.h"
 #include "lf_flux.h"
+#include "rk6_5.h"
 #include "ssprk33.h"
-// #include "tdrk3_5.h"
+#include "ssprk10_4.h"
+#include "tdrk3_5.h"
 
 
 template <ArithmeticWith<numeric_val> T>
@@ -18,7 +22,8 @@ T calcInviscidBurgersFlux(T u) {
 	/* Calculate inviscid Bateman-Burgers' flux.
 	 */
 
-    return u * u * 0.5;
+//	return u * u * 0.5;
+	return 1. * u;
 }
 
 
@@ -27,7 +32,8 @@ T calcInviscidBurgersFluxDerivative(T u) {
 	/* Calculate inviscid Bateman-Burgers' flux derivative.
 	 */
 
-	return u;
+//	return u;
+	return 1.;
 }
 
 
@@ -38,11 +44,12 @@ T calcInviscidBurgersMaxWaveSpeed(
 	/* Calculate max |df/du| for the inviscid Bateman-Burgers' eq'n. */
 
 	// return *std::ranges::max_element(std::abs(u_arr));
-	return std::abs(calcInviscidBurgersFluxDerivative(u_arr)).max();
+//	return std::abs(calcInviscidBurgersFluxDerivative(u_arr)).max();
+	return 1.;
 }
 
 
-template <typename T>
+template <ArithmeticWith<numeric_val> T>
 T BurgersSource(T x) {
 	/* Define the source term S for the Burgers'
 	 * equation u_t + F_x = S.
@@ -57,17 +64,43 @@ std::valarray<T> calcFluxInviscidBurgersFVENO3(
 		const std::ranges::common_range auto U,
 		T t, const std::ranges::common_range auto& lam,
 		std::size_t n_size) {
-	// std::valarray<Vector4<T>> res = calcPhysFlux(U);
+	std::valarray<T> res(0., std::ranges::size(U));
 
+	// ----FD variant----
+//	for (std::size_t k = 0; k < std::ranges::size(U); ++ k)
+//		res[k] = calcInviscidBurgersFlux<T>(U[k]);
+
+//	// std::array<std::valarray<T>, 2> fs {
+//	// 			std::valarray<T>(0., U.size()),
+//	// 			std::valarray<T>(0., U.size())
+//	// };
+
+//auto [monotone_flux_component_pl,
+//		monotone_flux_component_mn]  = splitFluxAsLaxFriedrichs<T>(
+//			U, res, 1.);
+
+//	updateGhostPointsPeriodic<T>(monotone_flux_component_pl);
+//	updateGhostPointsPeriodic<T>(monotone_flux_component_mn);
+
+//	calcHydroStageFDWENO5FM<T>(
+//				std::ranges::views::all(monotone_flux_component_pl),
+//				std::ranges::views::all(monotone_flux_component_mn),
+//				t, res, 3, 1e-40, 2.);
+//	calcHydroStageFDENO3<T>(
+//				std::ranges::views::all(monotone_flux_component_pl),
+//				std::ranges::views::all(monotone_flux_component_mn),
+//				t, res, n_size);
+
+	// ----FV variant----
 	std::valarray<T> u_plus = std::valarray<T>(0., U.size());
 	std::valarray<T> u_minus = std::valarray<T>(0., U.size());
-
-	calcHydroStageFVWENO5FM<T>(std::ranges::views::all(U),
-							t, u_plus, u_minus, 3, 1e-40, 2.);
+	calcHydroStageFVWENO5FM<T>(
+				std::ranges::views::all(U),
+				t, u_plus, u_minus,
+				3, 1e-40, 2.);
 //	calcHydroStageFVENO3<T>(std::ranges::views::all(U),
 //							t, u_plus, u_minus, n_size);
 
-	std::valarray<T> res(0., std::ranges::size(U));
 	calcLaxFriedrichsNumericalFlux(u_plus, u_minus, res,
 		[](const T u) {
 			return calcInviscidBurgersFlux<T>(u);
@@ -92,14 +125,32 @@ std::valarray<T> calcdSpaceInviscidBurgers(
 
 	const std::size_t ghost_point_number = 3;
 
-	std::slice Nweno(ghost_point_number, n_size, 1);
-	std::slice Nweno_shifted_by_neg_1(ghost_point_number-1, n_size, 1);
+//	std::slice Nweno(ghost_point_number, n_size, 1);
+//	std::slice Nweno_shifted_by_neg_1(ghost_point_number-1, n_size, 1);
 
-	std::valarray<T> f_mn = lf[Nweno_shifted_by_neg_1];
-	std::valarray<T> f_pl = lf[Nweno];
+//	std::valarray<T> f_mn = lf[Nweno_shifted_by_neg_1];
+//	std::valarray<T> f_pl = lf[Nweno];
 
 
-	dflux[Nweno] = -(f_pl - f_mn) / dx;
+//	dflux[Nweno] = -(f_pl - f_mn) / dx;
+	auto interior_view = std::views::drop(ghost_point_number)
+			| std::views::take(n_size)
+			| std::ranges::views::common;
+	auto interior_view_shifted_by_neg_1
+			= std::views::drop(ghost_point_number - 1)
+				| std::views::take(n_size)
+				| std::ranges::views::common;
+
+	std::transform(
+				std::execution::par_unseq,
+				std::ranges::begin(lf | interior_view),
+				std::ranges::end(lf | interior_view),
+				std::ranges::begin(lf | interior_view_shifted_by_neg_1),
+				std::ranges::begin(dflux | interior_view),
+				[dx](const auto f_pl, const auto f_mn) {
+		return -(f_pl - f_mn) / dx;
+	});
+
 	// std::cout << dx << "\n";
 
 	// dflux += source term:
@@ -123,12 +174,22 @@ void integrate1DInviscidBurgersProblem(
 	 * calculation in `flux`.
 	 */
 
+	std::valarray<T> y1(0., std::ranges::size(u_sol));
+	std::valarray<T> dy1(0., std::ranges::size(u_sol));
 	std::valarray<T> y2(0., std::ranges::size(u_sol));
 	std::valarray<T> dy2(0., std::ranges::size(u_sol));
 	std::valarray<T> y3(0., std::ranges::size(u_sol));
 	std::valarray<T> dy3(0., std::ranges::size(u_sol));
-	std::array<std::reference_wrapper<std::valarray<T>>, 4> fluxes = {
-		std::ref(y2), std::ref(dy2), std::ref(y3), std::ref(dy3)
+	std::valarray<T> y4(0., std::ranges::size(u_sol));
+	std::valarray<T> dy4(0., std::ranges::size(u_sol));
+	std::valarray<T> y5(0., std::ranges::size(u_sol));
+	std::valarray<T> dy5(0., std::ranges::size(u_sol));
+	std::array<std::reference_wrapper<std::valarray<T>>, 10> fluxes = {
+		std::ref(y1), std::ref(dy1),
+		std::ref(y2), std::ref(dy2),
+		std::ref(y3), std::ref(dy3),
+		std::ref(y4), std::ref(dy4),
+		std::ref(y5), std::ref(dy5)
 	};
 
 	timeOperator<T>(
@@ -144,12 +205,13 @@ void integrate1DInviscidBurgersProblem(
 }
 
 
-template <typename T>
+template <ArithmeticWith<numeric_val> T>
 std::valarray<T> solve1DInviscidBurgersProblem(
 	std::ranges::common_range auto& u_init,
 	std::ranges::common_range auto& x,
 	T t0 = 0., T t_max = 0.5, T l_min = -1., T l_max = +1.,
-	std::size_t mesh_size = 201, T cfl = 0.4
+	std::size_t mesh_size = 201, T cfl = 0.4,
+	char type = 0
 ) {
 	T t = t0;
 	const std::size_t number_of_ghost_points = 3;
@@ -157,7 +219,8 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 	// std::size_t computational_domain_size = mesh_size;
 	std::size_t full_mesh_size = mesh_size + 2 * number_of_ghost_points;
 
-	T dx = (l_max - l_min) / (mesh_size - 1.);  // [L]
+	// T dx = (l_max - l_min) / (mesh_size - 1.);  // [L]
+	T dx = (l_max - l_min) / mesh_size;  // [L]
 
 	x = std::valarray<T>(0., full_mesh_size);
 	u_init = std::valarray<T>(0., full_mesh_size);
@@ -174,11 +237,31 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 	for (k = number_of_ghost_points;
 			k < mesh_size + number_of_ghost_points;
 			++ k) {
-//		u_init[k] = (std::abs(x[k]) < 1 / 3.0) * 1.
-//			+ (std::abs(x[k]) >= 1 / 3.0) * (0.);
-		u_init[k] = 0.5 + std::sin(std::numbers::pi_v<T> * x[k]);
+		switch (type) {
+//			case 0:
+//				u_init[k] = 0.;
+//			break;
+//			case 10:
+//				u_init[k] = (std::abs(x[k]) < 1 / 3.0) * 1.
+//					+ (std::abs(x[k]) >= 1 / 3.0) * (0.);
+//			break;
+//			case 20:
+//				u_init[k] = 0.5 + std::sin(
+//							std::numbers::pi_v<T> * x[k]);
+//			break;
+//			case 1:  // Toro-1
+//				u_init[k] = 1.0 * std::exp(-8.0 * x[k] * x[k]);
+//			break;
+			case 2:  // Henrick et al. 5.3. Linear advection example
+				u_init[k] = std::sin(
+							std::numbers::pi_v<T> * x[k] - std::sin(
+								std::numbers::pi_v<T> * x[k]
+								) / std::numbers::pi_v<T>);
+			break;
+		}
 	}
-	updateGhostPointsTransmissive<T>(u_init);
+	// updateGhostPointsTransmissive<T>(u_init);
+	updateGhostPointsPeriodic<T>(u_init);
 //	u_init[0] = -2;
 //	u_init[1] = -1;
 //	u_init[2] = 0;
@@ -189,7 +272,8 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 //	u_init[7] = 5;
 //	u_init[8] = 6;
 //	u_init[9] = 7;
-	dx = (l_max - l_min) / (mesh_size);
+	// dx = (l_max - l_min) / (mesh_size - 1.);
+	dx = (l_max - l_min) / mesh_size;
 
 	auto spaceOp = [&x](
 			std::span<T> const u,
@@ -226,12 +310,13 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 
 	auto updateGhostPoints = [&x, number_of_ghost_points, dx](
 			std::valarray<T>& u) {
-		updateGhostPointsTransmissive<T>(u);
+		// updateGhostPointsTransmissive<T>(u);
+		updateGhostPointsPeriodic<T>(u);
 	};
 
 	std::valarray<T> flux(0., std::ranges::size(u_init));
 	std::valarray<T> ddflux(0., std::ranges::size(u_init));
-	std::valarray<T> ddflux_temp(0., std::ranges::size(u_init));
+	std::valarray<T> ddflux_temp(1., std::ranges::size(u_init));
 
 	auto secondDerivative = [&ddflux_temp](
 			std::span<T> const u, std::span<T> const du,
@@ -241,14 +326,19 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 //					[](auto u_pt) {
 //						return calcInviscidBurgersFluxDerivative(u_pt);
 //					});
+		ddflux_temp = std::valarray<T>(std::ranges::size(ddflux_temp));
+		ddflux_temp = calcFluxInviscidBurgersFVENO3<T>(
+					du, t, max_eigenvalues, n_size);
 
 		std::transform(
 					std::execution::par_unseq,
 					std::ranges::begin(du),
 					std::ranges::end(du),
 					std::ranges::begin(ddflux_temp),
-					[](auto dup) { return dup * dup; }
-					);
+					std::ranges::begin(ddflux_temp),
+					[](auto ddu, auto du) {
+						return ddu * du;
+					});
 
 		return ddflux_temp;
 	};
@@ -260,22 +350,36 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 			std::valarray<T>& dflux,
 			std::array<
 				std::reference_wrapper<std::valarray<T>
-			>, 4> fluxes,
+			>, 10> fluxes,
 			T t, T dt, T dx,
 			const std::valarray<T>& lam,
 			std::size_t n_size
 		) {
-			advanceTimestepTVDRK3<T>(
-				u, dflux, fluxes[0].get(), fluxes[1].get(),
-				t, dt, dx, lam,
-				n_size, spaceOp, updateGhostPoints);
-//			advanceTimestepTDRK3_5<T>(
+//			advanceTimestepTVDRK3<T>(
+//				u, dflux, fluxes[0].get(), fluxes[1].get(),
+//				t, dt, dx, lam,
+//				3, spaceOp, updateGhostPoints);
+//			advanceTimestepSSPRK10_4<T>(
+//				u, dflux, fluxes[0].get(),
+//				t, dt, dx, lam,
+//				n_size, spaceOp, updateGhostPoints);
+//			 advanceTimestepTDRK3_5<T>(
 //				u, dflux, ddflux,
 //				fluxes[0].get(), fluxes[1].get(),
 //				fluxes[2].get(), fluxes[3].get(),
 //				t, dt, dx, lam,
 //				n_size, spaceOp, secondDerivative,
 //				updateGhostPoints);
+			advanceTimestepRK6_5<T>(
+				u,
+				dflux,
+				fluxes[0].get(), fluxes[1].get(),
+				fluxes[2].get(), fluxes[3].get(),
+				fluxes[4].get(), fluxes[5].get(),
+				fluxes[6].get(), fluxes[7].get(),
+				fluxes[8].get(), fluxes[9].get(),
+				t, dt, dx, lam,
+				3, spaceOp, updateGhostPoints);
 		}, cfl);
 
 	return u_init;

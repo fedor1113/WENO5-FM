@@ -17,7 +17,7 @@ template <ArithmeticWith<numeric_val> T, std::size_t N = 4>
 void polyfit(std::span<T> const argument_data,
 		std::span<T> const function_value_data,
 		std::span<T, N + 1> fitted_polynomial_coefficients,
-		Eigen::Matrix<double, Eigen::Dynamic, N + 1>& vandermonde_mat) {
+		Eigen::Matrix<T, Eigen::Dynamic, N + 1>& vandermonde_mat) {
 	/* Efficient linear least square polynomial fit using
 	 * Eigen for fast matrix operations.
 	 *
@@ -65,7 +65,8 @@ void polyfit(std::span<T> const argument_data,
 			&function_value_data.front(), function_value_data.size());
 	Eigen::Matrix<T, N + 1, 1> result_vec;
 
-	assert(vandermonde_mat.rows() == argument_data.size());
+	assert(static_cast<std::size_t>(vandermonde_mat.rows())
+		   == argument_data.size());
 	assert(argument_data.size() == function_value_data.size());
 	assert(argument_data.size() >= order + 1);
 

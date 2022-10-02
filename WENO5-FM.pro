@@ -25,6 +25,7 @@ HEADERS += \
     kfr1d.h \
 		kfr1d.h \
     lf_flux.h \
+    rk6_5.h \
     ssprk10_4.h \
 		ssprk33.h \
     tdrk3_5.h \
@@ -34,4 +35,4 @@ HEADERS += \
 
 DISTFILES += \
     .gitignore \
-    plot.gnuplot
+	plot.gnuplot

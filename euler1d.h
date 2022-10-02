@@ -5,6 +5,8 @@
 #include <execution>
 #include <ranges>
 
+#include "Eigen/Dense"
+
 #include "_vector4.h"
 #include "arithmeticwith.h"
 #include "weno5.h"
@@ -14,6 +16,12 @@
 #include "ssprk33.h"
 #include "ssprk10_4.h"
 // #include "eulerforward.h"
+
+
+//template <ArithmeticWith<numeric_val> T>
+//Eigen::Matrix<T, 3, 3>& EigenRightEigenMatrix(Vector4<T> vec) {
+
+//}
 
 
 template <ArithmeticWith<numeric_val> T>
@@ -166,9 +174,13 @@ std::valarray<Vector4<T>> calcFluxComponentWiseFDWENO5(
 		T eps = 1e-40,
 		T p = 2.) {
 	std::valarray<Vector4<T>> res = calcPhysFlux(u, gamma);
-	std::array<std::valarray<T>, 2> monotone_flux_components = {
+//	std::array<std::valarray<T>, 2> monotone_flux_components = {
+//		std::valarray<T>(std::ranges::size(u)),
+//		std::valarray<T>(std::ranges::size(u)),
+//	};
+	SplitFluxes monotone_flux_components {
 		std::valarray<T>(std::ranges::size(u)),
-		std::valarray<T>(std::ranges::size(u)),
+		std::valarray<T>(std::ranges::size(u))
 	};
 
 	// auto iv = std::ranges::iota_view{0, 4};
@@ -183,8 +195,7 @@ std::valarray<Vector4<T>> calcFluxComponentWiseFDWENO5(
 			std::ranges::begin(components),
 			std::ranges::end(components),
 			[&](auto kth_vector_component) {
-		monotone_flux_components
-				= splitFluxAsLaxFriedrichs(
+		monotone_flux_components = splitFluxAsLaxFriedrichs(
 					u | std::ranges::views::transform(
 						kth_vector_component),
 					res, lam[0]
@@ -498,7 +509,7 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 				updateGhostPoints, calcdSpace);
 			/*advanceTimestepTVDRK3<T>(
 				u, dflux, fluxes[0].get(), fluxes[1].get(),
-				t, dt, dx, lam, n_size,
+				t, dt, dx, lam, 3,
 				updateGhostPoints, calcdSpace);*/
 			/*EulerForward<T>(
 				u, dflux,
@@ -530,10 +541,10 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 ) {
 	/* Solve a given Riemann problem for 1D Euler equations. */
 
-	double e_left = p_left / (gamma - 1.) / rho_left;
-	double e_right = p_right / (gamma - 1.) / rho_right;
-	double E_left = (e_left + (v_left*v_left)/2.);
-	double E_right = (e_right + (v_right*v_right)/2.);
+	T e_left = p_left / (gamma - 1.) / rho_left;
+	T e_right = p_right / (gamma - 1.) / rho_right;
+	T E_left = (e_left + (v_left*v_left)/2.);
+	T E_right = (e_right + (v_right*v_right)/2.);
 
 	return solve1DRiemannProblemForEulerEq(
 		u_init, x, gamma,
