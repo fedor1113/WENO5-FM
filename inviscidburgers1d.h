@@ -79,8 +79,8 @@ std::valarray<T> calcFluxInviscidBurgersFVENO3(
 //		monotone_flux_component_mn]  = splitFluxAsLaxFriedrichs<T>(
 //			U, res, 1.);
 
-//	updateGhostPointsPeriodic<T>(monotone_flux_component_pl);
-//	updateGhostPointsPeriodic<T>(monotone_flux_component_mn);
+//	updateGhostPointsPeriodic(monotone_flux_component_pl);
+//	updateGhostPointsPeriodic(monotone_flux_component_mn);
 
 //	calcHydroStageFDWENO5FM<T>(
 //				std::ranges::views::all(monotone_flux_component_pl),
@@ -260,8 +260,8 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 			break;
 		}
 	}
-	// updateGhostPointsTransmissive<T>(u_init);
-	updateGhostPointsPeriodic<T>(u_init);
+	// updateGhostPointsTransmissive(u_init);
+	updateGhostPointsPeriodic(u_init);
 //	u_init[0] = -2;
 //	u_init[1] = -1;
 //	u_init[2] = 0;
@@ -310,8 +310,8 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 
 	auto updateGhostPoints = [&x, number_of_ghost_points, dx](
 			std::valarray<T>& u) {
-		// updateGhostPointsTransmissive<T>(u);
-		updateGhostPointsPeriodic<T>(u);
+		// updateGhostPointsTransmissive(u);
+		updateGhostPointsPeriodic(u);
 	};
 
 	std::valarray<T> flux(0., std::ranges::size(u_init));

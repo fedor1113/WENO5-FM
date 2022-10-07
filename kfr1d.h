@@ -237,17 +237,17 @@ void updateGhostPointsForDetonationProfile(
 //		u_r = u_interior.back();
 //	});
 
-	std::valarray<T> coefficients(order+1);
-	std::span<T, order+1> coef_span = std::span<T, order+1>{
-		std::begin(coefficients), order+1};
+	std::valarray<T> coefficients(order + 1);
+	std::span<T, order + 1> coef_span = std::span<T, order + 1>{
+		std::begin(coefficients), order + 1};
 
-	std::span<T, order+1> nextrap = x.subspan(
+	std::span<T, order + 1> nextrap = x.subspan(
 		x.size() - u_right.size() - 1 - order
-	).template first<order+1>();
+	).template first<order + 1>();
 	// Nextrap contains the points used for extrapolation
 	// std::cout << nextrap.back() << "\n";
 
-	polyfit<T, order>(nextrap, u_interior.last(order+1), coef_span,
+	polyfit<T, order>(nextrap, u_interior.last(order + 1), coef_span,
 				VANDERMONDE_MAT);
 	// Least squares polynomial extrapolation.
 
