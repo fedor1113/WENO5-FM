@@ -507,13 +507,20 @@ FodyWeavers.xsd
 
 # End of https://www.toptal.com/developers/gitignore/api/qtcreator,c++,visualstudio,visualstudiocode,vim
 
-# Calculation Output
+# Computation Output
 *.dat
 calc/output/*
 output/*
+data/
 
 # Boost
 boost*
 boost/
 
+
+# CCLS
 .ccls-cache/
+
+
+# Jupyter
+.ipynb_checkpoints/

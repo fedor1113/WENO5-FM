@@ -2,7 +2,7 @@
 #define LF_FLUX_H
 
 #include <algorithm>
-// #include <execution>
+#include <execution>
 #include <ranges>
 
 #include "arithmeticwith.h"
@@ -53,7 +53,14 @@ void calcLaxFriedrichsNumericalFlux(
 
 
 template <ArithmeticWith<numeric_val> T>
-std::array<std::valarray<T>, 2> splitFluxAsLaxFriedrichs(
+struct SplitFluxes {
+	std::valarray<T> f_plus;
+	std::valarray<T> f_minus;
+};
+
+
+template <ArithmeticWith<numeric_val> T>
+SplitFluxes<T> splitFluxAsLaxFriedrichs(
 		const std::ranges::common_range auto& u,
 		const std::ranges::common_range auto& f,
 		T alpha) {
@@ -73,22 +80,23 @@ std::array<std::valarray<T>, 2> splitFluxAsLaxFriedrichs(
 	 * Mathematics, 7, 159-193, 1954.
 	 */
 
-	std::array<std::valarray<T>, 2> monotone_lf_flux_components {
+	SplitFluxes monotone_lf_flux_components {
 		std::valarray<T>(std::ranges::size(f)),
 		std::valarray<T>(std::ranges::size(f))
 	};
 
-	std::transform(std::ranges::begin(f), std::ranges::end(f),
+	std::transform(std::execution::par_unseq,
+		std::ranges::begin(f), std::ranges::end(f),
 		std::ranges::begin(u),
-		std::ranges::begin(monotone_lf_flux_components[0]),
+		std::ranges::begin(monotone_lf_flux_components.f_plus),
 		[&alpha](T f_pt, T u_pt) {
 		return 0.5 * (f_pt + alpha * u_pt);
 	});
 
-	std::valarray<T> f_minus(std::ranges::size(f));
-	std::transform(std::ranges::begin(f), std::ranges::end(f),
+	std::transform(std::execution::par_unseq,
+		std::ranges::begin(f), std::ranges::end(f),
 		std::ranges::begin(u),
-		std::ranges::begin(monotone_lf_flux_components[1]),
+		std::ranges::begin(monotone_lf_flux_components.f_minus),
 		[&alpha](T f_pt, T u_pt) {
 		return 0.5 * (f_pt - alpha * u_pt);
 	});

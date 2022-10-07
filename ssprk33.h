@@ -16,7 +16,7 @@ void advanceTimestepTVDRK3(
 		std::ranges::common_range auto& Y3,
 		T t, T dt, T dx,
 		const std::ranges::common_range auto& max_eigenvalues,
-		std::size_t n_size,
+		std::size_t n_ghost_points,
 		auto&& calcdSpace,
 		auto&& updateGhostPoints,
 		Args... opts_args) {
@@ -35,7 +35,15 @@ void advanceTimestepTVDRK3(
 	 */
 
 	// std::slice Nint(3, nSize, 1);
+	const std::size_t n_size = std::ranges::size(U)
+			- 2 * n_ghost_points;
+
 	dflux.resize(std::ranges::size(U));
+
+//	auto interior_view = std::views::drop(n_ghost_points)
+//			| std::views::take(n_size)
+//			| std::ranges::views::common;
+//	auto interior_view = std::ranges::views::common;
 
 	// ------------------------First Stage----------------------------
 	// std::valarray<Vector4<T>> flux = calcFlux(U, t, lam);
@@ -47,9 +55,10 @@ void advanceTimestepTVDRK3(
 	// Y2 = U + Vector4<T>(dt) * dflux;
 	std::transform(
 				std::execution::par_unseq,
-				std::ranges::begin(U), std::ranges::end(U),
-				std::ranges::begin(dflux),
-				std::ranges::begin(Y2),
+				std::ranges::begin(U/* | interior_view*/),
+				std::ranges::end(U/* | interior_view*/),
+				std::ranges::begin(dflux/* | interior_view*/),
+				std::ranges::begin(Y2/* | interior_view*/),
 				[dt](const auto u, const auto df) {
 		return u + dt * df;
 	});
@@ -69,8 +78,9 @@ void advanceTimestepTVDRK3(
 				| std::views::take(std::ranges::size(U))
 	);
 	std::for_each(
-//				std::execution::par_unseq,
-				std::ranges::begin(iv), std::ranges::end(iv),
+				std::execution::par_unseq,
+				std::ranges::begin(iv/* | interior_view*/),
+				std::ranges::end(iv/* | interior_view*/),
 				[dt, &Y3, &U, &dflux, &Y2](std::size_t k) {
 		Y3[k] = (3. * U[k] + dt * dflux[k] + Y2[k]) * 0.25;
 	});
@@ -88,17 +98,19 @@ void advanceTimestepTVDRK3(
 	// U *= Vector4<T>(1./3.);
 	std::transform(
 				std::execution::par_unseq,
-				std::ranges::begin(Y3), std::ranges::end(Y3),
-				std::ranges::begin(dflux),
-				std::ranges::begin(Y3),
+				std::ranges::begin(Y3/* | interior_view*/),
+				std::ranges::end(Y3/* | interior_view*/),
+				std::ranges::begin(dflux/* | interior_view*/),
+				std::ranges::begin(Y3/* | interior_view*/),
 				[dt](const auto u, const auto df) {
 		return 2. * (u + dt * df);
 	});
 	std::transform(
 				std::execution::par_unseq,
-				std::ranges::begin(U), std::ranges::end(U),
-				std::ranges::begin(Y3),
-				std::ranges::begin(U),
+				std::ranges::begin(U/* | interior_view*/),
+				std::ranges::end(U/* | interior_view*/),
+				std::ranges::begin(Y3/* | interior_view*/),
+				std::ranges::begin(U/* | interior_view*/),
 				[dt](const auto u, const auto y) {
 		return (u + y) * (1./3.);
 	});

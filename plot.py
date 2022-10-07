@@ -97,12 +97,15 @@ s = []
         #p.append(float(ROWS[3]))
         #s.append(float(ROWS[4]))
 
-df = pd.read_csv('res.dat', skiprows = 3, sep=' ', names = ['x', 'rho', 'u', 'p', 'e'])
+df = pd.read_csv('res_n_500.dat',
+                 skiprows = 3, sep=' ',
+				 names = ['x', 'rho', 'u', 'p', 'e'])
 
-with open('res.dat', 'r') as datafile:
+with open('res_n_500.dat', 'r') as datafile:
     title = datafile.readline()
     t = float(title[title.find('t=')+2:title.rfind('"')])
 
+# L = 1250
 L = 1
 
 x = list(map(float, df['x'].tolist()))
@@ -117,6 +120,7 @@ plt.figure(1)
 plt.subplot(4, 1, 1)
 # plt.subplot(3, 1, 1)
 plt.title("t={:0.4f}".format(t))
+# plt.plot(x, rho, 'b-o')
 plt.plot(x, rho, 'b-')
 # plt.plot(x500, rho500, 'g-')
 # plt.plot(x1000, rho1000, 'b-')
@@ -125,6 +129,7 @@ plt.ylabel('Density ρ')
 plt.xlim([0, L])
 plt.subplot(4, 1, 2)
 #plt.subplot(3, 1, 2)
+# plt.plot(x, u, 'b-o')
 plt.plot(x, u, 'b-')
 # plt.plot(x500, u500, 'g-')
 # plt.plot(x1000, u1000, 'b-')
@@ -133,6 +138,7 @@ plt.ylabel('Velocity v')
 plt.xlim([0, L])
 plt.subplot(4, 1, 3)
 # plt.subplot(3, 1, 3)
+# plt.plot(x, p, 'b-o')
 plt.plot(x, p, 'b-')
 # plt.plot(x500, p500, 'g-')
 # plt.plot(x1000, p1000, 'b-')
@@ -140,6 +146,7 @@ plt.xlim([0, L])
 # plt.plot(xex,Pex,'r--', linewidth=0.5)
 plt.ylabel('Pressure p')
 plt.subplot(4, 1, 4)
+# plt.plot(x, e, 'b-o');
 plt.plot(x, e, 'b-');
 #plt.plot(x, [1 - dp for dp in s], 'r-');
 #plt.xlim([0,L])
