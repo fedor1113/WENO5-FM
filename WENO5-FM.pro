@@ -10,6 +10,7 @@ INCLUDEPATH += Eigen/
 SOURCES += \
         _vector4.cpp \
 		main.cpp \
+    miegruneisen.cpp \
     valarray_extra_operations.cpp
 
 HEADERS += \
@@ -25,6 +26,7 @@ HEADERS += \
     kfr1d.h \
 		kfr1d.h \
     lf_flux.h \
+    miegruneisen.h \
     rk6_5.h \
     ssprk10_4.h \
 		ssprk33.h \
@@ -35,4 +37,5 @@ HEADERS += \
 
 DISTFILES += \
     .gitignore \
-	plot.gnuplot
+	plot.gnuplot \
+    plot.py
