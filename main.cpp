@@ -1,6 +1,6 @@
-#pragma GCC optimize("Ofast")
-#pragma GCC target("avx,avx2,fma")
-#pragma GCC optimize("unroll-loops")
+//#pragma GCC optimize("Ofast")
+//#pragma GCC target("avx,avx2,fma")
+//#pragma GCC optimize("unroll-loops")
 
 #include <algorithm>
 #include <cstdio>
@@ -42,6 +42,18 @@ int main(int argc, char **argv) {
 	numeric_val tfinal = 0.0;  // [T]
 
 	numeric_val gamma = 1.4;
+
+//	Vector4<numeric_val> v{1., 2., 3., 0.};
+//	Vector4<numeric_val> v1{5., 6., 7., 0.};
+//	Vector4<numeric_val> res = projectCharacteristicVariablesBackOntoConserved(
+//				v1, projectOntoCharacteristics(v1, v1, 1.4), 1.4);
+//	std::cout << res << "\n";
+//	Vector4<numeric_val> f{
+//		0.75, 1.5625, 2.8359375000000004, 1.8750000000000004};
+//	Vector4<numeric_val> q{
+//		0.1, 0., 0., 0.};
+//	Vector4<numeric_val> res = projectOntoCharacteristics(q, f, 1.4);
+//	std::cout << res << "\n";
 
 	// std::valarray<Vec4> u_res(Vec4::ZERO, N_full);
 
@@ -190,7 +202,7 @@ int main(int argc, char **argv) {
 //			2001, 2501, 5001,
 //			10001}) {
 //		 : {21, 41, 81, 161, 321, 641}) {
-		 : {200}) {
+		 : {500}) {
 //		 : {1001}) {
 //		 : {26, 51, 101, 201, 401, 801/*, 1601, 3206*/}) {
 //		 : {50, 100, 200, 400, 800, 1600/*, 3200, 6400*/}) {
@@ -213,14 +225,22 @@ int main(int argc, char **argv) {
 
 		L = 1.;
 		cfl = 0.9;
-		tfinal = 0.2;
+		tfinal = 0.17;
 		solve1DRiemannProblemForEulerEq<numeric_val>(
 			u_res, x, gamma,
 			1., 0.75, 1.,
 			0.125, 0., 0.1, 0.3,
 			t, tfinal, 0., L,
 			primitiveToConservativeU<numeric_val>, Nx, cfl
-		);  // Modified Sod's problem (expansion-contact-shock). Toro-1
+		);  // Modified Sod's problem JCP 27:1 1978 (expansion-contact-shock). Toro-1
+//		solve1DHighGradientLaserProblem<numeric_val>(
+//			u_res,
+//			x,
+//			primitiveToConservativeU<numeric_val>,
+//			Nx,
+//			cfl,
+//			tfinal
+//		);
 
 //		solve1DDetonationProfileProblem<numeric_val>(
 //					u_res, x,
@@ -337,9 +357,9 @@ int main(int argc, char **argv) {
 
 		std::cout << j << " Done!" << "\n";
 
-//		std::system((
-//			"gnuplot -e \"filename='" + filepath + "'\" plot.gnuplot"
-//		).c_str());
+		std::system((
+			"gnuplot -e \"filename='" + filepath + "'\" plot.gnuplot"
+		).c_str());
 //		std::system((
 //			"gnuplot -e \"filename='" + u_filepath + "'\" plot.gnuplot"
 //		).c_str());
