@@ -16,8 +16,13 @@ Adapted from Ogre3D
 #include <valarray>
 #include <vector>
 
+#include "Eigen/Dense"
+
 /** 4-dimensional homogeneous vector.
 */
+
+
+// using namespace std;
 
 
 template <typename N>
@@ -55,6 +60,19 @@ public:
 
 	inline /*explicit*/ Vector4(const Vector4& V)
 		: x(V[0]), y(V[1]), z(V[2]), w(V[3]) {}  // copy ctor
+
+	// Eigen::Matrix conversion
+//	inline explicit Vector4(const Eigen::Matrix<N, 4, 1>& V)
+//		: x(V[0]), y(V[1]), z(V[2]), w(V[3]) {}
+
+//	inline explicit Vector4(const Eigen::Matrix<N, 4, 1>&& V)
+//		: x(V[0]), y(V[1]), z(V[2]), w(V[3]) {}
+
+	inline explicit Vector4(const Eigen::Matrix<N, 3, 1>& V)
+		: x(V[0]), y(V[1]), z(V[2]), w(0.) {}
+
+//	inline explicit Vector4(const Eigen::Matrix<N, 3, 1>&& V)
+//		: x(V[0]), y(V[1]), z(V[2]), w(0.) {}
 
 	inline N square() const
 	{

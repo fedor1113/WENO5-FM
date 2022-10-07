@@ -1,6 +1,6 @@
-#pragma GCC optimize("Ofast")
-#pragma GCC target("avx,avx2,fma")
-#pragma GCC optimize("unroll-loops")
+//#pragma GCC optimize("Ofast")
+//#pragma GCC target("avx,avx2,fma")
+//#pragma GCC optimize("unroll-loops")
 
 #ifndef WENO5_H
 #define WENO5_H
@@ -26,6 +26,7 @@
 #include <valarray>
 #include <vector>
 
+#include "_vector4.h"
 #include "arithmeticwith.h"
 
 // template class Vector4<double>;
@@ -1210,14 +1211,14 @@ void calcHydroStageFVWENO5FM(
 		std::advance(j_it_p, j + half_size + 1 - stencil_size);
 		u_plus = std::ranges::views::counted(j_it_p, 6);
 
-		u_plus_rec[j] = computeFHatWENO5FMReconstructionKernel(
+		u_plus_rec[j] = computeFHatWENO5JSReconstructionKernel(
 			std::ranges::views::counted(
 						std::ranges::begin(u_plus), 5), eps, p
 		);
 
 
 		u_minus = u_plus | std::ranges::views::reverse;
-		u_minus_rec[j] = computeFHatWENO5FMReconstructionKernel(
+		u_minus_rec[j] = computeFHatWENO5JSReconstructionKernel(
 			std::ranges::subrange(
 				std::ranges::begin(u_minus),
 						std::ranges::end(u_minus) - 1), eps, p
@@ -1232,20 +1233,125 @@ void calcHydroStageFVWENO5FM(
 }
 
 
-//template <ArithmeticWith<numeric_val> T>
-//void calcHydroStageCharWiseFV(
-//		const std::ranges::common_range auto&& u,
-//		T t,
-//		std::ranges::common_range auto&& u_plus_rec,
-//		std::ranges::common_range auto&& u_minus_rec,
-//		std::size_t n_ghost_cells = 3,
-//		T eps = 1e-40,
-//		T p = 2.) {
+template <ArithmeticWith<numeric_val> T, ArithmeticWith<numeric_val> VT>
+void calcHydroStageCharWiseFDWENO5FM(
+		const std::ranges::common_range auto&& u,
+		const std::ranges::common_range auto&& q_avg,
+		const std::ranges::common_range auto&& flux,
+		std::ranges::common_range auto&& numerical_flux,
+		T t,
+		auto&& project,
+//		auto&& deproject,
+		T alpha,
+		std::size_t n_ghost_cells = 3,
+		T eps = 1e-40,
+		T p = 2.) {
+	const unsigned order = 5;
+	const std::size_t stencil_size = order;
+	const std::size_t _actual_stencil_size = stencil_size + 1;  // 6
+	const std::size_t half_size = order / 2;  // 2
 
-//}
+	// r = (order + 1) / 2 = 3
+	assert(n_ghost_cells >= 3);
+	// const std::size_t n_ghost_cells = (stencil_size + 1) / 2;
+	const std::size_t mini = n_ghost_cells;
+	// const std::size_t maxi = n_ghost_cells + n_size - 1;
+	const std::size_t maxi = std::ranges::size(
+				numerical_flux) - n_ghost_cells - 1;
+	// auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 1};
+	auto shifted_index_range = std::ranges::common_view(
+				std::views::iota(mini - 1)
+					| std::views::take(maxi + 1 - (mini - 1) + 1));
+	VT fhatminus = static_cast<VT>(0.);
+	VT fhatplus = static_cast<VT>(0.);
+
+	auto j_it_q = std::ranges::begin(u);
+	auto j_it_f = std::ranges::begin(flux);
+
+	std::advance(j_it_q, mini - 1 + half_size + 1 - stencil_size);
+	std::advance(j_it_f, mini - 1 + half_size + 1 - stencil_size);
+	auto f_stencil = std::ranges::views::counted(j_it_f, 6);
+	auto q_stencil = std::ranges::views::counted(j_it_q, 6);
+
+	std::valarray<VT> u_plus(6);
+	std::valarray<VT> u_minus(6);
+
+	auto components = {
+		std::make_pair(0, &Vector4<T>::x),
+		std::make_pair(1, &Vector4<T>::y),
+		std::make_pair(2, &Vector4<T>::z)
+//		&Vector4<T>::w
+	};
+
+	std::for_each(
+				std::execution::par_unseq,
+				std::ranges::begin(shifted_index_range),
+				std::ranges::end(shifted_index_range),
+				[&](std::size_t j) {
+		j_it_q = std::ranges::begin(u);
+		j_it_f = std::ranges::begin(flux);
+		std::advance(j_it_q, j + half_size + 1 - stencil_size);
+		q_stencil = std::ranges::views::counted(j_it_q, 6);
+
+		std::advance(j_it_f, j + half_size + 1 - stencil_size);
+		f_stencil = std::ranges::views::counted(j_it_f, 6);
+
+		auto proj_u_j = [j, &q_avg, &project](auto u) -> decltype(u) {
+			const auto q = q_avg[j];
+			return project(q, u);
+		};
+
+//		auto deproj_u_j = [j, &q_avg, &deproject](auto u) -> decltype(u) {
+//			const auto q = q_avg[j];
+//			return deproject(q, u);
+//		};
+
+		// u_plus[0] = proj_u_j(f_stencil[0]);
+		// std::cout << u_plus[0] << "\n";
+
+		for (std::size_t k = 0; k < 6; ++ k)
+			u_plus[k] = (proj_u_j(f_stencil[k])
+					+ /*1.1 * */alpha * proj_u_j(q_stencil[k])) * 0.5;
+
+		for (std::size_t k = 0; k < 6; ++ k)
+			u_minus[k] = (proj_u_j(f_stencil[6 - k - 1])
+					- /*1.1 * */alpha * proj_u_j(q_stencil[6 - k - 1])) * 0.5;
+
+		for (auto& comp : components) {
+			fhatplus[comp.first] = computeFHatWENO5FMReconstructionKernel<T>(
+				std::ranges::views::counted(
+							std::ranges::begin(u_plus), 5)
+						| std::ranges::views::transform(
+							comp.second), eps, p
+			);
+//			if (j == 3)
+//			std::cout << t << " " << j << " ["
+//					<< q_avg[j] << "\n"
+//					<< proj_u_j(f_stencil[0]) << "\n"
+//					<< proj_u_j(q_stencil[0]) << "\n"
+//					<< alpha << "\n"
+//					<< alpha * proj_u_j(q_stencil[0]) << "\n"
+//					<< u_plus[0] << "\n"
+//					<< fhatplus << "\n"
+//					<< deproj_u_j(fhatplus)
+//					<< "]" << "\n\n";
+
+			fhatminus[comp.first] = computeFHatWENO5FMReconstructionKernel<T>(
+				std::ranges::views::counted(
+							std::ranges::begin(u_minus), 5)
+						| std::ranges::views::transform(
+							comp.second), eps, p
+			);
+		}
 
 
-template <ArithmeticWith<numeric_val> T>
+		numerical_flux[j] = fhatplus + fhatminus;
+	});
+	// std::cout << numerical_flux[3] << "\n";
+}
+
+
+// template <ArithmeticWith<numeric_val> T>
 void updateGhostPointsTransmissive(
 		std::ranges::common_range auto&& U,
 		std::size_t left_bound_size = 3,
@@ -1269,7 +1375,8 @@ void updateGhostPointsTransmissive(
 					[&U, left_bound_size](auto& n) {
 		n = U[left_bound_size];
 	});
-	// U[2] = U[mini]; U[1] = U[mini]; U[0] = U[mini];
+//	const std::size_t mini = left_bound_size;
+//	U[2] = U[mini]; U[1] = U[mini]; U[0] = U[mini];
 
 	std::for_each_n(/*std::execution::par_unseq,*/
 					right_boundary_start,
@@ -1277,11 +1384,12 @@ void updateGhostPointsTransmissive(
 					[&U, right_start_index](auto& n) {
 		n = U[right_start_index-1];
 	});
-	// U[maxi+1] = U[maxi]; U[maxi+2] = U[maxi]; U[maxi+3] = U[maxi];
+//	const std::size_t maxi = n_full_size - right_bound_size.value() - 1;
+//	U[maxi+1] = U[maxi]; U[maxi+2] = U[maxi]; U[maxi+3] = U[maxi];
 }
 
 
-template <ArithmeticWith<numeric_val> T>
+// template <ArithmeticWith<numeric_val> T>
 void updateGhostPointsPeriodic(
 		std::ranges::common_range auto&& U,
 		std::size_t left_bound_size = 3,
@@ -1309,9 +1417,9 @@ void updateGhostPointsPeriodic(
 //	std::cout << U[n_full_size-2-3-1]
 //			<< " " << U[n_full_size-1-3-1]
 //			<< " " << U[n_full_size-3-1] << "\n";
-	U[0] = U[n_full_size-2-3-1];
-	U[1] = U[n_full_size-1-3-1];
-	U[2] = U[n_full_size-3-1];
+	U[0] = U[n_full_size - 1 - 3 - 2];
+	U[1] = U[n_full_size - 1 - 3 - 1];
+	U[2] = U[n_full_size - 1 - 3 - 0];
 
 //	std::ranges::transform(
 //				U | std::ranges::views::drop(right_start_index),
@@ -1327,9 +1435,9 @@ void updateGhostPointsPeriodic(
 //	std::cout << U[3]
 //			<< " " << U[4]
 //			<< " " << U[5] << "\n";
-	U[n_full_size-2-1] = U[3];
-	U[n_full_size-1-1] = U[4];
-	U[n_full_size-1] = U[5];
+	U[n_full_size - 1 - 2] = U[3 + 0];
+	U[n_full_size - 1 - 1] = U[3 + 1];
+	U[n_full_size - 1 - 0] = U[3 + 2];
 }
 
 
