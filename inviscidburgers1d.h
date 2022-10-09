@@ -22,8 +22,17 @@ T calcInviscidBurgersFlux(T u) {
 	/* Calculate inviscid Bateman-Burgers' flux.
 	 */
 
-//	return u * u * 0.5;
-	return 1. * u;
+//	return u * u * u - std::sin(u);
+	return u * u * 0.5;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T calcLinearAdvectionFlux(T u, T alpha = 1.) {
+	/* Calculate linear advection flux.
+	 */
+
+	return alpha * u;
 }
 
 
@@ -32,8 +41,16 @@ T calcInviscidBurgersFluxDerivative(T u) {
 	/* Calculate inviscid Bateman-Burgers' flux derivative.
 	 */
 
-//	return u;
-	return 1.;
+	return u;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T calcLinearAdvectionDerivative(T u, T alpha = 1.) {
+	/* Calculate linear advection flux derivative.
+	 */
+
+	return alpha;
 }
 
 
@@ -44,7 +61,17 @@ T calcInviscidBurgersMaxWaveSpeed(
 	/* Calculate max |df/du| for the inviscid Bateman-Burgers' eq'n. */
 
 	// return *std::ranges::max_element(std::abs(u_arr));
-//	return std::abs(calcInviscidBurgersFluxDerivative(u_arr)).max();
+//	return std::ranges::max(3. * u_arr * u_arr - std::sin(u_arr));
+	return std::abs(calcInviscidBurgersFluxDerivative(u_arr)).max();
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T calcLinearAdvectionMaxWaveSpeed(
+		const /* std::ranges::common_range auto */std::valarray<T>& u_arr
+		) {
+	/* Calculate max |df/du| for the linear advection eq'n. */
+
 	return 1.;
 }
 
@@ -59,6 +86,47 @@ T BurgersSource(T x) {
 }
 
 
+
+template <ArithmeticWith<numeric_val> T>
+void calcInviscidBurgersPreciseGodunovNumericalFlux(
+		const std::ranges::common_range auto& u_p,
+		const std::ranges::common_range auto& u_m,
+		std::ranges::common_range auto& res_f,
+		auto&& calcPhysFlux) {
+	/* Compute Godunov flux for the inviscid Bateman-Burgers'
+	 * (Hopf) equation.
+	 */
+
+	std::transform(
+				std::execution::par_unseq,
+				std::ranges::begin(u_p),
+				std::ranges::end(u_p),
+				std::ranges::begin(u_m),
+				std::ranges::begin(res_f),
+				[&calcPhysFlux](T u_p_pt, T u_m_pt) {
+		T res = 0.;
+		if (u_m_pt <= u_p_pt && u_m_pt > 0.) {
+			res = calcPhysFlux(u_m_pt);
+		} else if (u_m_pt <= u_p_pt && u_m_pt < 0. && u_p_pt > 0.) {
+			res = calcPhysFlux(0.);
+		} else if (u_m_pt <= u_p_pt && u_p_pt < 0.) {
+			res = calcPhysFlux(u_p_pt);
+		} else if (u_m_pt > u_p_pt && u_p_pt > 0.) {
+			res = calcPhysFlux(u_m_pt);
+		} else if (u_m_pt > u_p_pt && u_p_pt < 0. && u_m_pt > 0.) {
+			if (std::abs(u_p_pt) > std::abs(u_m_pt)) {
+				res = calcPhysFlux(u_p_pt);
+			} else {
+				res = calcPhysFlux(u_m_pt);
+			}
+		} else if (u_m_pt > u_p_pt && u_m_pt < 0.)
+			res = calcPhysFlux(u_p_pt);
+
+		return res;
+	});
+}
+
+
 template <ArithmeticWith<numeric_val> T>
 std::valarray<T> calcFluxInviscidBurgersFVENO3(
 		const std::ranges::common_range auto U,
@@ -67,20 +135,31 @@ std::valarray<T> calcFluxInviscidBurgersFVENO3(
 	std::valarray<T> res(0., std::ranges::size(U));
 
 	// ----FD variant----
-//	for (std::size_t k = 0; k < std::ranges::size(U); ++ k)
-//		res[k] = calcInviscidBurgersFlux<T>(U[k]);
+//	std::transform(
+//				std::execution::par_unseq,
+//				std::ranges::begin(U),
+//				std::ranges::end(U),
+//				std::ranges::begin(res),
+//				[](T u) {
+//		return calcInviscidBurgersFlux<T>(u);
+//		// return calcLinearAdvectionFlux<T>(u);
+//	});
+////	for (std::size_t k = 0; k < std::ranges::size(U); ++ k)
+////		res[k] = calcInviscidBurgersFlux<T>(U[k]);
 
 //	// std::array<std::valarray<T>, 2> fs {
 //	// 			std::valarray<T>(0., U.size()),
 //	// 			std::valarray<T>(0., U.size())
 //	// };
 
-//auto [monotone_flux_component_pl,
+//	auto [monotone_flux_component_pl,
 //		monotone_flux_component_mn]  = splitFluxAsLaxFriedrichs<T>(
-//			U, res, 1.);
+//			U, res, lam[0]);
 
-//	updateGhostPointsPeriodic(monotone_flux_component_pl);
-//	updateGhostPointsPeriodic(monotone_flux_component_mn);
+//	// updateGhostPointsPeriodic(monotone_flux_component_pl);
+//	// updateGhostPointsPeriodic(monotone_flux_component_mn);
+//	updateGhostPointsTransmissive(monotone_flux_component_pl);
+//	updateGhostPointsTransmissive(monotone_flux_component_mn);
 
 //	calcHydroStageFDWENO5FM<T>(
 //				std::ranges::views::all(monotone_flux_component_pl),
@@ -101,11 +180,20 @@ std::valarray<T> calcFluxInviscidBurgersFVENO3(
 //	calcHydroStageFVENO3<T>(std::ranges::views::all(U),
 //							t, u_plus, u_minus, n_size);
 
-	calcLaxFriedrichsNumericalFlux(u_plus, u_minus, res,
-		[](const T u) {
-			return calcInviscidBurgersFlux<T>(u);
-		},
-		lam[0]);
+//	calcLaxFriedrichsNumericalFlux(u_plus, u_minus, res,
+//		[](const T u) {
+//			return calcInviscidBurgersFlux<T>(u);
+//			// return calcLinearAdvectionFlux<T>(u);
+//		},
+//		lam[0]);
+
+	calcInviscidBurgersPreciseGodunovNumericalFlux<T>(
+				u_plus, u_minus, res,
+				[](const T u) {
+		return calcInviscidBurgersFlux<T>(u);
+		// return calcLinearAdvectionFlux<T>(u);
+	});
+//	updateGhostPointsTransmissive(res);
 
 	return res;
 }
@@ -197,8 +285,9 @@ void integrate1DInviscidBurgersProblem(
 		timeStepFunction,
 		[](const decltype(u_sol)& u, T dt) {
 			T D = calcInviscidBurgersMaxWaveSpeed<T>(u);
+			// T D = calcLinearAdvectionMaxWaveSpeed<T>(u);
 
-			return D;
+			return /* 1.1 * */ D;
 		},
 		cfl
 	);
@@ -238,30 +327,40 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 			k < mesh_size + number_of_ghost_points;
 			++ k) {
 		switch (type) {
-//			case 0:
-//				u_init[k] = 0.;
-//			break;
-//			case 10:
-//				u_init[k] = (std::abs(x[k]) < 1 / 3.0) * 1.
-//					+ (std::abs(x[k]) >= 1 / 3.0) * (0.);
-//			break;
-//			case 20:
-//				u_init[k] = 0.5 + std::sin(
-//							std::numbers::pi_v<T> * x[k]);
-//			break;
-//			case 1:  // Toro-1
-//				u_init[k] = 1.0 * std::exp(-8.0 * x[k] * x[k]);
-//			break;
-			case 2:  // Henrick et al. 5.3. Linear advection example
+			case 0:
+				u_init[k] = 0.;
+			break;
+			case 10:
+				u_init[k] = (std::abs(x[k]) < 1 / 3.0) * 1.
+					+ (std::abs(x[k]) >= 1 / 3.0) * (0.);
+			break;
+			case 20:
+				u_init[k] = 0.5 + std::sin(
+							std::numbers::pi_v<T> * x[k]);
+			break;
+			case 1:  // Toro-1 for linear advection
+				u_init[k] = 1.0 * std::exp(-8.0 * x[k] * x[k]);
+			break;
+			case 2:  // Toro-2 for linear advection
+				u_init[k] = (x[k] >= 0.3) * (x[k] <= 0.7) * 1.;
+			break;
+			case 53:  // Henrick et al. 5.3. Linear advection example
 				u_init[k] = std::sin(
 							std::numbers::pi_v<T> * x[k] - std::sin(
 								std::numbers::pi_v<T> * x[k]
 								) / std::numbers::pi_v<T>);
+//				u_init[k] = sinq(
+//							M_PIq * x[k] - sinq(
+//								M_PIq * x[k]
+//								) / M_PIq);
+			break;
+			case 21:  // Evstigneev's first test for Hopf's eq'n
+				u_init[k] = std::pow(std::sin(x[k]), 9);
 			break;
 		}
 	}
-	// updateGhostPointsTransmissive(u_init);
-	updateGhostPointsPeriodic(u_init);
+	updateGhostPointsTransmissive(u_init);
+	// updateGhostPointsPeriodic(u_init);
 //	u_init[0] = -2;
 //	u_init[1] = -1;
 //	u_init[2] = 0;
@@ -310,8 +409,8 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 
 	auto updateGhostPoints = [&x, number_of_ghost_points, dx](
 			std::valarray<T>& u) {
-		// updateGhostPointsTransmissive(u);
-		updateGhostPointsPeriodic(u);
+		updateGhostPointsTransmissive(u);
+		// updateGhostPointsPeriodic(u);
 	};
 
 	std::valarray<T> flux(0., std::ranges::size(u_init));
@@ -355,10 +454,10 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 			const std::valarray<T>& lam,
 			std::size_t n_size
 		) {
-//			advanceTimestepTVDRK3<T>(
-//				u, dflux, fluxes[0].get(), fluxes[1].get(),
-//				t, dt, dx, lam,
-//				3, spaceOp, updateGhostPoints);
+			advanceTimestepTVDRK3<T>(
+				u, dflux, fluxes[0].get(), fluxes[1].get(),
+				t, dt, dx, lam,
+				3, spaceOp, updateGhostPoints);
 //			advanceTimestepSSPRK10_4<T>(
 //				u, dflux, fluxes[0].get(),
 //				t, dt, dx, lam,
@@ -370,16 +469,16 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 //				t, dt, dx, lam,
 //				n_size, spaceOp, secondDerivative,
 //				updateGhostPoints);
-			advanceTimestepRK6_5<T>(
-				u,
-				dflux,
-				fluxes[0].get(), fluxes[1].get(),
-				fluxes[2].get(), fluxes[3].get(),
-				fluxes[4].get(), fluxes[5].get(),
-				fluxes[6].get(), fluxes[7].get(),
-				fluxes[8].get(), fluxes[9].get(),
-				t, dt, dx, lam,
-				3, spaceOp, updateGhostPoints);
+//			advanceTimestepRK6_5<T>(
+//				u,
+//				dflux,
+//				fluxes[0].get(), fluxes[1].get(),
+//				fluxes[2].get(), fluxes[3].get(),
+//				fluxes[4].get(), fluxes[5].get(),
+//				fluxes[6].get(), fluxes[7].get(),
+//				fluxes[8].get(), fluxes[9].get(),
+//				t, dt, dx, lam,
+//				3, spaceOp, updateGhostPoints);
 		}, cfl);
 
 	return u_init;
