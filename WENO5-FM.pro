@@ -4,6 +4,7 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 LIBS += -ltbb
+LIBS += -ltbb
 
 INCLUDEPATH += Eigen/
 
@@ -27,6 +28,7 @@ HEADERS += \
 		kfr1d.h \
     lf_flux.h \
     miegruneisen.h \
+    rk4_4.h \
     rk6_5.h \
     ssprk10_4.h \
 		ssprk33.h \

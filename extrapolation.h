@@ -73,6 +73,7 @@ void polyfit(std::span<T> const argument_data,
 	for (std::size_t j = 0 ; j < argument_data.size(); ++ j)
 		for (std::size_t k = 0; k < order + 1; ++ k)
 			vandermonde_mat(j, k) = std::pow(argument_data[j], k);
+			// vandermonde_mat(j, k) = powq(argument_data[j], k);
 
 	// std::cout << vandermonde_mat << "\n";
 

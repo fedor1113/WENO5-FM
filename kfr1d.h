@@ -622,7 +622,7 @@ std::valarray<T> solve1DDetonationProfileProblem(
 	std::size_t mesh_size = 201, T cfl = 0.4
 ) {
 	T t = t0;
-	T dx = (l_max - l_min) / (mesh_size - 1);
+	T dx = (l_max - l_min) / (mesh_size/* - 1*/);
 	const std::size_t number_of_ghost_points = 3;
 
 	prepare1DDetonationProfileProblem<T>(

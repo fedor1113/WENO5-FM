@@ -6,41 +6,43 @@
 #include "arithmeticwith.h"
 
 
+template <ArithmeticWith<numeric_val> T>
 class FEOS {
 public:
-	// virtual double getp(double ro, double e) = 0;
-	// virtual double gete(double ro, double p) = 0;
-	// virtual double getc(double ro, double p) = 0;
+	// virtual T getp(T ro, T e) = 0;
+	// virtual T gete(T ro, T p) = 0;
+	// virtual T getc(T ro, T p) = 0;
 	virtual std::string gettype(void) = 0;
-	virtual double getdpdrho(double rho, double e) = 0;
-	virtual double getdpde(double rho, double e) = 0;
-};
-
-
-class FEOSMieGruneisen : public FEOS {
-public:
-	const double ro0;
-	FEOSMieGruneisen(): ro0(998.2) {}     // ro0 = [kg/m3]
-	FEOSMieGruneisen(double _ro0, double _e0) : ro0(_ro0) {}
-	double getp(double ro, double e);
-	double gete(double ro, double p);
-	double getc(double ro, double p);
-	double getG(double ro);
-	// Derivatives of G, p0, KS
-	double getGPrime(double ro);
-	double getp0Prime(double ro);
-	double getKSPrime(double ro, double e);
-	// Cold components, Born-Meyer potential
-	double getp0(double ro);
-	double gete0(double ro);
-	std::string gettype(void) {return std::string("mg"); }
-	double getdpdrho(double rho, double e) {return 0.;}
-	double getdpde(double rho, double e) {return 0.;}
+	virtual T getdpdrho(T rho, T e) = 0;
+	virtual T getdpde(T rho, T e) = 0;
 };
 
 
 template <ArithmeticWith<numeric_val> T>
-class FEOSMieGruneisenAl : public FEOS {
+class FEOSMieGruneisen : public FEOS<T> {
+public:
+	const T ro0;
+	FEOSMieGruneisen(): ro0(998.2) {}     // ro0 = [kg/m3]
+	FEOSMieGruneisen(T _ro0, T _e0) : ro0(_ro0) {}
+	T getp(T ro, T e);
+	T gete(T ro, T p);
+	T getc(T ro, T p);
+	T getG(T ro);
+	// Derivatives of G, p0, KS
+	T getGPrime(T ro);
+	T getp0Prime(T ro);
+	T getKSPrime(T ro, T e);
+	// Cold components, Born-Meyer potential
+	T getp0(T ro);
+	T gete0(T ro);
+	std::string gettype(void) {return std::string("mg"); }
+	T getdpdrho(T rho, T e) {return 0.;}
+	T getdpde(T rho, T e) {return 0.;}
+};
+
+
+template <ArithmeticWith<numeric_val> T>
+class FEOSMieGruneisenAl : public FEOS<T> {
 public:
 	constexpr static const T ro0 = 2700.;
 	// FEOSMieGruneisenAl(): /*ro0(2700.)*/ {}     // ro0 = [kg/m3]
