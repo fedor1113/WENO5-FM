@@ -206,6 +206,26 @@ T alphaWENO5FMWeight(
 
 
 template <ArithmeticWith<numeric_val> T>
+T alphaWENO5ZMWeight(
+		T beta_IS_coefficient,
+		T tau_5,
+		T epsilon = 1e-40,
+		T p = 2.) {
+	/* Compute appropriate alpha(α)-weights for the WENO5-ZM scheme,
+	 * by which the inverses of smoothness indicators are meant,
+	 * so inverse beta(β) with the caveat of aritificially finite
+	 * answers using the added epsilon-parameter to the beta-weights.
+	 *
+	 * `p` controls (increases) the amount of numerical dissipation
+	 * (it's recommended to take it = r-1 for 2r-1 order schemes,
+	 * so 2 for WENO5).
+	 */
+
+	return 1. + std::pow(tau_5 / (beta_IS_coefficient + epsilon), p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
 void lambdaWENO5FMWeights(
 		const std::ranges::common_range auto&& alpha_weights,
 		std::ranges::common_range auto&& res) {
@@ -837,6 +857,98 @@ T computeFHatWENO5FMReconstructionKernel(
 }
 
 
+template <ArithmeticWith<numeric_val> T>
+T computeFHatWENO5ZMReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-40, T p = 2.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical
+	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
+	 * (receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '+'
+	 *                (or [j+3, j+2, j+1, j+0, j-1, ...] for '-')
+	 *                      ^    ^    ^    ^    ^    ^
+	 *                      0    1    2    3    4    |
+	 * in either case for convenience).
+	 *
+	 * I.e. this function implements the upwind reconstruction which
+	 * should be used for positive fluxes (with information propagated
+	 * from left to right) if the nodes are passed in order. However,
+	 * the downwind reconstruction should obviously look the same
+	 * modulo flipping the values with respect to j+0, so that it
+	 * becomes downwind biased and takes one extra point to the right
+	 * instead of taking one extra to the left. In other words, to get
+	 * this to behave as a downwind reconstrution we need to pass
+	 * the points symmetric to those of upwind reconstruction with
+	 * respect to j+0:
+	 * [j+3, j+2, j+1, j+0, j-1, ...]. (We reverse the points in
+	 *      [j-2, j-1, j+0, j+1, j+2] j+3 and get
+	 *                  |
+	 * [j+3, j+2, j+1, j+0, j-1] j-2.)
+	 *
+	 * Borges et al.'s WENO5-Z. Then in improves this by the symmetric
+	 * mapping of Hong et al.
+	 */
+
+	// `p` controls (increases) the amount of numerical dissipation
+	// and in WENO-Z(M) changing the value of p alters convergence
+	// rates at critical points (it's recommended to take it = r-1
+	// for 2r-1 order schemes, so 2 for WENO5-Z(M)). For WENO7-Z(M)
+	// p = 4.
+	//
+	// `eps` is a small positive parameter to avoid the denominator
+	// of weights being zero
+	// (though it, too, can be significant for convergence properties
+	// and should ideally be tailored to the specific comp. problem,
+	// as first noted and more or less fully outlined by Henrick et al.)
+
+	// f_stencil = f_plus (or a reversed stencil for f_minus)
+
+	std::valarray<T> beta_IS_coefs(3);
+
+	T f_hat = 0.;
+
+	// smoothness indicators of the stencil
+	// (measure how smooth u is in the stencil)
+//	 beta_IS_coefs = betaSmoothnessIndicatorsMat(f_stencil);
+
+	// The non-matrix variant seems to be faster(?)
+	beta_IS_coefs = betaSmoothnessIndicators<T>(f_stencil);
+	T tau_5 = std::abs(beta_IS_coefs[2] - beta_IS_coefs[0]);
+
+	std::array<T, 3> alpha_weights;
+	std::ranges::transform(
+				beta_IS_coefs,
+				std::ranges::begin(alpha_weights),
+				[tau_5, eps, p](auto beta) {
+		return alphaWENO5ZMWeight(beta, tau_5, eps, p);
+	});
+
+	std::array<T, 3> lambda_weights;
+	lambdaWENO5FMWeights<T>(std::move(alpha_weights), lambda_weights);
+
+	std::valarray<T> omega_weights = omegaWENO5FMWeights<T>(
+				std::move(lambda_weights));
+
+	// vecMatDot<T>(u_..., WmN...) stores a 3-rd order estimate of
+	// f_{i+1/2} via linear combinations with WmNplus coefficients
+	// for each substencil which is then used to calculate
+	// f_hat = ∑ ω * q = [ω] * (WmN(+/-) * [f])
+	// using the nonlinear weights [ω]
+//	f_hat = std::inner_product(
+//		std::ranges::begin(omega_weights), std::ranges::end(omega_weights),
+//		std::ranges::begin(f3OrdReconstructionFromStencil(f_stencil)), 0.
+//	);
+
+	std::valarray<T> eno_reconstructed_f
+			= f3OrdReconstructionFromStencil<T>(f_stencil);
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2];
+
+	return f_hat;
+}
+
+
 //template <ArithmeticWith<numeric_val> T>
 //T computeFHatWENO5FMReconstructionKernelRev(std::span<T, 5> f_stencil,
 //											T eps = 1e-40, T p = 2.) {
@@ -1211,14 +1323,14 @@ void calcHydroStageFVWENO5FM(
 		std::advance(j_it_p, j + half_size + 1 - stencil_size);
 		u_plus = std::ranges::views::counted(j_it_p, 6);
 
-		u_plus_rec[j] = computeFHatWENO5JSReconstructionKernel(
+		u_plus_rec[j] = computeFHatWENO5FMReconstructionKernel(
 			std::ranges::views::counted(
 						std::ranges::begin(u_plus), 5), eps, p
 		);
 
 
 		u_minus = u_plus | std::ranges::views::reverse;
-		u_minus_rec[j] = computeFHatWENO5JSReconstructionKernel(
+		u_minus_rec[j] = computeFHatWENO5FMReconstructionKernel(
 			std::ranges::subrange(
 				std::ranges::begin(u_minus),
 						std::ranges::end(u_minus) - 1), eps, p
@@ -1481,7 +1593,7 @@ void timeOperator(
 		dt = cfl * dx / lam[0];
 		// dt = 8. * std::pow(dx, 5./3.);
 	}
-	std::cout << "t = " << t << "\n";
+	// std::cout << "t = " << t << "\n";
 
 	// return U;
 }
