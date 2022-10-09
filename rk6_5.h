@@ -34,6 +34,13 @@ void advanceTimestepRK6_5(
 	/* 5th Order 6 Stage Explicit Runge-Kutta Scheme (ERK(6,5))
 	 * to discretize a method-of-lines (MOL) ODE
 	 * du/dt = L[u], where L is some spatial operator.
+	 *
+	 * This is an embedded RK(6, 5) / SSP(3, 3) method introduced
+	 * in Colin Barr Macdonald's thesis:
+	 * see 'Constructing High-Order Runge-Kutta Methods with
+	 * Embedded Strong-Stability-Preserving Pairs' (2001)
+	 * and successfully employed by Henrick et al. with WENO5-M
+	 * to resolve detonation waves.
 	 */
 
 	// std::slice Nint(3, nSize, 1);
