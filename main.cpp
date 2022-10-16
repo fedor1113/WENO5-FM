@@ -311,7 +311,7 @@ int main(int argc, char **argv) {
 
 		solve1DDetonationProfileProblem<numeric_val>(
 					u_res, x,
-					4.5, 0.1, 0.05, 0.1,
+					4.5, 0.1, 0.05, 0.5,
 					u_s, times,
 					1e-6,
 					0., tfinal, -L, 0.,
@@ -364,7 +364,7 @@ int main(int argc, char **argv) {
 		std::ofstream outfile;
 
 		std::string folder =
-				"./data/det/ERK_6_5-FD-WENO7-FM-CFL-1.5-ext_ord-7-corr/alpha_3.9_beta_0.1/a_0.05_k_0.1/";
+				"./data/det/ERK_6_5-FD-WENO7-FM-CFL-1.5-ext_ord-7-corr/alpha_4.5_beta_0.1/a_0.05_k_0.5/";
 //		std::string folder = "./data/";
 //		std::string folder = "./data/det/ext_ord_4/SSPRK_3_3-FD-WENO5-FM-CFL-0.4/alpha_3.9_beta_0.1/a_0.0_k_0.0/";
 //		std::string folder = "./";
@@ -472,12 +472,12 @@ int main(int argc, char **argv) {
 
 		std::cout << j << " Done!" << "\n";
 
-		std::system((
-			"gnuplot -e \"filename='" + filepath + "'\" plot.gnuplot"
-		).c_str());
-		std::system((
-			"gnuplot -e \"filename='" + u_filepath + "'\" plot.gnuplot"
-		).c_str());
+//		std::system((
+//			"gnuplot -e \"filename='" + filepath + "'\" plot.gnuplot"
+//		).c_str());
+//		std::system((
+//			"gnuplot -e \"filename='" + u_filepath + "'\" plot.gnuplot"
+//		).c_str());
 	}
 	return 0;
 }
