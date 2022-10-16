@@ -156,14 +156,19 @@ T kfrSteadyStateSol(T x, T amp, T beta, T epsilon = 1e-6) {
 // template <ArithmeticWith<numeric_val> T, std::size_t N>
 // void polyfit(std::span<T> const, std::span<T> const, std::span<T, N>);
 
+const std::size_t EXT_ORD = 7;
 template
-void polyfit<numeric_val, 5>(std::span<numeric_val> const argument_data,
+void polyfit<numeric_val, EXT_ORD>(
+			std::span<numeric_val> const argument_data,
 			std::span<numeric_val> const function_value_data,
-			std::span<numeric_val, 5 + 1> fitted_polynomial_coefficients,
-			Eigen::Matrix<numeric_val, Eigen::Dynamic, 5 + 1>& vandermonde_mat);
+			std::span<numeric_val,
+						EXT_ORD + 1> fitted_polynomial_coefficients,
+			Eigen::Matrix<numeric_val, Eigen::Dynamic,
+						EXT_ORD + 1>& vandermonde_mat);
 
 
-Eigen::Matrix<numeric_val, Eigen::Dynamic, 5 + 1> VANDERMONDE_MAT(5 + 1, 5 + 1);
+Eigen::Matrix<numeric_val, Eigen::Dynamic,
+			EXT_ORD + 1> VANDERMONDE_MAT(EXT_ORD + 1, EXT_ORD + 1);
 
 
 template <typename T>
@@ -230,7 +235,7 @@ void updateGhostPointsForDetonationProfile(
 
 
 	// --------------------------Right continuation---------------------
-	const std::size_t order = 5;  // right boundary extrapolation order
+	const std::size_t order = EXT_ORD;  // right boundary extrapolation ord
 
 //	std::ranges::for_each(u_right,
 //						  [&u_interior](auto& u_r) {
@@ -277,14 +282,18 @@ std::valarray<T> calcFDSplitFlux(
 			monotone_flux_component_mn] = splitFluxAsLaxFriedrichs(
 				std::views::all(u), u_flux, lam[0]);
 
-	calcHydroStageFDWENO5FM<T>(
+//	calcHydroStageFDWENO5FM<T>(
+//		std::views::all(monotone_flux_component_pl),
+//		std::views::all(monotone_flux_component_mn),
+//		t, u_flux, number_of_ghost_points, eps, p);
+	calcHydroStageFDWENO7FM<T>(
 		std::views::all(monotone_flux_component_pl),
 		std::views::all(monotone_flux_component_mn),
 		t, u_flux, number_of_ghost_points, eps, p);
 
 //	const std::size_t u_size = std::ranges::size(u);
 //	std::valarray<T> res(u_size);
-//	T u_s = u[u_size - 1 - 3];
+//	T u_s = u[u_size - 1 - number_of_ghost_points];
 
 //	std::array<std::valarray<T>, 2> u_reconstruction {
 //		std::valarray<T>(u_size),
@@ -314,11 +323,12 @@ std::valarray<T> calcFluxForKFR(
 		T& x0_lab,
 		T amp,
 		T wn,
+		std::size_t number_of_ghost_points = 3,
 		T eps = 1e-40,
 		T p = 2.) {
 	const std::size_t u_size = std::ranges::size(u);
 	std::valarray<T> res(u_size);
-	T u_s = u[u_size - 1 - 3];
+	T u_s = u[u_size - 1 - number_of_ghost_points];
 	std::transform(
 		std::execution::par_unseq,
 		std::ranges::begin(u),
@@ -328,7 +338,7 @@ std::valarray<T> calcFluxForKFR(
 			return reactiveBurgersFlux(u_pt, u_s, amp, x0_lab, wn, +1);
 	});
 
-	return calcFDSplitFlux(u, res, t, lam, 3, eps, p);
+	return calcFDSplitFlux(u, res, t, lam, number_of_ghost_points, eps, p);
 }
 
 
@@ -339,11 +349,12 @@ std::valarray<T> calcFluxJacobianForKFR(
 		T& x0_lab,
 		T amp,
 		T wn,
+		std::size_t number_of_ghost_points = 3,
 		T eps = 1e-40,
 		T p = 2.) {
 	const std::size_t u_size = std::ranges::size(u);
 	std::valarray<T> res(u_size);
-	T u_s = u[u_size - 1 - 3];
+	T u_s = u[u_size - 1 - number_of_ghost_points];
 	std::transform(
 		std::execution::par_unseq,
 		std::ranges::begin(u),
@@ -354,7 +365,7 @@ std::valarray<T> calcFluxJacobianForKFR(
 						u_pt, u_s, amp, x0_lab, wn, +1);
 	});
 
-	return calcFDSplitFlux(u, res, t, lam, 3, eps, p);
+	return calcFDSplitFlux(u, res, t, lam, number_of_ghost_points, eps, p);
 }
 
 
@@ -381,12 +392,13 @@ std::valarray<T> calcSpatialOperatorTimeDerivativeForKFR(
 		T wn,
 		T alpha,
 		T beta,
+		std::size_t number_of_ghost_points = 3,
 		T eps = 1e-40,
 		T p = 2.) {
 	const std::size_t u_size = std::ranges::size(u);
 
-	T u_s = u[u_size - 1 - 3];
-	T du_s = du[u_size - 1 - 3];
+	T u_s = u[u_size - 1 - number_of_ghost_points];
+	T du_s = du[u_size - 1 - number_of_ghost_points];
 	T D = calcDshock<T>(u_s, amp, std::ref(x0_lab), wn);
 	T du_a_over_dt = D * amp * wn * std::cos(wn * x0_lab) / (1. - amp);
 	std::valarray<T> res(u_size);
@@ -400,7 +412,7 @@ std::valarray<T> calcSpatialOperatorTimeDerivativeForKFR(
 		return reactiveBurgersFluxDerivative(
 					u_pt, u_s, amp, x0_lab, wn, +1);
 	});
-	res = calcFDSplitFlux(u, res, t, lam, 3, eps, p);
+	res = calcFDSplitFlux(u, res, t, lam, number_of_ghost_points, eps, p);
 	// L_h [dF[u_h] / du]
 
 	auto iv1 = std::ranges::common_view(
@@ -427,15 +439,19 @@ template <ArithmeticWith<numeric_val> T, typename... Args>
 std::valarray<T> calcdSpaceDet(
 	std::span<T> const u, std::span<T> const x, T t, T dx,
 	const std::ranges::common_range auto& lam,
-	std::size_t n_size,
+	std::size_t number_of_ghost_points/* = 3*/,
 	auto&& calcFlux,
 	auto&& addSource,
 	Args... opts
 ) {
-	std::valarray<T> dflux(0., u.size());
-	std::valarray<T> lf = calcFlux(u, t, lam, n_size, opts...);
+	const std::size_t n_size = std::ranges::size(u)
+			- 2 * number_of_ghost_points;
 
-	const std::size_t ghost_point_number = 3;
+	std::valarray<T> dflux(0., u.size());
+	std::valarray<T> lf = calcFlux(u, t, lam,
+				number_of_ghost_points, opts...);
+
+	const std::size_t ghost_point_number = number_of_ghost_points;
 
 	// std::slice Nweno(ghost_point_number, n_size, 1);
 	// std::slice Nweno_shifted_by_neg_1(ghost_point_number-1, n_size, 1);
@@ -488,20 +504,28 @@ void prepare1DDetonationProfileProblem(
 
 	std::size_t k = 0;
 	for (k = 0; k < std::ranges::size(u_left); ++ k)
-		x[k] = l_min - dx * (std::ranges::size(u_left) - k);
+		x[k] = l_min
+				- dx * static_cast<T>(std::ranges::size(u_left) - k);
 
 	x[std::ranges::size(u_left)] = l_min;
-	for (k = std::ranges::size(u_left) + 1;
-		 k < std::ranges::size(u_left)
-			+ std::ranges::size(u_interior)
+//	for (k = std::ranges::size(u_left) + 1;
+//		 k < std::ranges::size(u_left)
+//			+ std::ranges::size(u_interior)
+//			+ std::ranges::size(u_right);
+//		 ++ k)
+//		x[k] = x[k-1] + dx;
+
+	for (k = 1;
+		 k < std::ranges::size(u_interior)
 			+ std::ranges::size(u_right);
 		 ++ k)
-		x[k] = x[k-1] + dx;
+		x[std::ranges::size(u_left) + k] = l_min + dx * k;
 
 	std::size_t x0_index = 0;
 	T q0 = l_max;
 	while (x[x0_index] < q0)
 		++ x0_index;
+	x[x0_index] = 0.;
 
 	// std::size_t ishock = std::ranges::size(u_interior) + 3;
 	// the shock state, i.e. the right boundary
@@ -516,9 +540,10 @@ void prepare1DDetonationProfileProblem(
 	});
 	// steady-state solution u0
 
-	updateGhostPointsForDetonationProfile(
+	updateGhostPointsForDetonationProfile<T>(
 		u_interior, u_left, u_right, x, dx
 	);
+	// std::cout << "hmm -_-" << "\n";
 }
 
 
@@ -528,7 +553,7 @@ void integrate1DDetonationProfileProblem(
 	std::ranges::common_range auto& flux,
 	std::ranges::common_range auto& u_s_sol,
 	std::ranges::common_range auto& times,
-	T t0, T dx, std::size_t n_size, T t_fin,
+	T t0, T dx, std::size_t number_of_ghost_points, T t_fin,
 	T amp, T wn,
 	auto&& timeStepFunction,
 	T cfl = 0.4
@@ -564,24 +589,24 @@ void integrate1DDetonationProfileProblem(
 	std::size_t time_index = 0;
 
 	timeOperator<T>(
-		u_sol, flux, fluxes, t0, dx, n_size, t_fin,
+		u_sol, flux, fluxes, t0, dx, number_of_ghost_points, t_fin,
 		timeStepFunction,
 		[amp, wn, &x0_lab,
 		&time_index,
-		&u_sol, &u_s_sol, &times, t0](
+		&u_sol, &u_s_sol, &times, t0, number_of_ghost_points](
 				const decltype(u_sol)& u, T dt) -> T {
-			T u_s = u[std::ranges::size(u)-1-3];
-			T D = calcDshock<T>(
-							u[std::ranges::size(u)-1-3],
-							amp, std::ref(x0_lab), wn);
+			T u_s = u[std::ranges::size(u) - 1
+						- number_of_ghost_points];
+			T D = calcDshock<T>(u_s, amp, std::ref(x0_lab), wn);
+
+			x0_lab += D * dt;
+			D = calcDshock<T>(u_s, amp, std::ref(x0_lab), wn);
 
 			auto a0 = std::ranges::views::transform(
 					[D](const auto& u_pt) -> T {
 				// return (u_pt - D);
-				return reactiveBurgersFluxDerivative(u_pt, D);
+				return std::abs(reactiveBurgersFluxDerivative(u_pt, D));
 			});
-
-			x0_lab += D * dt;
 
 			if (std::ranges::size(u_s_sol) <= time_index) {
 				u_s_sol.resize(2 * std::ranges::size(u_s_sol));
@@ -619,18 +644,21 @@ std::valarray<T> solve1DDetonationProfileProblem(
 	T epsilon=1e-6,
 	// T q0, // Initial coordinate of the discontinuity
 	T t0 = 0., T t_max = 3000, T l_min = -10., T l_max = 0.,
-	std::size_t mesh_size = 201, T cfl = 0.4
+	std::size_t mesh_size = 201, T cfl = 0.4,
+	std::size_t number_of_ghost_points = 4
 ) {
 	T t = t0;
-	T dx = (l_max - l_min) / (mesh_size/* - 1*/);
-	const std::size_t number_of_ghost_points = 3;
+	T dx = (l_max - l_min) / (mesh_size - 1);
+	// const std::size_t number_of_ghost_points = 3;
 
 	prepare1DDetonationProfileProblem<T>(
 		std::span<T>{u_init},
-		std::span<T>{std::begin(u_init)+number_of_ghost_points,
-			std::end(u_init)-number_of_ghost_points},
-		std::span<T>{std::begin(u_init), number_of_ghost_points},
-		std::span<T>{std::end(u_init)-3, number_of_ghost_points},
+		std::span<T>{std::begin(u_init) + number_of_ghost_points,
+			std::end(u_init) - number_of_ghost_points},
+		std::span<T>{std::begin(u_init),
+			number_of_ghost_points},
+		std::span<T>{std::end(u_init) - number_of_ghost_points,
+			number_of_ghost_points},
 		std::span<T>{std::begin(x), std::end(x)},
 		dx, /* T q0, */ l_min, l_max,
 		alpha, beta, amp, epsilon);
@@ -640,22 +668,25 @@ std::valarray<T> solve1DDetonationProfileProblem(
 //		std::valarray<T>(std::ranges::size(u_init))
 //	};
 
-	auto spaceOp = [alpha, beta, amp, wn, &x/*, &monotone_flux_components*/](
+	auto spaceOp = [
+			alpha, beta, amp, wn, &x, number_of_ghost_points
+			/*, &monotone_flux_components*/](
 			std::span<T> const u,
 			T t, T dx, const std::valarray<T>& max_eigenvalues,
 			T n_size, T x0_lab) {
 		return calcdSpaceDet<T>(
 				u, std::span{x},
-				t, dx, max_eigenvalues, n_size,
+				t, dx, max_eigenvalues, number_of_ghost_points,
 				[amp, wn](
 						std::span<T> u,
 						T t, const std::valarray<T>& lam,
-						std::size_t n_size, T x0_lab,
+						std::size_t number_of_ghost_points, T x0_lab,
 						T eps = 1e-40, T p = 2.) {
 					return calcFluxForKFR<T>(
-						u, t, lam, x0_lab, amp, wn, eps, p);
+						u, t, lam, x0_lab, amp, wn,
+						number_of_ghost_points, eps, p);
 				},
-				[alpha, beta, amp](
+				[alpha, beta, amp, number_of_ghost_points](
 						std::span<T> const u,
 						std::valarray<T>& f,
 						std::span<T> x) {
@@ -663,15 +694,16 @@ std::valarray<T> solve1DDetonationProfileProblem(
 							std::execution::par_unseq,
 							std::begin(x), std::end(x),
 							std::begin(f), std::begin(f),
-							[&u, alpha, beta, amp](
+							[&u, alpha, beta, amp, number_of_ghost_points](
 									const auto x_el,
 									const auto f_el) {
-						T u_s = u[std::ranges::size(u) - 1 - 3];
+						T u_s = u[std::ranges::size(u) - 1
+									- number_of_ghost_points];
 						return f_el + reactiveBurgersSource<T>(
 								x_el, u_s, alpha, beta, amp);
 					});
 				},
-				x0_lab, 1e-40, 2.
+				x0_lab, 1e-40, 3.
 		);
 	};
 
@@ -690,10 +722,12 @@ std::valarray<T> solve1DDetonationProfileProblem(
 	auto updateGhostPoints = [&x, number_of_ghost_points, dx](
 			std::valarray<T>& u) {
 		updateGhostPointsForDetonationProfile<T>(
-			std::span<T>{std::begin(u)+number_of_ghost_points,
-				std::end(u)-number_of_ghost_points},
-			std::span<T>{std::begin(u), number_of_ghost_points},
-			std::span<T>{std::end(u)-3, number_of_ghost_points},
+			std::span<T>{std::begin(u) + number_of_ghost_points,
+				std::end(u) - number_of_ghost_points},
+			std::span<T>{std::begin(u),
+				number_of_ghost_points},
+			std::span<T>{std::end(u) - number_of_ghost_points,
+				number_of_ghost_points},
 			std::span<T>{std::begin(x), std::end(x)},
 			dx
 		);
@@ -703,7 +737,7 @@ std::valarray<T> solve1DDetonationProfileProblem(
 
 	integrate1DDetonationProfileProblem<T>(u_init, flux,
 		u_s_sol, times,
-		t0, dx, mesh_size, t_max, amp, wn,
+		t0, dx, number_of_ghost_points, t_max, amp, wn,
 		[&spaceOp, /*&secondDerivative, */&updateGhostPoints/*, &ddflux*/](
 //		[&spaceOp, &updateGhostPoints](
 			std::valarray<T>& u,
@@ -716,13 +750,14 @@ std::valarray<T> solve1DDetonationProfileProblem(
 			>, 10> fluxes,
 			T t, T dt, T dx,
 			const std::valarray<T>& lam,
-			std::size_t n_size,
+			std::size_t number_of_ghost_points,
 			T& x0_lab
 		) {
 //			advanceTimestepTVDRK3<T>(
 //				u, dflux, fluxes[0].get(), fluxes[1].get(),
 //				t, dt, dx, lam,
-//				3, spaceOp, updateGhostPoints, x0_lab);
+//				number_of_ghost_points,
+//				spaceOp, updateGhostPoints, x0_lab);
 //			advanceTimestepSSPRK10_4<T>(
 //				u, dflux, fluxes[0].get(),
 //				t, dt, dx, lam,
@@ -743,7 +778,8 @@ std::valarray<T> solve1DDetonationProfileProblem(
 				fluxes[6].get(), fluxes[7].get(),
 				fluxes[8].get(), fluxes[9].get(),
 				t, dt, dx, lam,
-				3, spaceOp, updateGhostPoints, x0_lab);
+				number_of_ghost_points,
+				spaceOp, updateGhostPoints, x0_lab);
 		}, cfl);
 
 	return u_init;

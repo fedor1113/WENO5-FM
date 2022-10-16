@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 // #include <format>
 #include <fstream>
 // #include <initializer_list>
@@ -28,6 +29,43 @@
 // using Vec4 = Vector4<numeric_val>;
 
 
+//std::valarray<numeric_val> process_initial_condition_file(
+//		std::filesystem::path filename, bool vector=false) {
+//	if (vector)
+//		std::valarray<Vec4> ic;
+//	else
+//		std::valarray<numeric_val> ic;
+
+//	std::ifstream infile(filename);
+//	std::filesystem::path filepath = filename;
+
+//	if (!std::filesystem::is_regular_file(filepath))
+//		throw std::runtime_error(
+//				"Input does not appear to be a regular file!");
+
+//	auto size = std::filesystem::file_size(filename);
+//	ic.resize(size);
+
+//	std::size_t k = 0;
+//	if (infile.is_open()) {
+//		while (infile) {
+//			if (vector) {
+//				ic[k] = Vector4<numeric_val>::ZERO;
+//				infile >> ic[k][0] >> ic[k][1] >> ic[k][2];
+//			} else {
+//				infile >> ic[k];
+//			}
+
+//			++ k;
+//		}
+//	}
+
+//	infile.close();
+
+//	return ic;
+//}
+
+
 int main(int argc, char **argv) {
 	// std::ios::sync_with_stdio(false);
 	// std::cin.tie(nullptr);
@@ -35,7 +73,8 @@ int main(int argc, char **argv) {
 	std::size_t k = 0;
 
 	std::size_t Nx = 201;
-	const std::size_t N_ghost_points = 3;
+	// const std::size_t N_ghost_points = 3;
+	const std::size_t N_ghost_points = 4;
 	std::size_t N_full = Nx + 2*N_ghost_points;
 	// Nx = Nx + 6;  // Add in ghost cells
 	numeric_val L = 1.;  // [L]
@@ -56,6 +95,12 @@ int main(int argc, char **argv) {
 //	Vector4<numeric_val> q{
 //		0.1, 0., 0., 0.};
 //	Vector4<numeric_val> res = projectOntoCharacteristics(q, f, 1.4);
+//	std::cout << res << "\n";
+//	Vector4<numeric_val> f{
+//		170.44085, 5002.99595, 113833.09615, 6237.88407};
+//	Vector4<numeric_val> q{
+//		6.02673, -47.88855, 10.33898, 19.2305};
+//	Vector4<numeric_val> res = projectOntoCharacteristics<numeric_val>(q, f, 1.4);
 //	std::cout << res << "\n";
 
 	// std::valarray<Vec4> u_res(Vec4::ZERO, N_full);
@@ -206,17 +251,23 @@ int main(int argc, char **argv) {
 //			10001}) {
 //		 : {21, 41, 81, 161, 321, 641}) {
 //		 : {100000}) {
-//		 : {1001}) {
+//		 : {51, 81, 101, 151, 201, 2001, 10001}) {
 //		 : {26, 51, 101, 201, 401, 801/*, 1601, 3206*/}) {
 //		 : {50, 100, 200, 400, 800, 1600, 3200, 6400}) {
 //		 : {50, 80, 100, 150, 200, 2000, 10000}) {
-		 : {50, 80, 100,
-			150, 200, 400, 500, 600, 700, 800, 900,
-			1000, 1200, 1600, 2000, 3200/*, 6400, 10000*/}) {
+//		 : {50, 80, 100,
+//			150, 200, 400, 500, 600, 700, 800, 900,
+//			1000, 1200, 1600, 2000, 3200/*, 6400, 10000*/}) {
+//		 : {101, 201, 401, 501, 601, 701, 801, 901
+//			1001, 1201, 1601/*, 3201*/}) {
+//		 : {201}) {
+//		 : {1201}) {
+		 : {81, 101, 121, 151, 201, 301, 401, 451, 501,
+			601, 801, 1001, 1601}) {
 		Nx = j; N_full = Nx + 2 * N_ghost_points;
 		L = 10.;
 		// L = 1.;
-		cfl = 1.;
+		cfl = 1.5;
 		tfinal = 3000.;
 		// tfinal = 1.5;
 
@@ -249,14 +300,24 @@ int main(int argc, char **argv) {
 //			tfinal
 //		);
 
+//		solve1DDetonationProfileProblem<numeric_val>(
+//					u_res, x,
+//					3.9, 0.1, 0.0, 0.0,
+//					u_s, times,
+//					1e-6,
+//					0., tfinal, -L, 0.,
+//					Nx, cfl
+//					);  // stable, simple solution with u_s = 1.
+
 		solve1DDetonationProfileProblem<numeric_val>(
 					u_res, x,
-					3.9, 0.1, 0.0, 0.0,
+					4.5, 0.1, 0.05, 0.1,
 					u_s, times,
-					1e-40,
+					1e-6,
 					0., tfinal, -L, 0.,
-					Nx, cfl
-					);
+					Nx, cfl,
+					N_ghost_points
+					);  // period-1 limit cycle
 //		solve1DInviscidBurgersProblem<numeric_val>(
 //			u_res, x, 0., 0.5, -1., 1.,  Nx, cfl
 //		);
@@ -291,7 +352,7 @@ int main(int argc, char **argv) {
 //		);  // Toro-2
 //		tfinal =  2187. / 4096.;
 //		tfinal = .533935;
-////		tfinal = 0.3;
+//////		tfinal = 0.3;
 //		cfl = 0.94;
 //		L = 2. * std::numbers::pi_v<numeric_val>;
 //		solve1DInviscidBurgersProblem<numeric_val>(
@@ -302,7 +363,11 @@ int main(int argc, char **argv) {
 
 		std::ofstream outfile;
 
-		std::string folder = "./data/det/alpha_3.9_beta_0.1/a_0.0_k_0.0/";
+		std::string folder =
+				"./data/det/ERK_6_5-FD-WENO7-FM-CFL-1.5-ext_ord-7-corr/alpha_3.9_beta_0.1/a_0.05_k_0.1/";
+//		std::string folder = "./data/";
+//		std::string folder = "./data/det/ext_ord_4/SSPRK_3_3-FD-WENO5-FM-CFL-0.4/alpha_3.9_beta_0.1/a_0.0_k_0.0/";
+//		std::string folder = "./";
 
 		std::string filepath = folder
 				+ "res_n_"
@@ -388,7 +453,7 @@ int main(int argc, char **argv) {
 			// 		<< tfinal << "\"" << "\n";
 			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
 			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
-			outfile << "TITLE=\"Detonation Problem u_s time evolution"
+			outfile << "TITLE=\"Detonation Problem u_s time evolution up to t="
 					<< tfinal << "\"" << "\n";
 			outfile << "VARIABLES=\"x\",\"u\"" << "\n";
 			outfile << "ZONE T=\"Numerical\", I="
@@ -410,9 +475,9 @@ int main(int argc, char **argv) {
 		std::system((
 			"gnuplot -e \"filename='" + filepath + "'\" plot.gnuplot"
 		).c_str());
-//		std::system((
-//			"gnuplot -e \"filename='" + u_filepath + "'\" plot.gnuplot"
-//		).c_str());
+		std::system((
+			"gnuplot -e \"filename='" + u_filepath + "'\" plot.gnuplot"
+		).c_str());
 	}
 	return 0;
 }

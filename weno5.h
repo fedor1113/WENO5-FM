@@ -52,8 +52,6 @@ std::valarray<T> vecMatDot(const T1& vec, const T2& mat) {
 }
 
 
-
-
 template <ArithmeticWith<numeric_val> T>
 //std::array<T, 3> smoothness_indicators(const T1& f_stencil) {
 std::valarray<T> betaSmoothnessIndicators(
@@ -86,6 +84,83 @@ std::valarray<T> betaSmoothnessIndicators(
 				+ (1./4.) * std::pow(
 					3.*f_stencil[2] - 4.*f_stencil[3] + f_stencil[4], 2
 					));
+
+	return betas;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+//std::array<T, 3> smoothness_indicators(const T1& f_stencil) {
+std::valarray<T> betaSmoothnessIndicatorsWENO7JS(
+		const std::ranges::sized_range auto& f_stencil) {
+	/* Return the WENO5 smoothness indicators of Jiang and Shu (1996)
+	 * for each of the 3 substencils.
+	 * That is the sum of the normalized squares of the scaled
+	 * L2-norms of all the derivatives of 3 local interpolating
+	 * polynomials in the sub-stencils of 5-node `f_stencil`.
+	 *
+	 * This allows for (2*3-1)=5th order accuracy from the 3rd
+	 * order Eno schemes.
+	 */
+
+	// std::array<T, 3> res;
+	std::valarray<T> betas(4);
+
+	betas[0] = f_stencil[2] * (
+				134241. * f_stencil[2]
+				- 114894. * f_stencil[3])
+			+ f_stencil[0] *(
+				56694. * f_stencil[2]
+				- 47214. * f_stencil[1]
+				+ 6649. * f_stencil[0]
+				- 22778. * f_stencil[3])
+			+ 25729. * f_stencil[3] * f_stencil[3]
+			+ f_stencil[1] * (
+				-210282. * f_stencil[2]
+				+ 85641. * f_stencil[1]
+				+ 86214. * f_stencil[3]);
+
+	betas[1] = f_stencil[3] * (
+				41001. * f_stencil[3]
+				- 30414. * f_stencil[4])
+			+ f_stencil[1] * (
+				-19374. * f_stencil[2]
+				+ 3169. * f_stencil[1]
+				+ 19014. * f_stencil[3]
+				- 5978. * f_stencil[4])
+			+ 6649. * f_stencil[4] * f_stencil[4]
+			+ f_stencil[2] * (
+				33441. * f_stencil[2]
+				- 70602. * f_stencil[3]
+				+ 23094. * f_stencil[4]);
+
+	betas[2] = f_stencil[4] * (
+				33441. * f_stencil[4]
+				- 19374. * f_stencil[5])
+			+ f_stencil[2] * (
+				6649. * f_stencil[2]
+				- 30414. * f_stencil[3]
+				+ 23094. * f_stencil[4]
+				- 5978. * f_stencil[5])
+			+ 3169. * f_stencil[5] * f_stencil[5]
+			+ f_stencil[3] * (
+				41001. * f_stencil[3]
+				- 70602. * f_stencil[4]
+				+ 19014. * f_stencil[5]);
+
+	betas[3] = f_stencil[5] * (
+				85641. * f_stencil[5]
+				- 47214. * f_stencil[6])
+			+ f_stencil[3] * (
+				25729. * f_stencil[3]
+				- 114894. * f_stencil[4]
+				+ 86214. * f_stencil[5]
+				- 22778. * f_stencil[6])
+			+ 6649. * f_stencil[6] * f_stencil[6]
+			+ f_stencil[4] * (
+				134241. * f_stencil[4]
+				- 210282. * f_stencil[5]
+				+ 56694. * f_stencil[6]);
 
 	return betas;
 }
@@ -143,6 +218,46 @@ std::valarray<T> f3OrdReconstructionFromStencil(
 	q_res[2] = (2. * f_stencil[2]
 			  + 5. * f_stencil[3]
 			  - 1. * f_stencil[4]) / 6.;
+
+	return q_res;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+std::valarray<T> f4OrdReconstructionFromStencil(
+		const std::ranges::sized_range auto& f_stencil) {
+	/* 3rd order reconstructions of f(j) from all the 3 3-element
+	 * substencils of `f_stencil` (f_plus or reversed f_minus:
+	 * receives 5 values [j-2, j-1, j+0, j+1, j+2, ...] for '+'
+	 *               (or [j+3, j+2, j+1, j+0, j-1, ...] for '-').
+	 *                     ^    ^    ^    ^    ^    ^
+	 *                     0    1    2    3    4    |
+	 */
+	//		{{2./6, -7./6, 11./6, 0., 0., 0.}},
+	//		{{0., -1./6, 5./6, 2./6, 0., 0.}},
+	//		{{0., 0., 2./6, 5./6, -1./6, 0.}}
+
+	std::valarray<T> q_res(4);
+
+	q_res[0] = ( - 3. * f_stencil[0]
+				+ 13. * f_stencil[1]
+				- 23. * f_stencil[2]
+				+ 25. * f_stencil[3]) / 12.;
+
+	q_res[1] = ( + 1. * f_stencil[1]
+				 - 5. * f_stencil[2]
+				+ 13. * f_stencil[3]
+				 + 3. * f_stencil[4]) / 12.;
+
+	q_res[2] = ( - 1. * f_stencil[2]
+				 + 7. * f_stencil[3]
+				 + 7. * f_stencil[4]
+				 - 1. * f_stencil[5]) / 12.;
+
+	q_res[3] = ( + 3. * f_stencil[3]
+				+ 13. * f_stencil[4]
+				 - 5. * f_stencil[5]
+				 + 1. * f_stencil[6]) / 12.;
 
 	return q_res;
 }
@@ -291,8 +406,9 @@ std::valarray<numeric_val> DISCRETE_LAMBDA
 
 
 template <ArithmeticWith<numeric_val> T>
-std::ranges::common_range auto omegaWENO5FMWeights(
+std::ranges::common_range auto omegaWENOFMWeights(
 		const std::ranges::common_range auto&& lambda_weights,
+		const std::valarray<numeric_val>& d_ideal_lin_weights,
 		const std::valarray<numeric_val>& discrete_lambda
 					= DISCRETE_LAMBDA) {
 	/* From Henrick et al.'s mappings of g(λ_k) for the improved
@@ -302,10 +418,6 @@ std::ranges::common_range auto omegaWENO5FMWeights(
 	 * (again due to Zheng Hong, Zhengyin Ye and Kun Ye).
 	 */
 
-	// The ideal weights (they generate the central upstream fifth-order
-	// scheme for the 5-point stencil), which are in WENO usu. called
-	// linear weights:
-	std::valarray<T> d_lin_weights = {0.1, 0.6, 0.3};
 	// From them WENO5-Z and WENO-M will calculate the non-linear
 	// alpha and omega weights.
 
@@ -332,7 +444,7 @@ std::ranges::common_range auto omegaWENO5FMWeights(
 //				std::ranges::begin(alpha_weights),
 //				gMap);
 	const std::size_t n = std::ranges::size(discrete_lambda) - 1;
-	std::valarray<T> alpha_weights(3);
+	std::valarray<T> alpha_weights(std::ranges::size(d_ideal_lin_weights));
 	std::ranges::transform(
 				lambda_weights,
 				std::ranges::begin(alpha_weights),
@@ -346,10 +458,35 @@ std::ranges::common_range auto omegaWENO5FMWeights(
 	// From α*=g(λ_k) and d_k we get the new corrected resultant
 	// normalized WENO5-FM (WENO5-ZM) (ω_k-)weights:
 	// omega_weights = d_lin_weights * alpha_weights;
-	std::valarray<T> omega_weights = d_lin_weights * alpha_weights;
+	std::valarray<T> omega_weights = d_ideal_lin_weights
+			* alpha_weights;
 	omega_weights /= omega_weights.sum();
 
 	return omega_weights;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+std::ranges::common_range auto omegaWENO5FMWeights(
+		const std::ranges::common_range auto&& lambda_weights) {
+	// The ideal weights (they generate the central upstream fifth-order
+	// scheme for the 5-point stencil), which are in WENO usu. called
+	// linear weights:
+	std::valarray<T> d_lin_weights = {0.1, 0.6, 0.3};
+
+	return omegaWENOFMWeights<T>(std::move(lambda_weights), d_lin_weights);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+std::ranges::common_range auto omegaWENO7FMWeights(
+		const std::ranges::common_range auto&& lambda_weights) {
+	// The ideal weights (they generate the central upstream fifth-order
+	// scheme for the 5-point stencil), which are in WENO usu. called
+	// linear weights:
+	std::valarray<T> d_lin_weights = {4./35., 18./35., 12./35., 1./35.};
+
+	return omegaWENOFMWeights<T>(std::move(lambda_weights), d_lin_weights);
 }
 
 
@@ -858,6 +995,80 @@ T computeFHatWENO5FMReconstructionKernel(
 
 
 template <ArithmeticWith<numeric_val> T>
+T computeFHatWENO7FMReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-40, T p = 3.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical
+	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
+	 * (receives the following 7 values
+	 *     [j-3, j-2, j-1, j+0, j+1, j+2, j+3, ...] for '+'
+	 * (or [j+4, j+3, j+2, j+1, j+0, j-1, j-2, ...] for '-')
+	 *       ^    ^    ^    ^    ^    ^    ^    ^
+	 *       0    1    2    3    4    5    6    |
+	 * in either case for convenience).
+	 *
+	 * I.e. this function implements the upwind reconstruction which
+	 * should be used for positive fluxes (with information propagated
+	 * from left to right) if the nodes are passed in order. However,
+	 * the downwind reconstruction should obviously look the same
+	 * modulo flipping the values with respect to j+0, so that it
+	 * becomes downwind biased and takes one extra point to the right
+	 * instead of taking one extra to the left. In other words, to get
+	 * this to behave as a downwind reconstrution we need to pass
+	 * the points symmetric to those of upwind reconstruction with
+	 * respect to j+0:
+	 * [j+4, j+3, j+2, j+1, j+0, j-1, j-2, ...]. (We reverse the points in
+	 *      [j-3, j-2, j-1, j+0, j+1, j+2, j+3] j+4 and get
+	 *                       |
+	 * [j+4, j+3, j+2, j+1, j+0, j-1, j-2] j-3.)
+	 */
+
+	// `p` controls (increases) the amount of numerical dissipation
+	// (and nothing more in WENO and WENO-(F)M);
+	// but in WENO-Z(M) changing the value of p alters convergence
+	// rates at critical points (it's recommended to take it = r-1
+	// for 2r-1 order schemes, so 2 for WENO5-Z(M)).
+	//
+	// `eps` is a small positive parameter to avoid the denominator
+	// of weights being zero
+	// (though it, too, can be significant for convergence properties
+	// and should ideally be tailored to the specific comp. problem,
+	// as first noted and more or less fully outlined by Henrick et al.)
+
+	// f_stencil = f_plus (or a reversed stencil for f_minus)
+
+	std::valarray<T> beta_IS_coefs(4);
+
+	T f_hat = 0.;
+	beta_IS_coefs = betaSmoothnessIndicatorsWENO7JS<T>(f_stencil);
+
+	std::array<T, 4> alpha_weights;
+	std::ranges::transform(
+				beta_IS_coefs,
+				std::ranges::begin(alpha_weights),
+				[eps, p](auto beta) {
+		return alphaWENO5FMWeight(beta, eps, p);
+	});
+
+	std::array<T, 4> lambda_weights;
+	lambdaWENO5FMWeights<T>(std::move(alpha_weights), lambda_weights);
+
+	std::valarray<T> omega_weights = omegaWENO5FMWeights<T>(
+				std::move(lambda_weights));
+
+	std::valarray<T> eno_reconstructed_f
+			= f4OrdReconstructionFromStencil<T>(f_stencil);
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2]
+			+ omega_weights[3] * eno_reconstructed_f[3];
+
+	return f_hat;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
 T computeFHatWENO5ZMReconstructionKernel(
 		const std::ranges::sized_range auto&& f_stencil,
 		T eps = 1e-40, T p = 2.) {
@@ -1070,11 +1281,12 @@ T computeFHatWENO5ZMReconstructionKernel(
 // and 'An improved WENO-Z scheme with symmetry-preserving mapping'
 // by Zheng Hong, Zhengyin Ye and Kun Ye, 2020
 template <ArithmeticWith<numeric_val> T>
-void calcHydroStageFDWENO5FM(
+void calcHydroStageFDWENO5(
 		const std::ranges::common_range auto&& f_plus,
 		const std::ranges::common_range auto&& f_minus,
 		T t,
 		std::ranges::common_range auto&& numerical_flux,
+		auto&& computeWENOReconstructionKernel,
 		std::size_t n_ghost_cells = 3,
 		T eps = 1e-40,
 		T p = 2.) {
@@ -1183,12 +1395,12 @@ void calcHydroStageFDWENO5FM(
 		u_minus = std::ranges::views::counted(j_it_m, 6)
 					| std::ranges::views::reverse;
 
-		fhatplus = computeFHatWENO5FMReconstructionKernel<T>(
+		fhatplus = computeWENOReconstructionKernel(
 			std::ranges::views::counted(
 						std::ranges::begin(u_plus), 5), eps, p
 		);
 
-		fhatminus = computeFHatWENO5FMReconstructionKernel<T>(
+		fhatminus = computeWENOReconstructionKernel(
 			std::ranges::subrange(
 				std::ranges::begin(u_minus),
 						std::ranges::end(u_minus) - 1), eps, p
@@ -1228,11 +1440,96 @@ void calcHydroStageFDWENO5FM(
 
 
 template <ArithmeticWith<numeric_val> T>
-void calcHydroStageFVWENO5FM(
+void calcHydroStageFDWENO5JS(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_ghost_cells = 3,
+		T eps = 1e-40,
+		T p = 2.) {
+	calcHydroStageFDWENO5<T>(
+				std::ranges::views::all(f_plus),
+				std::ranges::views::all(f_minus), t,
+				std::ranges::views::all(numerical_flux),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO5JSReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				}, n_ghost_cells, eps, p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFDWENO5M(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_ghost_cells = 3,
+		T eps = 1e-40,
+		T p = 2.) {
+	calcHydroStageFDWENO5<T>(
+				std::ranges::views::all(f_plus),
+				std::ranges::views::all(f_minus), t,
+				std::ranges::views::all(numerical_flux),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO5MReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				}, n_ghost_cells, eps, p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFDWENO5FM(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_ghost_cells = 3,
+		T eps = 1e-40,
+		T p = 2.) {
+	calcHydroStageFDWENO5<T>(
+				std::ranges::views::all(f_plus),
+				std::ranges::views::all(f_minus), t,
+				std::ranges::views::all(numerical_flux),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO5FMReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				}, n_ghost_cells, eps, p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFDWENO5ZM(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_ghost_cells = 3,
+		T eps = 1e-40,
+		T p = 2.) {
+	calcHydroStageFDWENO5<T>(
+				std::ranges::views::all(f_plus),
+				std::ranges::views::all(f_minus), t,
+				std::ranges::views::all(numerical_flux),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO5ZMReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				}, n_ghost_cells, eps, p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFVWENO5(
 		const std::ranges::common_range auto&& u,
 		T t,
 		std::ranges::common_range auto&& u_plus_rec,
 		std::ranges::common_range auto&& u_minus_rec,
+		auto&& computeWENOReconstructionKernel,
 		std::size_t n_ghost_cells = 3,
 		T eps = 1e-40,
 		T p = 2.) {
@@ -1323,14 +1620,14 @@ void calcHydroStageFVWENO5FM(
 		std::advance(j_it_p, j + half_size + 1 - stencil_size);
 		u_plus = std::ranges::views::counted(j_it_p, 6);
 
-		u_plus_rec[j] = computeFHatWENO5FMReconstructionKernel(
+		u_plus_rec[j] = computeWENOReconstructionKernel(
 			std::ranges::views::counted(
 						std::ranges::begin(u_plus), 5), eps, p
 		);
 
 
 		u_minus = u_plus | std::ranges::views::reverse;
-		u_minus_rec[j] = computeFHatWENO5FMReconstructionKernel(
+		u_minus_rec[j] = computeWENOReconstructionKernel(
 			std::ranges::subrange(
 				std::ranges::begin(u_minus),
 						std::ranges::end(u_minus) - 1), eps, p
@@ -1342,6 +1639,102 @@ void calcHydroStageFVWENO5FM(
 	}
 
 	// std::cout << " done!" << "\n";
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFVWENO5JS(
+		const std::ranges::common_range auto&& u,
+		T t,
+		std::ranges::common_range auto&& u_plus_rec,
+		std::ranges::common_range auto&& u_minus_rec,
+		std::size_t n_ghost_cells = 3,
+		T eps = 1e-40,
+		T p = 2.) {
+	calcHydroStageFVWENO5<T>(
+				std::ranges::views::all(u), t,
+				std::ranges::views::all(u_plus_rec),
+				std::ranges::views::all(u_minus_rec),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO5JSReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				},
+				n_ghost_cells,
+				eps,
+				p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFVWENO5M(
+		const std::ranges::common_range auto&& u,
+		T t,
+		std::ranges::common_range auto&& u_plus_rec,
+		std::ranges::common_range auto&& u_minus_rec,
+		std::size_t n_ghost_cells = 3,
+		T eps = 1e-40,
+		T p = 2.) {
+	calcHydroStageFVWENO5<T>(
+				std::ranges::views::all(u), t,
+				std::ranges::views::all(u_plus_rec),
+				std::ranges::views::all(u_minus_rec),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO5MReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				},
+				n_ghost_cells,
+				eps,
+				p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFVWENO5FM(
+		const std::ranges::common_range auto&& u,
+		T t,
+		std::ranges::common_range auto&& u_plus_rec,
+		std::ranges::common_range auto&& u_minus_rec,
+		std::size_t n_ghost_cells = 3,
+		T eps = 1e-40,
+		T p = 2.) {
+	calcHydroStageFVWENO5<T>(
+				std::ranges::views::all(u), t,
+				std::ranges::views::all(u_plus_rec),
+				std::ranges::views::all(u_minus_rec),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO5FMReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				},
+				n_ghost_cells,
+				eps,
+				p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFVWENO5ZM(
+		const std::ranges::common_range auto&& u,
+		T t,
+		std::ranges::common_range auto&& u_plus_rec,
+		std::ranges::common_range auto&& u_minus_rec,
+		std::size_t n_ghost_cells = 3,
+		T eps = 1e-40,
+		T p = 2.) {
+	calcHydroStageFVWENO5<T>(
+				std::ranges::views::all(u), t,
+				std::ranges::views::all(u_plus_rec),
+				std::ranges::views::all(u_minus_rec),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO5ZMReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				},
+				n_ghost_cells,
+				eps,
+				p);
 }
 
 
@@ -1460,6 +1853,111 @@ void calcHydroStageCharWiseFDWENO5FM(
 		numerical_flux[j] = fhatplus + fhatminus;
 	});
 	// std::cout << numerical_flux[3] << "\n";
+}
+
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFDWENO7(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		auto&& computeWENOReconstructionKernel,
+		std::size_t n_ghost_cells = 4,
+		T eps = 1e-40,
+		T p = 3.) {
+	/* Component-wise finite-difference WENO7 (FD WENO5) - space
+	 * reconstruction method with the global Lax-Friedrichs (LF) flux
+	 * splitting.
+	 *
+	 * Usually, componentwise reconstruction produces satisfactory
+	 * results for schemes up to third-order accuracy, while characteristic
+	 * reconstruction produces better nonoscillatory results for
+	 * higher-order accuracy, albeit with an increased computational cost.
+	 */
+
+	const unsigned order = 7;
+	const std::size_t stencil_size = order;
+	const std::size_t _actual_stencil_size = stencil_size + 1;  // 8
+	const std::size_t half_size = order / 2;  // 3
+
+	// r = (order + 1) / 2 = 3
+	assert(n_ghost_cells >= 4);
+	// const std::size_t n_ghost_cells = (stencil_size + 1) / 2;
+	const std::size_t mini = n_ghost_cells;
+	// const std::size_t maxi = n_ghost_cells + n_size - 1;
+	const std::size_t maxi = std::ranges::size(
+				numerical_flux) - n_ghost_cells - 1;
+	// auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 1};
+	auto shifted_index_range = std::ranges::common_view(
+				std::views::iota(mini - 1)
+					| std::views::take(maxi + 1 - (mini - 1) + 1));
+
+	T fhatminus = 0.;
+	T fhatplus = 0.;
+
+	auto j_it_p = std::ranges::begin(f_plus);  // f_plus
+	auto j_it_m = std::ranges::begin(f_minus);  // f_minus
+
+	std::advance(j_it_p, mini - 1 + half_size + 1 - stencil_size);
+	std::advance(j_it_m, mini - 1 + half_size + 1 - stencil_size);
+
+	auto u_plus = std::ranges::views::counted(j_it_p,
+											  _actual_stencil_size);
+	auto u_minus = std::ranges::views::counted(j_it_m,
+											   _actual_stencil_size)
+					| std::ranges::views::reverse;
+
+	std::for_each(std::execution::par_unseq,
+				std::ranges::begin(shifted_index_range),
+				std::ranges::end(shifted_index_range),
+				  [&](std::size_t j) {
+		j_it_p = std::ranges::begin(f_plus);  // f_plus
+		std::advance(j_it_p, j + half_size + 1 - stencil_size);
+		u_plus = std::ranges::views::counted(j_it_p,
+											 _actual_stencil_size);
+
+		j_it_m = std::ranges::begin(f_minus);  // f_minus
+		std::advance(j_it_m, j + half_size + 1 - stencil_size);
+		u_minus = std::ranges::views::counted(j_it_m,
+											  _actual_stencil_size)
+					| std::ranges::views::reverse;
+
+		fhatplus = computeWENOReconstructionKernel(
+			std::ranges::views::counted(
+						std::ranges::begin(u_plus), order), eps, p
+		);
+
+		fhatminus = computeWENOReconstructionKernel(
+			std::ranges::subrange(
+				std::ranges::begin(u_minus),
+						std::ranges::end(u_minus) - 1), eps, p
+		);
+
+		numerical_flux[j] = fhatplus + fhatminus;
+	});
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFDWENO7FM(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_ghost_cells = 4,
+		T eps = 1e-40,
+		T p = 3.) {
+	calcHydroStageFDWENO5<T>(
+				std::move(f_plus),
+				std::move(f_minus), t,
+				std::move(numerical_flux),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO5FMReconstructionKernel<T>(
+								std::move(stencil), eps, p);
+				}, n_ghost_cells, eps, p);
 }
 
 
