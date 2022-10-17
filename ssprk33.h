@@ -1,3 +1,6 @@
+#ifndef SSPRK3_3_H
+#define SSPRK3_3_H
+
 #include <algorithm>
 #include <cstddef>
 #include <execution>
@@ -121,3 +124,5 @@ void advanceTimestepTVDRK3(
 	// return U;
 	// U = res;
 }
+
+#endif  // SSPRK3_3_H

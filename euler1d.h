@@ -10,7 +10,7 @@
 #include "_vector4.h"
 #include "arithmeticwith.h"
 #include "eno3.h"
-#include "exactsolver.h"
+// #include "exactsolver.h"
 #include "lf_flux.h"
 // #include "miegruneisen.h"
 #include "rk6_5.h"
@@ -155,7 +155,7 @@ T calcSquareSoundSpeed(T rho, T rho_v, T rho_E, T gamma = 1.4) {
 	// const T p = FEOSMieGruneisenAl<T>::getp(rho, e);
 	const T p = (gamma - 1.) * (rho_E - rho_v * rho_v * 0.5 / rho);
 
-	return gamma * p / rho;
+	return std::abs(gamma * p / rho);
 }
 
 
@@ -168,10 +168,10 @@ T calcMaxWaveSpeedD(
 	return std::ranges::max(std::ranges::transform_view(
 		std::as_const(u_arr),
 		[gamma](const auto& u_arr_vec_pt) -> T {
-			return (std::sqrt(std::abs(calcSquareSoundSpeed(
+			return (std::sqrt(calcSquareSoundSpeed(
 								u_arr_vec_pt[0],
 								u_arr_vec_pt[1],
-								u_arr_vec_pt[2], gamma)))
+								u_arr_vec_pt[2], gamma))
 					+ std::abs(u_arr_vec_pt[1] / u_arr_vec_pt[0]));
 		}
 	));
@@ -186,7 +186,7 @@ Eigen::Matrix<T, 3, 3> EigenLeft1DEulerEigenMatrix(
 	T gamma_m = gamma - 1.;
 
 	T c_s_square = calcSquareSoundSpeed<T>(vec[0], vec[1], vec[2], gamma);
-	T c_s = std::sqrt(c_s_square);
+	T c_s = std::abs(std::sqrt(c_s_square));
 
 	T u = vec[1];
 	if (vec[0] != 0.)
@@ -265,7 +265,7 @@ Eigen::Matrix<T, 3, 3> EigenRight1DEulerEigenMatrix(
 template <ArithmeticWith<numeric_val> T>
 Vector4<T> projectOntoCharacteristics(
 		Vector4<T> conservative_variables, Vector4<T> vec, T gamma) {
-	return Vector4<T>(EigenRight1DEulerEigenMatrix(
+	return Vector4<T>(EigenRight1DEulerEigenMatrix<T>(
 				conservative_variables, gamma)
 			* Eigen::Matrix<T, 3, 1>{vec[0], vec[1], vec[2]});
 //	return Vector4<T>((Eigen::Matrix<T, 1, 3>{vec[0], vec[1], vec[2]}
@@ -277,7 +277,7 @@ Vector4<T> projectOntoCharacteristics(
 template <ArithmeticWith<numeric_val> T>
 Vector4<T> projectCharacteristicVariablesBackOntoConserved(
 		Vector4<T> conservative_variables, Vector4<T> vec, T gamma) {
-	return Vector4<T>(EigenLeft1DEulerEigenMatrix(
+	return Vector4<T>(EigenLeft1DEulerEigenMatrix<T>(
 				conservative_variables, gamma)
 			* Eigen::Matrix<T, 3, 1>{vec[0], vec[1], vec[2]});
 //	return Vector4<T>((Eigen::Matrix<T, 1, 3>{vec[0], vec[1], vec[2]}
