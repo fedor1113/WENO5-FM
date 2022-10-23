@@ -821,7 +821,7 @@ void prepareRiemannProblem(
 	std::size_t computational_domain_size = mesh_size;
 	std::size_t full_mesh_size = computational_domain_size
 		+ 2*n_ghost_points;
-	T dx = (l_max - l_min) / (mesh_size/* - 1.*/);  // [L]
+	T dx = (l_max - l_min) / (mesh_size - 1.);  // [L]
 
 	x = std::valarray<T>(0., full_mesh_size);
 	u_init = std::valarray<Vector4<T>>(
@@ -886,7 +886,7 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 		std::ranges::size(u_init));
 
 	integrateRiemannProblem<T>(u_init, flux,
-		t0, (l_max-l_min) / (mesh_size/* - 1.*/), n_ghost_points, t_max,
+		t0, (l_max-l_min) / (mesh_size - 1.), n_ghost_points, t_max,
 		[&calcdSpace, &updateGhostPoints](
 			std::valarray<Vector4<T>>& u,
 			std::valarray<Vector4<T>>& dflux,
@@ -1134,12 +1134,12 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 //						u, t, lam, ghost_point_number, gamma, eps, p);
 //					return calcFluxComponentWiseFVWENO5<T>(
 //						u, t, lam, n_size, gamma, eps, p);
-//					return calcFluxCharacteristicWiseFDWENO5<T>(
-//						u, t, lam, ghost_point_number, gamma, eps, p);
+					return calcFluxCharacteristicWiseFDWENO5<T>(
+						u, t, lam, ghost_point_number, gamma, eps, p);
 //					return calcFluxCharacteristicWiseFDWENO7<T>(
 //						u, t, lam, ghost_point_number, gamma, eps, p);
-					return calcFluxCharacteristicWiseFDWENO9<T>(
-						u, t, lam, ghost_point_number, gamma, eps, p);
+//					return calcFluxCharacteristicWiseFDWENO9<T>(
+//						u, t, lam, ghost_point_number, gamma, eps, p);
 //					return calcFluxComponentWiseFVENO3<T>(
 //						u, t, lam, n_size, gamma);
 				},
