@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 	std::size_t k = 0;
 
 	std::size_t Nx = 201;
-	const std::size_t N_ghost_points = 3;
+	const std::size_t N_ghost_points = 5;
 	std::size_t N_full = Nx + 2*N_ghost_points;
 	// Nx = Nx + 6;  // Add in ghost cells
 	numeric_val L = 1.;  // [L]
@@ -82,17 +82,17 @@ int main(int argc, char **argv) {
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);  // Sod's problem (expansion-contact-shock)
 
-	Nx = 500; N_full = Nx + 2*N_ghost_points;
-	L = 1.;
-	cfl = 0.55;
-	tfinal = 0.2;
-	solve1DRiemannProblemForEulerEq<numeric_val>(
-		u_res, x, gamma,
-		1., 0.75, 1.,
-		0.125, 0., 0.1, 0.3,
-		t, tfinal, 0., L,
-		primitiveToConservativeU<numeric_val>, Nx, cfl
-	);  // Modified Sod's problem (expansion-contact-shock). Toro-1
+//	Nx = 500; N_full = Nx + 2*N_ghost_points;
+//	L = 1.;
+//	cfl = 0.55;
+//	tfinal = 0.2;
+//	solve1DRiemannProblemForEulerEq<numeric_val>(
+//		u_res, x, gamma,
+//		1., 0.75, 1.,
+//		0.125, 0., 0.1, 0.3,
+//		t, tfinal, 0., L,
+//		primitiveToConservativeU<numeric_val>, Nx, cfl
+//	);  // Modified Sod's problem (expansion-contact-shock). Toro-1
 
 //	tfinal = 0.12;
 //	solve1DRiemannProblemForEulerEq<numeric_val>(
@@ -224,14 +224,14 @@ int main(int argc, char **argv) {
 		std::valarray<numeric_val> x(0., N_full);
 
 		L = 1.;
-		cfl = 0.9;
+		cfl = 0.2;
 		tfinal = 0.17;
 		solve1DRiemannProblemForEulerEq<numeric_val>(
 			u_res, x, gamma,
 			1., 0.75, 1.,
 			0.125, 0., 0.1, 0.3,
 			t, tfinal, 0., L,
-			primitiveToConservativeU<numeric_val>, Nx, cfl
+			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
 		);  // Modified Sod's problem JCP 27:1 1978 (expansion-contact-shock). Toro-1
 //		solve1DHighGradientLaserProblem<numeric_val>(
 //			u_res,

@@ -1,6 +1,6 @@
 #!/usr/bin/env -S gnuplot -persist
-set style data linespoints
-# set style data lines
+# set style data linespoints
+set style data lines
 set key outside top center horizontal
 set offsets graph 0.1, graph 0.1, graph 0.1, graph 0.1
 set title "Instantaneous Profile"

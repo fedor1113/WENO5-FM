@@ -307,7 +307,7 @@ template <ArithmeticWith<numeric_val> T>
 std::valarray<Vector4<T>> calcFluxComponentWiseFDWENO5(
 		const std::ranges::common_range auto& u,
 		T t, const std::ranges::common_range auto& lam,
-		std::size_t n_size,
+		std::size_t number_of_ghost_points = 3,
 		T gamma = 1.4,
 		T eps = 1e-40,
 		T p = 2.) {
@@ -340,11 +340,17 @@ std::valarray<Vector4<T>> calcFluxComponentWiseFDWENO5(
 						kth_vector_component), lam[0]
 					);
 
-		calcHydroStageFDWENO5FM<T>(
+//		calcHydroStageFDWENO5FM<T>(
+//			std::ranges::views::all(f_plus),
+//			std::ranges::views::all(f_minus), t,
+//			res | std::ranges::views::transform(kth_vector_component),
+//			number_of_ghost_points, eps, p
+//			);
+		calcHydroStageFDWENO7FM<T>(
 			std::ranges::views::all(f_plus),
 			std::ranges::views::all(f_minus), t,
 			res | std::ranges::views::transform(kth_vector_component),
-			3, eps, p
+			number_of_ghost_points, eps, p
 			);
 	});
 
@@ -356,7 +362,7 @@ template <ArithmeticWith<numeric_val> T>
 std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO5(
 		const std::ranges::common_range auto& u,
 		T t, const std::ranges::common_range auto& lam,
-		std::size_t ghost_point_number,
+		std::size_t ghost_point_number = 3,
 		T gamma = 1.4,
 		T eps = 1e-40,
 		T p = 2.) {
@@ -422,6 +428,14 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO5(
 				project, /*deproject,*/ lam[0],
 				ghost_point_number, eps, p);
 
+//	calcHydroStageCharWiseFDWENO7FM<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, t,
+//				project, lam[0],
+//				ghost_point_number, eps, p);
+
 //	std::transform(
 //				std::execution::par_unseq,
 //				std::ranges::begin(avg_view) | interior_view,
@@ -432,6 +446,122 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO5(
 //		return projectCharacteristicVariablesBackOntoConserved<Vector4<T>>(
 //					q_ast, f, gamma);
 //	});
+
+	std::transform(
+				std::execution::par_unseq,
+				std::ranges::begin(avg),
+				std::ranges::end(avg),
+				std::ranges::begin(res),
+				std::ranges::begin(res),
+				[gamma](auto q_ast, auto f) {
+		return projectCharacteristicVariablesBackOntoConserved<T>(
+					q_ast, f, gamma);
+	});
+	// updateGhostPointsPeriodic(res);
+
+	return res;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO7(
+		const std::ranges::common_range auto& u,
+		T t, const std::ranges::common_range auto& lam,
+		std::size_t ghost_point_number = 4,
+		T gamma = 1.4,
+		T eps = 1e-40,
+		T p = 2.) {
+//	const std::size_t n_size = std::ranges::size(u)
+//			- 2 * ghost_point_number;
+
+	std::valarray<Vector4<T>> avg(std::ranges::size(u));
+	std::valarray<Vector4<T>> proj_u(std::ranges::size(u));
+	std::valarray<Vector4<T>> proj_f(std::ranges::size(u));
+	std::valarray<Vector4<T>> res(std::ranges::size(u));
+	std::valarray<Vector4<T>> flux = calcPhysFlux(u, gamma);
+
+	std::transform(
+				std::execution::par_unseq,
+				std::ranges::begin(u) + 1,
+				std::ranges::end(u),
+				std::ranges::begin(u),
+				std::ranges::begin(avg) + 1,
+				[](auto q_l, auto q_r) {
+		return average<Vector4<T>>(q_l, q_r);
+	});
+	// updateGhostPointsTransmissive(avg);
+	// updateGhostPointsPeriodic(avg);
+
+	auto project = [gamma](
+			Vector4<T> q_ast, Vector4<T> vec) -> Vector4<T> {
+		return projectOntoCharacteristics<T>(q_ast, vec, gamma);
+	};
+
+	calcHydroStageCharWiseFDWENO7FM<T, Vector4<T>>(
+				std::ranges::views::all(u),
+				std::ranges::views::all(avg),
+				std::ranges::views::all(flux),
+				res, t,
+				project, lam[0],
+				ghost_point_number, eps, p);
+
+	std::transform(
+				std::execution::par_unseq,
+				std::ranges::begin(avg),
+				std::ranges::end(avg),
+				std::ranges::begin(res),
+				std::ranges::begin(res),
+				[gamma](auto q_ast, auto f) {
+		return projectCharacteristicVariablesBackOntoConserved<T>(
+					q_ast, f, gamma);
+	});
+	// updateGhostPointsPeriodic(res);
+
+	return res;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO9(
+		const std::ranges::common_range auto& u,
+		T t, const std::ranges::common_range auto& lam,
+		std::size_t ghost_point_number = 5,
+		T gamma = 1.4,
+		T eps = 1e-40,
+		T p = 2.) {
+//	const std::size_t n_size = std::ranges::size(u)
+//			- 2 * ghost_point_number;
+
+	std::valarray<Vector4<T>> avg(std::ranges::size(u));
+	std::valarray<Vector4<T>> proj_u(std::ranges::size(u));
+	std::valarray<Vector4<T>> proj_f(std::ranges::size(u));
+	std::valarray<Vector4<T>> res(std::ranges::size(u));
+	std::valarray<Vector4<T>> flux = calcPhysFlux(u, gamma);
+
+	std::transform(
+				std::execution::par_unseq,
+				std::ranges::begin(u) + 1,
+				std::ranges::end(u),
+				std::ranges::begin(u),
+				std::ranges::begin(avg) + 1,
+				[](auto q_l, auto q_r) {
+		return average<Vector4<T>>(q_l, q_r);
+	});
+	// updateGhostPointsTransmissive(avg);
+	// updateGhostPointsPeriodic(avg);
+
+	auto project = [gamma](
+			Vector4<T> q_ast, Vector4<T> vec) -> Vector4<T> {
+		return projectOntoCharacteristics<T>(q_ast, vec, gamma);
+	};
+
+	calcHydroStageCharWiseFDWENO9FM<T, Vector4<T>>(
+				std::ranges::views::all(u),
+				std::ranges::views::all(avg),
+				std::ranges::views::all(flux),
+				res, t,
+				project, lam[0],
+				ghost_point_number, eps, p);
 
 	std::transform(
 				std::execution::par_unseq,
@@ -581,18 +711,19 @@ std::valarray<Vector4<T>> calcdSpaceEu1D(
 	T t,
 	T dx,
 	const std::ranges::common_range auto& lam,
-	std::size_t nSize,
+	std::size_t ghost_point_number,
 	auto&& calcFlux,
 	auto&& addSource,
 	Args... opts
 ) {
+	const std::size_t n_size = U.size() - 2 * ghost_point_number;
+	// const std::size_t ghost_point_number = 4;
+
 	std::valarray<Vector4<T>> dflux(Vector4<T>(0., 0., 0., 0.), U.size());
-	std::valarray<Vector4<T>> lf = calcFlux(U, t, lam, nSize, opts...);
+	std::valarray<Vector4<T>> lf = calcFlux(U, t, lam, n_size, opts...);
 
-	const std::size_t ghost_point_number = 3;
-
-	std::slice Nweno(ghost_point_number, nSize, 1);
-	std::slice Nweno_shifted_by_neg_1(ghost_point_number - 1, nSize, 1);
+	std::slice Nweno(ghost_point_number, n_size, 1);
+	std::slice Nweno_shifted_by_neg_1(ghost_point_number - 1, n_size, 1);
 //	std::slice Nweno(1, U.size()-1, 1);
 //	std::slice Nweno_shifted_by_neg_1(0, U.size()-1, 1);
 
@@ -613,7 +744,7 @@ template <ArithmeticWith<numeric_val> T>
 void integrateRiemannProblem(
 	std::ranges::common_range auto& u,
 	std::ranges::common_range auto& flux,
-	T t0, T dx, std::size_t n_size,
+	T t0, T dx, std::size_t ghost_point_number,
 	T t_fin,
 	auto&& timeStepFunction,
 	T cfl = 0.4
@@ -626,6 +757,8 @@ void integrateRiemannProblem(
 //	std::valarray<Vector4<T>> y2(Vector4<T>::ZERO,
 //		std::ranges::size(u));
 //	std::valarray<Vector4<T>> y3(Vector4<T>::ZERO,
+	const std::size_t n_size = std::ranges::size(u)
+			- 2 * ghost_point_number;
 //		std::ranges::size(u));
 //	std::array<std::reference_wrapper<
 //		std::valarray<Vector4<T>>
@@ -675,7 +808,7 @@ void prepareRiemannProblem(
 	T rho_right, T v_right, T p_right, T e_rightR, T rhoE_right,
 	T q0, T l_min, T l_max,
 	std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU,
-	std::size_t mesh_size
+	std::size_t n_ghost_points = 5
 ) {
 	/* Fill u_init with the Riemann problem data
 	 * at mesh_size number of nodes using Vector4<T>
@@ -683,11 +816,12 @@ void prepareRiemannProblem(
 	 * with the corresponding node coordinates.
 	 */
 
+	const std::size_t mesh_size = std::ranges::size(u_init)
+			- 2 * n_ghost_points;
 	std::size_t computational_domain_size = mesh_size;
-	const std::size_t n_ghost_points = 3;
 	std::size_t full_mesh_size = computational_domain_size
 		+ 2*n_ghost_points;
-	T dx = (l_max - l_min) / (mesh_size/*-1.*/);  // [L]
+	T dx = (l_max - l_min) / (mesh_size - 1.);  // [L]
 
 	x = std::valarray<T>(0., full_mesh_size);
 	u_init = std::valarray<Vector4<T>>(
@@ -713,11 +847,87 @@ void prepareRiemannProblem(
 	}
 
 	vec = primitiveToConservativeU(
-				Vector4(rho_right, v_right, p_right, 0.),
+				Vector4<T>(rho_right, v_right, p_right, 0.),
 				gamma);
 	for (k = x0_index; k < full_mesh_size; ++ k) {
 		u_init[k] = vec;
 	}
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
+	std::ranges::common_range auto& u_init,
+	std::ranges::common_range auto& x,
+	T gamma,
+	T rho_left, T v_left, T p_left, T e_left, T rhoE_left,
+	T rho_right, T v_right, T p_right, T e_rightR, T rhoE_right,
+	T q0, // Initial coordinate of the discontinuity
+	T t0, T t_max, T l_min, T l_max,
+	std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU,
+	auto&& calcdSpace,
+	auto&& updateGhostPoints,
+	std::size_t n_ghost_points = 5, T cfl = 0.4
+) {
+	/* Solve a given Riemann problem for 1D Euler equations. */
+
+	const std::size_t mesh_size = std::ranges::size(u_init)
+			- 2 * n_ghost_points;
+
+	prepareRiemannProblem<T>(
+		u_init, x, gamma,
+		rho_left, v_left, p_left, e_left, rhoE_left,
+		rho_right, v_right, p_right, e_rightR, rhoE_right,
+		q0, l_min, l_max, primitiveToConservativeU, n_ghost_points
+	);
+	updateGhostPoints(u_init);
+
+	std::valarray<Vector4<T>> flux(Vector4<T>::ZERO,
+		std::ranges::size(u_init));
+
+	integrateRiemannProblem<T>(u_init, flux,
+		t0, (l_max-l_min) / (mesh_size - 1.), n_ghost_points, t_max,
+		[&calcdSpace, &updateGhostPoints](
+			std::valarray<Vector4<T>>& u,
+			std::valarray<Vector4<T>>& dflux,
+			std::array<
+				std::reference_wrapper<std::valarray<Vector4<T>>
+			>, 10>& fluxes,
+			T t, T dt, T dx,
+			const std::valarray<T>& lam,
+			std::size_t n_ghost_points = 4
+		) {
+			/*advanceTimestepSSPRK10_4<T>(
+				u, dflux, fluxes[0].get(),
+				t, dt, dx, lam, n_size,
+				calcdSpace, updateGhostPoints);*/
+			advanceTimestepTVDRK3<T>(
+				u, dflux, fluxes[0].get(), fluxes[1].get(),
+				t, dt, dx, lam, n_ghost_points,
+				calcdSpace, updateGhostPoints);
+//			advanceTimestepRK6_5<T>(
+//				u,
+//				dflux,
+//				fluxes[0].get(), fluxes[1].get(),
+//				fluxes[2].get(), fluxes[3].get(),
+//				fluxes[4].get(), fluxes[5].get(),
+//				fluxes[6].get(), fluxes[7].get(),
+//				fluxes[8].get(), fluxes[9].get(),
+//				t, dt, dx, lam,
+//				n_ghost_points, calcdSpace, updateGhostPoints);
+			/*EulerForward<T>(
+				u, dflux,
+				t, dt, dx, lam, n_size,
+				calcdSpace, updateGhostPoints);*/
+		}, cfl);
+
+	return u_init;
+}
+
+
+template <typename T>
+void addEmptySource(auto& u, auto& flux, auto&& x) {
+	return;
 }
 
 
@@ -727,12 +937,13 @@ void prepareHighGradientLaserProblem(
 	std::ranges::common_range auto& x,
 	std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU,
 	T q0 = 1000., T q1 = 1050., T l_min = 0., T l_max = 1250.,
-	std::size_t mesh_size = 2000, T gamma = 1.4
+	std::size_t n_ghost_points = 5, T gamma = 1.4
 ) {
 	/* ... */
 
+	const std::size_t mesh_size = std::ranges::size(u_init)
+			- 2 * n_ghost_points;
 	std::size_t computational_domain_size = mesh_size;
-	const std::size_t n_ghost_points = 3;
 	std::size_t full_mesh_size = computational_domain_size
 		+ 2*n_ghost_points;
 	T dx = (l_max - l_min) / (mesh_size/*-1.*/);  // [L]
@@ -778,53 +989,88 @@ void prepareHighGradientLaserProblem(
 }
 
 
-template <ArithmeticWith<numeric_val> T>
-std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
-	std::ranges::common_range auto& u_init,
-	std::ranges::common_range auto& x,
-	T gamma,
-	T rho_left, T v_left, T p_left, T e_left, T rhoE_left,
-	T rho_right, T v_right, T p_right, T e_rightR, T rhoE_right,
-	T q0, // Initial coordinate of the discontinuity
-	T t0, T t_max, T l_min, T l_max,
-	std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU,
-	auto&& calcdSpace,
-	auto&& updateGhostPoints,
-	std::size_t mesh_size, T cfl = 0.4
-) {
-	/* Solve a given Riemann problem for 1D Euler equations. */
 
-	prepareRiemannProblem<T>(
-		u_init, x, gamma,
-		rho_left, v_left, p_left, e_left, rhoE_left,
-		rho_right, v_right, p_right, e_rightR, rhoE_right,
-		q0, l_min, l_max, primitiveToConservativeU, mesh_size
-	);
-	updateGhostPoints(u_init);
+//template <ArithmeticWith<numeric_val> T>
+//std::valarray<Vector4<T>> solve1DHighGradientLaserProblem(
+//	std::ranges::common_range auto& u_init,
+//	std::ranges::common_range auto& x,
+//	std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU,
+//	std::size_t ghost_point_number = 4, T cfl = 0.4, T t_max = 0.1,
+//	T gamma = 1.4,
+//	T q0 = 1000., T q1 = 1050., T t0 = 0.,
+//	T l_min = 0., T l_max = 1250.
+//) {
+//	/* ... */
 
-	std::valarray<Vector4<T>> flux(Vector4<T>::ZERO,
-		std::ranges::size(u_init));
+//	const std::size_t mesh_size = std::ranges::size(u_init)
+//			- 2 * ghost_point_number;
 
-	integrateRiemannProblem<T>(u_init, flux,
-		t0, (l_max-l_min) / (mesh_size/*-1.*/), mesh_size, t_max,
-		[&calcdSpace, &updateGhostPoints](
-			std::valarray<Vector4<T>>& u,
-			std::valarray<Vector4<T>>& dflux,
-			std::array<
-				std::reference_wrapper<std::valarray<Vector4<T>>
-			>, 10>& fluxes,
-			T t, T dt, T dx,
-			const std::valarray<T>& lam,
-			std::size_t n_size
-		) {
-			/*advanceTimestepSSPRK10_4<T>(
-				u, dflux, fluxes[0].get(),
-				t, dt, dx, lam, n_size,
-				calcdSpace, updateGhostPoints);*/
-			advanceTimestepTVDRK3<T>(
-				u, dflux, fluxes[0].get(), fluxes[1].get(),
-				t, dt, dx, lam, 3,
-				calcdSpace, updateGhostPoints);
+//	prepareHighGradientLaserProblem<T>(
+//		u_init, x, primitiveToConservativeU,
+//		q0, q1, l_min, l_max, mesh_size
+//	);
+
+//	std::valarray<Vector4<T>> flux(Vector4<T>::ZERO,
+//		std::ranges::size(u_init));
+
+//	auto calcdSpace = [gamma, ghost_point_number](
+//			std::valarray<Vector4<T>>& u,
+//			T t, T dx, const std::valarray<T>& max_eigenvalues,
+//			std::size_t n_size) {
+//		return calcdSpaceEu1D<T>(
+//			u, t, dx, max_eigenvalues, ghost_point_number,
+//			[gamma, ghost_point_number](
+//					const std::valarray<Vector4<T>>& u,
+//					T t, const std::valarray<T>& lam,
+//					std::size_t n_size,
+//					T eps = 1e-40, T p = 2.) {
+//				return calcFluxComponentWiseFDWENO5<T>(
+//					u, t, lam, ghost_point_number, gamma, eps, p);
+////					return calcFluxComponentWiseFVWENO5<T>(
+////						u, t, lam, n_size, gamma, eps, p);
+////					return calcFluxCharacteristicWiseFDWENO5<T>(
+////						u, t, lam, ghost_point_number, gamma, eps, p);
+////				return calcFluxCharacteristicWiseFDWENO7<T>(
+////					u, t, lam, ghost_point_number, gamma, eps, 3.);
+////					return calcFluxComponentWiseFVENO3<T>(
+////						u, t, lam, n_size, gamma);
+//			},
+//			[](
+//					const std::valarray<Vector4<T>>& u,
+//					std::valarray<Vector4<T>>& f,
+//					std::valarray<Vector4<T>>&& x = {}) {
+//				addEmptySource<T>(u, f, x);
+//			},
+//			1e-40, 2.
+//		);
+//	};
+
+//	auto updateGhostPoints = [ghost_point_number](
+//			std::valarray<Vector4<T>>& u) {
+//		updateGhostPointsTransmissive(u, ghost_point_number);
+//		// updateGhostPointsPeriodic(u);
+//	};
+
+//	integrateRiemannProblem<T>(u_init, flux,
+//		t0, (l_max-l_min) / (mesh_size/*-1.*/), mesh_size, t_max,
+//		[&calcdSpace, &updateGhostPoints](
+//			std::valarray<Vector4<T>>& u,
+//			std::valarray<Vector4<T>>& dflux,
+//			std::array<
+//				std::reference_wrapper<std::valarray<Vector4<T>>
+//			>, 10>& fluxes,
+//			T t, T dt, T dx,
+//			const std::valarray<T>& lam,
+//			std::size_t ghost_point_number
+//		) {
+//			/*advanceTimestepSSPRK10_4<T>(
+//				u, dflux, fluxes[0].get(),
+//				t, dt, dx, lam, n_size,
+//				calcdSpace, updateGhostPoints);*/
+//			/*advanceTimestepTVDRK3<T>(
+//				u, dflux, fluxes[0].get(), fluxes[1].get(),
+//				t, dt, dx, lam, ghost_point_number,
+//				calcdSpace, updateGhostPoints);*/
 //			advanceTimestepRK6_5<T>(
 //				u,
 //				dflux,
@@ -834,116 +1080,15 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 //				fluxes[6].get(), fluxes[7].get(),
 //				fluxes[8].get(), fluxes[9].get(),
 //				t, dt, dx, lam,
-//				3, calcdSpace, updateGhostPoints);
-			/*EulerForward<T>(
-				u, dflux,
-				t, dt, dx, lam, n_size,
-				calcdSpace, updateGhostPoints);*/
-		}, cfl);
+//				ghost_point_number, calcdSpace, updateGhostPoints);
+//			/*EulerForward<T>(
+//				u, dflux,
+//				t, dt, dx, lam, n_size,
+//				calcdSpace, updateGhostPoints);*/
+//		}, cfl);
 
-	return u_init;
-}
-
-
-template <typename T>
-void addEmptySource(auto& u, auto& flux, auto&& x) {
-	return;
-}
-
-
-template <ArithmeticWith<numeric_val> T>
-std::valarray<Vector4<T>> solve1DHighGradientLaserProblem(
-	std::ranges::common_range auto& u_init,
-	std::ranges::common_range auto& x,
-	std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU,
-	std::size_t mesh_size = 2000, T cfl = 0.4, T t_max = 0.1,
-	T gamma = 1.4,
-	T q0 = 1000., T q1 = 1050., T t0 = 0.,
-	T l_min = 0., T l_max = 1250.
-) {
-	/* ... */
-
-	prepareHighGradientLaserProblem<T>(
-		u_init, x, primitiveToConservativeU,
-		q0, q1, l_min, l_max, mesh_size
-	);
-
-	std::valarray<Vector4<T>> flux(Vector4<T>::ZERO,
-		std::ranges::size(u_init));
-
-	auto calcdSpace = [gamma](
-			std::valarray<Vector4<T>>& u,
-			T t, T dx, const std::valarray<T>& max_eigenvalues,
-			std::size_t n_size) {
-		return calcdSpaceEu1D<T>(
-			u, t, dx, max_eigenvalues, n_size,
-			[gamma](
-					const std::valarray<Vector4<T>>& u,
-					T t, const std::valarray<T>& lam,
-					std::size_t n_size,
-					T eps = 1e-40, T p = 2.) {
-				return calcFluxComponentWiseFDWENO5<T>(
-					u, t, lam, n_size, gamma, eps, p);
-//					return calcFluxComponentWiseFVWENO5<T>(
-//						u, t, lam, n_size, gamma, eps, p);
-//					return calcFluxCharacteristicWiseFDWENO5<T>(
-//						u, t, lam, 3, gamma, eps, p);
-//					return calcFluxComponentWiseFVENO3<T>(
-//						u, t, lam, n_size, gamma);
-			},
-			[](
-					const std::valarray<Vector4<T>>& u,
-					std::valarray<Vector4<T>>& f,
-					std::valarray<Vector4<T>>&& x = {}) {
-				addEmptySource<T>(u, f, x);
-			},
-			1e-40, 2.
-		);
-	};
-
-	auto updateGhostPoints = [](std::valarray<Vector4<T>>& u) {
-		updateGhostPointsTransmissive(u, 3);
-		// updateGhostPointsPeriodic(u);
-	};
-
-	integrateRiemannProblem<T>(u_init, flux,
-		t0, (l_max-l_min) / (mesh_size/*-1.*/), mesh_size, t_max,
-		[&calcdSpace, &updateGhostPoints](
-			std::valarray<Vector4<T>>& u,
-			std::valarray<Vector4<T>>& dflux,
-			std::array<
-				std::reference_wrapper<std::valarray<Vector4<T>>
-			>, 10>& fluxes,
-			T t, T dt, T dx,
-			const std::valarray<T>& lam,
-			std::size_t n_size
-		) {
-			/*advanceTimestepSSPRK10_4<T>(
-				u, dflux, fluxes[0].get(),
-				t, dt, dx, lam, n_size,
-				calcdSpace, updateGhostPoints);*/
-			/*advanceTimestepTVDRK3<T>(
-				u, dflux, fluxes[0].get(), fluxes[1].get(),
-				t, dt, dx, lam, 3,
-				calcdSpace, updateGhostPoints);*/
-			advanceTimestepRK6_5<T>(
-				u,
-				dflux,
-				fluxes[0].get(), fluxes[1].get(),
-				fluxes[2].get(), fluxes[3].get(),
-				fluxes[4].get(), fluxes[5].get(),
-				fluxes[6].get(), fluxes[7].get(),
-				fluxes[8].get(), fluxes[9].get(),
-				t, dt, dx, lam,
-				3, calcdSpace, updateGhostPoints);
-			/*EulerForward<T>(
-				u, dflux,
-				t, dt, dx, lam, n_size,
-				calcdSpace, updateGhostPoints);*/
-		}, cfl);
-
-	return u_init;
-}
+//	return u_init;
+//}
 
 
 template <ArithmeticWith<numeric_val> T>
@@ -956,9 +1101,12 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 	T q0, // Initial coordinate of the discontinuity
 	T t0, T t_max, T l_min, T l_max,
 	std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU,
-	std::size_t mesh_size = 201, T cfl = 0.4
+	std::size_t ghost_point_number = 5, T cfl = 0.4
 ) {
 	/* Solve a given Riemann problem for 1D Euler equations. */
+
+	const std::size_t mesh_size = std::ranges::size(u_init)
+			- 2 * ghost_point_number;
 
 	T e_left = p_left / (gamma - 1.) / rho_left;
 	T e_right = p_right / (gamma - 1.) / rho_right;
@@ -971,23 +1119,27 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 		rho_right, v_right, p_right, e_right, E_right,
 		q0, t0, t_max, l_min, l_max,
 		primitiveToConservativeU,
-		[gamma](
+		[gamma, ghost_point_number](
 				std::valarray<Vector4<T>>& u,
 				T t, T dx, const std::valarray<T>& max_eigenvalues,
 				std::size_t n_size) {
 			return calcdSpaceEu1D<T>(
-				u, t, dx, max_eigenvalues, n_size,
-				[gamma](
+				u, t, dx, max_eigenvalues, ghost_point_number,
+				[gamma, ghost_point_number](
 						const std::valarray<Vector4<T>>& u,
 						T t, const std::valarray<T>& lam,
 						std::size_t n_size,
 						T eps = 1e-40, T p = 2.) {
 //					return calcFluxComponentWiseFDWENO5<T>(
-//						u, t, lam, n_size, gamma, eps, p);
+//						u, t, lam, ghost_point_number, gamma, eps, p);
 //					return calcFluxComponentWiseFVWENO5<T>(
 //						u, t, lam, n_size, gamma, eps, p);
-					return calcFluxCharacteristicWiseFDWENO5<T>(
-						u, t, lam, 3, gamma, eps, p);
+//					return calcFluxCharacteristicWiseFDWENO5<T>(
+//						u, t, lam, ghost_point_number, gamma, eps, p);
+//					return calcFluxCharacteristicWiseFDWENO7<T>(
+//						u, t, lam, ghost_point_number, gamma, eps, p);
+					return calcFluxCharacteristicWiseFDWENO9<T>(
+						u, t, lam, ghost_point_number, gamma, eps, p);
 //					return calcFluxComponentWiseFVENO3<T>(
 //						u, t, lam, n_size, gamma);
 				},
@@ -1000,11 +1152,11 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 				1e-40, 2.
 			);
 		},
-		[](std::valarray<Vector4<T>>& u) {
-			updateGhostPointsTransmissive(u, 3);
+		[ghost_point_number](std::valarray<Vector4<T>>& u) {
+			updateGhostPointsTransmissive(u, ghost_point_number);
 			// updateGhostPointsPeriodic(u);
 		},
-		mesh_size, cfl
+		ghost_point_number, cfl
 	);
 }
 
