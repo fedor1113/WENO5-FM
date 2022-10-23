@@ -1,11 +1,10 @@
-#pragma GCC optimize("Ofast")
-#pragma GCC target("avx,avx2,fma")
-#pragma GCC optimize("unroll-loops")
+//#pragma GCC optimize("Ofast")
+//#pragma GCC target("avx,avx2,fma")
+//#pragma GCC optimize("unroll-loops")
 
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
-#include <filesystem>
 // #include <format>
 #include <fstream>
 // #include <initializer_list>
@@ -17,53 +16,13 @@
 #include <valarray>
 #include <vector>
 
-#include <stdio.h>
-#include <stdlib.h>
-
 // #include "vectorfieldcomponentview.h"
-// #include "euler1d.h"
-#include "kfr1d.h"
-#include "inviscidburgers1d.h"
+#include "euler1d.h"
+// #include "kfr1d.h"
+// #include "inviscidburgers1d.h"
 
-// template class Vector4<numeric_val>;
-// using Vec4 = Vector4<numeric_val>;
-
-
-//std::valarray<numeric_val> process_initial_condition_file(
-//		std::filesystem::path filename, bool vector=false) {
-//	if (vector)
-//		std::valarray<Vec4> ic;
-//	else
-//		std::valarray<numeric_val> ic;
-
-//	std::ifstream infile(filename);
-//	std::filesystem::path filepath = filename;
-
-//	if (!std::filesystem::is_regular_file(filepath))
-//		throw std::runtime_error(
-//				"Input does not appear to be a regular file!");
-
-//	auto size = std::filesystem::file_size(filename);
-//	ic.resize(size);
-
-//	std::size_t k = 0;
-//	if (infile.is_open()) {
-//		while (infile) {
-//			if (vector) {
-//				ic[k] = Vector4<numeric_val>::ZERO;
-//				infile >> ic[k][0] >> ic[k][1] >> ic[k][2];
-//			} else {
-//				infile >> ic[k];
-//			}
-
-//			++ k;
-//		}
-//	}
-
-//	infile.close();
-
-//	return ic;
-//}
+template class Vector4<numeric_val>;
+using Vec4 = Vector4<numeric_val>;
 
 
 int main(int argc, char **argv) {
@@ -73,7 +32,6 @@ int main(int argc, char **argv) {
 	std::size_t k = 0;
 
 	std::size_t Nx = 201;
-	// const std::size_t N_ghost_points = 3;
 	const std::size_t N_ghost_points = 5;
 	std::size_t N_full = Nx + 2*N_ghost_points;
 	// Nx = Nx + 6;  // Add in ghost cells
@@ -83,7 +41,7 @@ int main(int argc, char **argv) {
 	numeric_val t = 0.;
 	numeric_val tfinal = 0.0;  // [T]
 
-//	numeric_val gamma = 1.4;
+	numeric_val gamma = 1.4;
 
 //	Vector4<numeric_val> v{1., 2., 3., 0.};
 //	Vector4<numeric_val> v1{5., 6., 7., 0.};
@@ -95,12 +53,6 @@ int main(int argc, char **argv) {
 //	Vector4<numeric_val> q{
 //		0.1, 0., 0., 0.};
 //	Vector4<numeric_val> res = projectOntoCharacteristics(q, f, 1.4);
-//	std::cout << res << "\n";
-//	Vector4<numeric_val> f{
-//		170.44085, 5002.99595, 113833.09615, 6237.88407};
-//	Vector4<numeric_val> q{
-//		6.02673, -47.88855, 10.33898, 19.2305};
-//	Vector4<numeric_val> res = projectOntoCharacteristics<numeric_val>(q, f, 1.4);
 //	std::cout << res << "\n";
 
 	// std::valarray<Vec4> u_res(Vec4::ZERO, N_full);
@@ -130,7 +82,7 @@ int main(int argc, char **argv) {
 //		primitiveToConservativeU<numeric_val>, Nx, cfl
 //	);  // Sod's problem (expansion-contact-shock)
 
-//	Nx = 200; N_full = Nx + 2*N_ghost_points;
+//	Nx = 500; N_full = Nx + 2*N_ghost_points;
 //	L = 1.;
 //	cfl = 0.55;
 //	tfinal = 0.2;
@@ -250,49 +202,37 @@ int main(int argc, char **argv) {
 //			2001, 2501, 5001,
 //			10001}) {
 //		 : {21, 41, 81, 161, 321, 641}) {
-//		 : {100000}) {
-//		 : {51, 81, 101, 151, 201, 2001, 10001}) {
+		 : {500}) {
+//		 : {1001}) {
 //		 : {26, 51, 101, 201, 401, 801/*, 1601, 3206*/}) {
-//		 : {50, 100, 200, 400, 800, 1600, 3200, 6400}) {
-//		 : {50, 80, 100, 150, 200, 2000, 10000}) {
-//		 : {50, 80, 100,
-//			150, 200, 400, 500, 600, 700, 800, 900,
-//			1000, 1200, 1600, 2000, 3200/*, 6400, 10000*/}) {
-//		 : {101, 201, 401, 501, 601, 701, 801, 901
-//			1001, 1201, 1601/*, 3201*/}) {
-		 : {21, 41, 81, 161}) {
-//		 : {301}) {
-//		 : {321}) {
-//		 : {1201}) {
-//		 : {81, 101, 121, 151, 201, 301, 401, 451, 501,
-//			601, 801, 1001, 1601}) {
+//		 : {50, 100, 200, 400, 800, 1600/*, 3200, 6400*/}) {
 		Nx = j; N_full = Nx + 2 * N_ghost_points;
 		L = 10.;
 		// L = 1.;
-		cfl = 1.5;
+		cfl = 1.;
 		tfinal = 3000.;
 		// tfinal = 1.5;
 
 
-		std::valarray<numeric_val> u_res(0., N_full);
-//		std::valarray<Vec4> u_res(Vec4::ZERO, N_full);
-		std::size_t guessed_length = static_cast<std::size_t>(
-					(tfinal - t) / (cfl * L / Nx / 10)
-					);
-		std::vector<numeric_val> u_s(guessed_length, 0.);
-		std::vector<numeric_val> times(u_s.size(), 0.);
+		// std::valarray<numeric_val> u_res(0., N_full);
+		std::valarray<Vec4> u_res(Vec4::ZERO, N_full);
+//		std::size_t guessed_length = static_cast<std::size_t>(
+//					(tfinal - t) / (cfl * L / Nx / 10)
+//					);
+//		std::vector<numeric_val> u_s(guessed_length, 0.);
+//		std::vector<numeric_val> times(u_s.size(), 0.);
 		std::valarray<numeric_val> x(0., N_full);
 
-//		L = 1.;
-//		cfl = 0.9;
-//		tfinal = 0.17;
-//		solve1DRiemannProblemForEulerEq<numeric_val>(
-//			u_res, x, gamma,
-//			1., 0.75, 1.,
-//			0.125, 0., 0.1, 0.3,
-//			t, tfinal, 0., L,
-//			primitiveToConservativeU<numeric_val>, Nx, cfl
-//		);  // Modified Sod's problem JCP 27:1 1978 (expansion-contact-shock). Toro-1
+		L = 1.;
+		cfl = 0.2;
+		tfinal = 0.17;
+		solve1DRiemannProblemForEulerEq<numeric_val>(
+			u_res, x, gamma,
+			1., 0.75, 1.,
+			0.125, 0., 0.1, 0.3,
+			t, tfinal, 0., L,
+			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+		);  // Modified Sod's problem JCP 27:1 1978 (expansion-contact-shock). Toro-1
 //		solve1DHighGradientLaserProblem<numeric_val>(
 //			u_res,
 //			x,
@@ -304,22 +244,12 @@ int main(int argc, char **argv) {
 
 //		solve1DDetonationProfileProblem<numeric_val>(
 //					u_res, x,
-//					3.9, 0.1, 0.0, 0.0,
+//					4.5, 0.1, 0.05, 0.01,
 //					u_s, times,
-//					1e-6,
+//					1e-40,
 //					0., tfinal, -L, 0.,
 //					Nx, cfl
-//					);  // stable, simple solution with u_s = 1.
-
-//		solve1DDetonationProfileProblem<numeric_val>(
-//					u_res, x,
-//					4.5, 0.1, 0.05, 0.5,
-//					u_s, times,
-//					1e-6,
-//					0., tfinal, -L, 0.,
-//					Nx, cfl,
-//					N_ghost_points
-//					);  // period-1 limit cycle
+//					);
 //		solve1DInviscidBurgersProblem<numeric_val>(
 //			u_res, x, 0., 0.5, -1., 1.,  Nx, cfl
 //		);
@@ -329,60 +259,16 @@ int main(int argc, char **argv) {
 //			Nx, cfl
 //		);
 //		tfinal = 2.;
-//		// cfl = 1.;
-//		cfl = 1./350.;
-//		L = 1.;
-//		solve1DInviscidBurgersProblem<numeric_val>(
-//			u_res, x,
-//			0., tfinal, -1., 1.,
-//			Nx, cfl, 53
-//		);  // Henrick-1
-//		tfinal = 10.;
-//		cfl = 1.;
-//		L = 1.;
-//		solve1DInviscidBurgersProblem<numeric_val>(
-//			u_res, x,
-//			0., tfinal, -1., 1.,
-//			Nx, cfl, 1
-//		);  // Toro-1
-//		tfinal = 10.;
-//		cfl = 1.;
 //		L = 1.;
 //		solve1DInviscidBurgersProblem<numeric_val>(
 //			u_res, x,
 //			0., tfinal, -1., 1.,
 //			Nx, cfl, 2
-//		);  // Toro-2
-//		tfinal =  2187. / 4096.;
-		tfinal = .533935;
-////		tfinal = 0.3;
-//		cfl = 0.94;
-		cfl = 1./350.;
-		L = 2. * std::numbers::pi_v<numeric_val>;
-		solve1DInviscidBurgersProblem<numeric_val>(
-			u_res, x,
-			0., tfinal, 0., L,
-			Nx, cfl, 21
-		);  // Evstigneev-21
-//		tfinal = 1. / std::numbers::pi_v<numeric_val>;
-//		cfl = 0.8;
-//		L = 2.;
-//		solve1DInviscidBurgersProblem<numeric_val>(
-//			u_res, x,
-//			0., tfinal, -1., 1.,
-//			Nx, cfl, 26
-//		);  // Balsara-Shu VI for the Burgers eq'n
+//		);  // Henrick-1
 
 		std::ofstream outfile;
 
-
-		std::string folder =
-				"./data/hopf/WENO9FM-RK6_5-DX/";
-//		std::string folder =
-//				"./data/det/ERK_6_5-FD-WENO7-FM-CFL-1.5-ext_ord-7-corr/alpha_4.5_beta_0.1/a_0.05_k_0.5/";
-//		std::string folder = "./data/";
-//		std::string folder = "./data/det/ext_ord_4/SSPRK_3_3-FD-WENO5-FM-CFL-0.4/alpha_3.9_beta_0.1/a_0.0_k_0.0/";
-//		std::string folder = "./";
+		std::string folder = "./";
 
 		std::string filepath = folder
 				+ "res_n_"
@@ -391,28 +277,20 @@ int main(int argc, char **argv) {
 
 		outfile.open(filepath);
 
-//		char x_str_buf[128];
-//		char u_str_buf[128];
-//		char tfinal_buf[128];
-//		quadmath_snprintf(tfinal_buf, sizeof tfinal_buf,
-//					"%+-#*.20Qe", 20, tfinal);
-
 		k = 0;
 		if (outfile.is_open()) {
-//			 outfile << "TITLE=\"Riemann Problem 1D slice t="
-//					<< tfinal << "\"" << "\n";
-//			 outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
-//			 outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
-			outfile << "TITLE=\"Detonation Problem 1D slice t="
+			 outfile << "TITLE=\"Riemann Problem 1D slice t="
 					<< tfinal << "\"" << "\n";
+			 outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
+			 outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
 //			outfile << "TITLE=\"Detonation Problem 1D slice t="
-//					<< tfinal_buf << "\"" << "\n";
-			outfile << "VARIABLES=\"x\",\"u\"" << "\n";
-			outfile << "ZONE T=\"Numerical\", I="
-					<< N_full << ", F=POINT" << "\n";
+//					<< tfinal << "\"" << "\n";
+//			outfile << "VARIABLES=\"x\",\"u\"" << "\n";
+//			outfile << "ZONE T=\"Numerical\", I="
+//					<< N_full << ", F=POINT" << "\n";
 
 			for (auto u : u_res) {
-//				Vec4 q = conservativeToPrimitive(u, gamma);
+				Vec4 q = conservativeToPrimitive(u, gamma);
 				// std::cout << u << "\n";
 
 				//			std::cout << x[k]
@@ -426,28 +304,20 @@ int main(int argc, char **argv) {
 				//					<< " " << u[1]/u[0]
 				//					<< " " << (u[2]-u[1]*(u[1]/u[0])/2)*(G-1)
 				//					<< " " << u[3]/u[0] << "\n";
-//				outfile << std::setprecision(
-//							   std::numeric_limits<numeric_val>::max_digits10 - 1)
-//						<< std::scientific
-//						<< x[k]
-//						<< " " << q[0]
-//						<< " " << q[1]
-//						<< " " << q[2]
-//						<< " " << q[3] << "\n";
-//				outfile << std::format("{}", x[k])
-//						<< " " << std::format("{}", u) << "\n";
-//				quadmath_snprintf(x_str_buf, sizeof x_str_buf,
-//							"%+-#*.20Qe", 20, x[k]);
-//				quadmath_snprintf(u_str_buf, sizeof u_str_buf,
-//							"%+-#*.20Qe", 20, u);
-//				outfile << std::setprecision(
-//							   std::numeric_limits<numeric_val>::max_digits10 - 1)
-//						<< std::scientific
-//						<< x_str_buf << " " << u_str_buf << "\n";
 				outfile << std::setprecision(
 							   std::numeric_limits<numeric_val>::max_digits10 - 1)
 						<< std::scientific
-						<< x[k] << " " << u << "\n";
+						<< x[k]
+						<< " " << q[0]
+						<< " " << q[1]
+						<< " " << q[2]
+						<< " " << q[3] << "\n";
+//				outfile << std::format("{}", x[k])
+//						<< " " << std::format("{}", u) << "\n";
+//				outfile << std::setprecision(
+//							   std::numeric_limits<numeric_val>::max_digits10 - 1)
+//						<< std::scientific
+//						<< x[k] << " " << u << "\n";
 
 				++ k;
 			}
@@ -468,7 +338,7 @@ int main(int argc, char **argv) {
 //			// 		<< tfinal << "\"" << "\n";
 //			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
 //			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
-//			outfile << "TITLE=\"Detonation Problem u_s time evolution up to t="
+//			outfile << "TITLE=\"Detonation Problem u_s time evolution"
 //					<< tfinal << "\"" << "\n";
 //			outfile << "VARIABLES=\"x\",\"u\"" << "\n";
 //			outfile << "ZONE T=\"Numerical\", I="
