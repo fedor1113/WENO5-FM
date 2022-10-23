@@ -453,35 +453,35 @@ std::valarray<T> f5OrdReconstructionFromStencil(
 
 	std::valarray<T> q_res(5);
 
-	q_res[0] = (+ 012. * f_stencil[0]
-				- 063. * f_stencil[1]
+	q_res[0] = (+  12. * f_stencil[0]
+				-  63. * f_stencil[1]
 				+ 137. * f_stencil[2]
 				- 163. * f_stencil[3]
 				+ 137. * f_stencil[4]) / 60.;
 
-	q_res[1] = (- 003. * f_stencil[1]
-				+ 017. * f_stencil[2]
-				- 043. * f_stencil[3]
-				+ 077. * f_stencil[4]
-				+ 012. * f_stencil[5]) / 60.;
+	q_res[1] = (-  3. * f_stencil[1]
+				+ 17. * f_stencil[2]
+				- 43. * f_stencil[3]
+				+ 77. * f_stencil[4]
+				+ 12. * f_stencil[5]) / 60.;
 
-	q_res[2] = (+ 002. * f_stencil[2]
-				- 013. * f_stencil[3]
-				+ 047. * f_stencil[4]
-				+ 027. * f_stencil[5]
-				- 003. * f_stencil[6]) / 60.;
+	q_res[2] = (+  2. * f_stencil[2]
+				- 13. * f_stencil[3]
+				+ 47. * f_stencil[4]
+				+ 27. * f_stencil[5]
+				-  3. * f_stencil[6]) / 60.;
 
-	q_res[3] = (- 003. * f_stencil[3]
-				+ 027. * f_stencil[4]
-				+ 047. * f_stencil[5]
-				- 013. * f_stencil[6]
-				+ 002. * f_stencil[7]) / 60.;
+	q_res[3] = (-  3. * f_stencil[3]
+				+ 27. * f_stencil[4]
+				+ 47. * f_stencil[5]
+				- 13. * f_stencil[6]
+				+  2. * f_stencil[7]) / 60.;
 
-	q_res[4] = (+ 012. * f_stencil[4]
-				+ 077. * f_stencil[5]
-				- 043. * f_stencil[6]
-				+ 017. * f_stencil[7]
-				- 003. * f_stencil[8]) / 60.;
+	q_res[4] = (+ 12. * f_stencil[4]
+				+ 77. * f_stencil[5]
+				- 43. * f_stencil[6]
+				+ 17. * f_stencil[7]
+				-  3. * f_stencil[8]) / 60.;
 
 	return q_res;
 }
@@ -646,7 +646,7 @@ std::ranges::common_range auto omegaWENOFMWeights(
 		const std::ranges::common_range auto&& lambda_weights,
 		const std::valarray<numeric_val>& d_ideal_lin_weights,
 		const std::valarray<numeric_val>& discrete_lambda
-					= DISCRETE_LAMBDA5) {
+					/*= DISCRETE_LAMBDA5*/) {
 	/* From Henrick et al.'s mappings of g(λ_k) for the improved
 	 * symmetric normalized lambda-weights of Hong, Ye & Ye
 	 * and linear weights d_k we get the new corrected resultant
@@ -1323,6 +1323,81 @@ T computeFHatWENO7FMReconstructionKernel(
 			+ omega_weights[1] * eno_reconstructed_f[1]
 			+ omega_weights[2] * eno_reconstructed_f[2]
 			+ omega_weights[3] * eno_reconstructed_f[3];
+
+	return f_hat;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T computeFHatWENO9BSReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-40, T p = 2.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical
+	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
+	 * (receives the following 9 values
+	 *     [j-4, j-3, j-2, j-1, j+0, j+1, j+2, j+3, j+4, ...] for '+'
+	 * (or [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3, ...] for '-')
+	 *       ^    ^    ^    ^    ^    ^    ^    ^    ^    ^
+	 *       0    1    2    3    4    5    6    7    8    |
+	 * in either case for convenience).
+	 *
+	 * I.e. this function implements the upwind reconstruction which
+	 * should be used for positive fluxes (with information propagated
+	 * from left to right) if the nodes are passed in order. However,
+	 * the downwind reconstruction should obviously look the same
+	 * modulo flipping the values with respect to j+0, so that it
+	 * becomes downwind biased and takes one extra point to the right
+	 * instead of taking one extra to the left. In other words, to get
+	 * this to behave as a downwind reconstrution we need to pass
+	 * the points symmetric to those of upwind reconstruction with
+	 * respect to j+0:
+	 * [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3, ...].
+	 * (We reverse the points in
+	 *      [j-4, j-3, j-2, j-1, j+0, j+1, j+2, j+3, j+4] j+5 and get
+	 *                            |
+	 * [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3] j-4.)
+	 */
+
+	// `p` controls (increases) the amount of numerical dissipation
+	// (and nothing more in WENO and WENO-(F)M);
+	// but in WENO-Z(M) changing the value of p alters convergence
+	// rates at critical points (it's recommended to take it = r-1
+	// for 2r-1 order schemes, so 2 for WENO5-Z(M)).
+	//
+	// `eps` is a small positive parameter to avoid the denominator
+	// of weights being zero
+	// (though it, too, can be significant for convergence properties
+	// and should ideally be tailored to the specific comp. problem,
+	// as first noted and more or less fully outlined by Henrick et al.)
+
+	// f_stencil = f_plus (or a reversed stencil for f_minus)
+
+	std::valarray<T> beta_IS_coefs(5);
+
+	T f_hat = 0.;
+
+	beta_IS_coefs = betaSmoothnessIndicatorsWENO9BS<T>(f_stencil);
+
+	// non-linear non-scaled (α-)weights
+	std::valarray<T> d_lin_weights = {
+		1./126., 10./63., 10./21., 20./63., 5./126.
+	};
+
+	std::valarray<T> alpha_weights = d_lin_weights
+			/ std::pow(eps + beta_IS_coefs, p);
+
+	// scaled (normalized) non-linear (ω-)weights (ENO weights)
+	std::valarray<T> omega_weights = alpha_weights
+			/ alpha_weights.sum();
+
+	std::valarray<T> eno_reconstructed_f
+			= f5OrdReconstructionFromStencil<T>(f_stencil);
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2]
+			+ omega_weights[3] * eno_reconstructed_f[3]
+			+ omega_weights[4] * eno_reconstructed_f[4];
 
 	return f_hat;
 }
@@ -2606,6 +2681,27 @@ void calcHydroStageFDWENO9FM(
 }
 
 
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFDWENO9BS(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_ghost_cells = 5,
+		T eps = 1e-40,
+		T p = 2.) {
+	calcHydroStageFDWENO9<T>(
+				std::move(f_plus),
+				std::move(f_minus), t,
+				std::move(numerical_flux),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO9BSReconstructionKernel<T>(
+								std::move(stencil), eps, p);
+				}, n_ghost_cells, eps, p);
+}
+
+
 // template <ArithmeticWith<numeric_val> T>
 void updateGhostPointsTransmissive(
 		std::ranges::common_range auto&& U,
@@ -2672,9 +2768,14 @@ void updateGhostPointsPeriodic(
 //	std::cout << U[n_full_size-2-3-1]
 //			<< " " << U[n_full_size-1-3-1]
 //			<< " " << U[n_full_size-3-1] << "\n";
-	U[0] = U[n_full_size - 1 - 3 - 2];
-	U[1] = U[n_full_size - 1 - 3 - 1];
-	U[2] = U[n_full_size - 1 - 3 - 0];
+//	U[0] = U[n_full_size - 1 - 3 - 2];
+//	U[1] = U[n_full_size - 1 - 3 - 1];
+//	U[2] = U[n_full_size - 1 - 3 - 0];
+	U[0] = U[n_full_size - 1 - 5 - 5];
+	U[1] = U[n_full_size - 1 - 5 - 4];
+	U[2] = U[n_full_size - 1 - 5 - 3];
+	U[3] = U[n_full_size - 1 - 5 - 2];
+	U[4] = U[n_full_size - 1 - 5 - 1];
 
 //	std::ranges::transform(
 //				U | std::ranges::views::drop(right_start_index),
@@ -2690,9 +2791,14 @@ void updateGhostPointsPeriodic(
 //	std::cout << U[3]
 //			<< " " << U[4]
 //			<< " " << U[5] << "\n";
-	U[n_full_size - 1 - 2] = U[3 + 0];
-	U[n_full_size - 1 - 1] = U[3 + 1];
-	U[n_full_size - 1 - 0] = U[3 + 2];
+//	U[n_full_size - 1 - 2] = U[3 + 0];
+//	U[n_full_size - 1 - 1] = U[3 + 1];
+//	U[n_full_size - 1 - 0] = U[3 + 2];
+	U[n_full_size - 1 - 4] = U[5 + 1];
+	U[n_full_size - 1 - 3] = U[5 + 2];
+	U[n_full_size - 1 - 2] = U[5 + 3];
+	U[n_full_size - 1 - 1] = U[5 + 4];
+	U[n_full_size - 1 - 0] = U[5 + 5];
 }
 
 
@@ -2718,10 +2824,11 @@ void timeOperator(
 	T cpu = calcMaxWaveSpeed(U, dt);
 	std::valarray<T> lam = std::valarray(cpu, 4);
 
-	dt = cfl * dx / lam[0];
-	// dt = 8. * std::pow(dx, 5./3.);
-
 	while (t < fin_t) {
+		dt = cfl * dx / lam[0];
+		// dt = 8. * std::pow(dx, 5./3.);
+		// dt = 8. * std::pow(dx, 3.);;
+
 		if (t + dt > fin_t)
 			dt = fin_t - t;
 
@@ -2732,9 +2839,6 @@ void timeOperator(
 
 		cpu = calcMaxWaveSpeed(U, dt);
 		lam = std::valarray(cpu, 4);
-
-		dt = cfl * dx / lam[0];
-		// dt = 8. * std::pow(dx, 5./3.);
 	}
 	// std::cout << "t = " << t << "\n";
 

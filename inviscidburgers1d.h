@@ -156,15 +156,19 @@ std::valarray<T> calcFluxInviscidBurgersFVENO3(
 		monotone_flux_component_mn]  = splitFluxAsLaxFriedrichs<T>(
 			U, res, lam[0]);
 
-	// updateGhostPointsPeriodic(monotone_flux_component_pl);
-	// updateGhostPointsPeriodic(monotone_flux_component_mn);
-	updateGhostPointsTransmissive(monotone_flux_component_pl);
-	updateGhostPointsTransmissive(monotone_flux_component_mn);
+	// updateGhostPointsPeriodic(monotone_flux_component_pl, 5);
+	// updateGhostPointsPeriodic(monotone_flux_component_mn, 5);
+	// updateGhostPointsTransmissive(monotone_flux_component_pl, 5);
+	// updateGhostPointsTransmissive(monotone_flux_component_mn, 5);
 
-	calcHydroStageFDWENO5FM<T>(
+//	calcHydroStageFDWENO5FM<T>(
+//				std::ranges::views::all(monotone_flux_component_pl),
+//				std::ranges::views::all(monotone_flux_component_mn),
+//				t, res, 3, 1e-40, 2.);
+	calcHydroStageFDWENO9FM<T>(
 				std::ranges::views::all(monotone_flux_component_pl),
 				std::ranges::views::all(monotone_flux_component_mn),
-				t, res, 3, 1e-40, 2.);
+				t, res, 5, 1e-40, 2.);
 //	calcHydroStageFDENO3<T>(
 //				std::ranges::views::all(monotone_flux_component_pl),
 //				std::ranges::views::all(monotone_flux_component_mn),
@@ -211,7 +215,7 @@ std::valarray<T> calcdSpaceInviscidBurgers(
 	std::valarray<T> dflux(0., u.size());
 	std::valarray<T> lf = calcFlux(u, t, lam, n_size, opts...);
 
-	const std::size_t ghost_point_number = 3;
+	const std::size_t ghost_point_number = 5;
 
 //	std::slice Nweno(ghost_point_number, n_size, 1);
 //	std::slice Nweno_shifted_by_neg_1(ghost_point_number-1, n_size, 1);
@@ -284,8 +288,8 @@ void integrate1DInviscidBurgersProblem(
 		u_sol, flux, fluxes, t0, dx, n_size, t_fin,
 		timeStepFunction,
 		[](const decltype(u_sol)& u, T dt) {
-			T D = calcInviscidBurgersMaxWaveSpeed<T>(u);
-			// T D = calcLinearAdvectionMaxWaveSpeed<T>(u);
+			// T D = calcInviscidBurgersMaxWaveSpeed<T>(u);
+			T D = calcLinearAdvectionMaxWaveSpeed<T>(u);
 
 			return /* 1.1 * */ D;
 		},
@@ -303,7 +307,7 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 	char type = 0
 ) {
 	T t = t0;
-	const std::size_t number_of_ghost_points = 3;
+	const std::size_t number_of_ghost_points = 5;
 
 	// std::size_t computational_domain_size = mesh_size;
 	std::size_t full_mesh_size = mesh_size + 2 * number_of_ghost_points;
@@ -316,15 +320,18 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 
 	std::size_t k = 0;
 	for (k = 0; k < number_of_ghost_points; ++ k)
-		x[k] = l_min - dx * (number_of_ghost_points - k);
+		x[k] = l_min - dx * static_cast<T>(number_of_ghost_points - k);
 
 	x[number_of_ghost_points] = l_min;
-	for (k = number_of_ghost_points + 1; k < full_mesh_size; ++ k)
-		x[k] = x[k-1] + dx;
+//	for (k = number_of_ghost_points + 1; k < full_mesh_size; ++ k)
+//		x[k] = x[k-1] + dx;
+	for (k = 1; k < mesh_size + number_of_ghost_points; ++ k)
+		x[number_of_ghost_points + k] = l_min + dx * static_cast<T>(k);
 	// x[5+3] = 0.;
+	x[number_of_ghost_points + mesh_size - 1] = l_max;
 
 	for (k = number_of_ghost_points;
-			k < mesh_size + number_of_ghost_points;
+			k < mesh_size + number_of_ghost_points - 1;
 			++ k) {
 		switch (type) {
 			case 0:
@@ -338,11 +345,18 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 				u_init[k] = 0.5 + std::sin(
 							std::numbers::pi_v<T> * x[k]);
 			break;
+			case 26:  // Balsara-Shu VI for the Burgers eq'n
+				u_init[k] = 0.25 + 0.5 * std::sin(
+							std::numbers::pi_v<T> * x[k]);
+			break;
 			case 1:  // Toro-1 for linear advection
 				u_init[k] = 1.0 * std::exp(-8.0 * x[k] * x[k]);
 			break;
 			case 2:  // Toro-2 for linear advection
 				u_init[k] = (x[k] >= 0.3) * (x[k] <= 0.7) * 1.;
+			break;
+			case 25:  // Balsara-Shu V for linear advection
+				u_init[k] = std::pow(std::sin(x[k]), 4);
 			break;
 			case 53:  // Henrick et al. 5.3. Linear advection example
 				u_init[k] = std::sin(
@@ -358,9 +372,11 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 				u_init[k] = std::pow(std::sin(x[k]), 9);
 			break;
 		}
+
 	}
-	updateGhostPointsTransmissive(u_init);
-	// updateGhostPointsPeriodic(u_init);
+	// updateGhostPointsTransmissive(u_init, number_of_ghost_points);
+	updateGhostPointsPeriodic(u_init, number_of_ghost_points);
+//	std::cout << "Initial conditions set!" << "\n";
 //	u_init[0] = -2;
 //	u_init[1] = -1;
 //	u_init[2] = 0;
@@ -371,7 +387,7 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 //	u_init[7] = 5;
 //	u_init[8] = 6;
 //	u_init[9] = 7;
-	dx = (l_max - l_min) / (mesh_size - 1.);
+	// dx = (l_max - l_min) / (mesh_size - 1.);
 	// dx = (l_max - l_min) / mesh_size;
 
 	auto spaceOp = [&x](
@@ -409,8 +425,8 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 
 	auto updateGhostPoints = [&x, number_of_ghost_points, dx](
 			std::valarray<T>& u) {
-		updateGhostPointsTransmissive(u);
-		// updateGhostPointsPeriodic(u);
+		updateGhostPointsTransmissive(u, number_of_ghost_points);
+		// updateGhostPointsPeriodic(u, number_of_ghost_points);
 	};
 
 	std::valarray<T> flux(0., std::ranges::size(u_init));
@@ -454,10 +470,10 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 			const std::valarray<T>& lam,
 			std::size_t n_size
 		) {
-			advanceTimestepTVDRK3<T>(
-				u, dflux, fluxes[0].get(), fluxes[1].get(),
-				t, dt, dx, lam,
-				3, spaceOp, updateGhostPoints);
+//			advanceTimestepTVDRK3<T>(
+//				u, dflux, fluxes[0].get(), fluxes[1].get(),
+//				t, dt, dx, lam,
+//				5, spaceOp, updateGhostPoints);
 //			advanceTimestepSSPRK10_4<T>(
 //				u, dflux, fluxes[0].get(),
 //				t, dt, dx, lam,
@@ -469,16 +485,16 @@ std::valarray<T> solve1DInviscidBurgersProblem(
 //				t, dt, dx, lam,
 //				n_size, spaceOp, secondDerivative,
 //				updateGhostPoints);
-//			advanceTimestepRK6_5<T>(
-//				u,
-//				dflux,
-//				fluxes[0].get(), fluxes[1].get(),
-//				fluxes[2].get(), fluxes[3].get(),
-//				fluxes[4].get(), fluxes[5].get(),
-//				fluxes[6].get(), fluxes[7].get(),
-//				fluxes[8].get(), fluxes[9].get(),
-//				t, dt, dx, lam,
-//				3, spaceOp, updateGhostPoints);
+			advanceTimestepRK6_5<T>(
+				u,
+				dflux,
+				fluxes[0].get(), fluxes[1].get(),
+				fluxes[2].get(), fluxes[3].get(),
+				fluxes[4].get(), fluxes[5].get(),
+				fluxes[6].get(), fluxes[7].get(),
+				fluxes[8].get(), fluxes[9].get(),
+				t, dt, dx, lam,
+				5, spaceOp, updateGhostPoints);
 		}, cfl);
 
 	return u_init;

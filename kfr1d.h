@@ -519,7 +519,7 @@ void prepare1DDetonationProfileProblem(
 		 k < std::ranges::size(u_interior)
 			+ std::ranges::size(u_right);
 		 ++ k)
-		x[std::ranges::size(u_left) + k] = l_min + dx * k;
+		x[std::ranges::size(u_left) + k] = l_min + dx * static_cast<T>(k);
 
 	std::size_t x0_index = 0;
 	T q0 = l_max;
