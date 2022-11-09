@@ -2,6 +2,7 @@
 #define RK6_5_H
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <execution>
 #include <numeric>
@@ -43,13 +44,12 @@ void advanceTimestepRK6_5(
 	 * to resolve detonation waves.
 	 */
 
-	// std::slice Nint(3, nSize, 1);
 	const std::size_t n_size = std::ranges::size(U)
 			- 2 * n_ghost_points;
 
 	auto iv = std::ranges::common_view(
-			std::ranges::views::iota(std::size_t(0))
-				| std::views::take(std::ranges::size(U))
+			std::ranges::views::iota(std::size_t(n_ghost_points/*0*/))
+				| std::views::take(n_size/*std::ranges::size(U)*/)
 	);
 
 	L0.resize(std::ranges::size(U));
@@ -160,11 +160,14 @@ void advanceTimestepRK6_5(
 				std::execution::par_unseq,
 				std::ranges::begin(iv/* | interior_view*/),
 				std::ranges::end(iv/* | interior_view*/),
-				[dt, &U, &L0, &L1, &L3, &L4, &L5](std::size_t k) {
+				[dt, &U, &L0, &L1, &L2, &L3, &L4, &L5](std::size_t k) {
+//		auto U_old = U[k];
 		U[k] += (14. * L0[k]
 					+ 125. * L3[k]
 					+ 162. * L4[k]
 					+ 35. * L5[k]) * dt / 336.;
+//		if (std::abs(std::max(U[k] - U_old) / std::max(U[k])) > 0.5)
+//			U[k] += (L0[k] + L1[k] + 4. * L2[k]) * dt / 6.;
 	});
 
 	updateGhostPoints(U);

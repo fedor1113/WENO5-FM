@@ -15,10 +15,13 @@ void EulerForward(
 		std::ranges::common_range auto& dflux,
 		T t, T dt, T dx,
 		const std::ranges::common_range auto& max_eigenvalues,
-		std::size_t n_size,
+		std::size_t n_ghost_points,
 		auto&& calcdSpace,
 		auto&& updateGhostPoints,
 		Args... opts_args) {
+	const std::size_t n_size = std::ranges::size(U)
+			- 2 * n_ghost_points;
+
 	dflux = calcdSpace(U, t, dx, max_eigenvalues,
 		n_size, opts_args...);  // L1 = L[u^n]
 	// std::valarray<Vector4<T>> res(Vector4<T>::ZERO, U.size());

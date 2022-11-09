@@ -32,7 +32,6 @@ void advanceTimestepRK4_4(
 	 * implementation of ENO schemes, 1998.
 	 */
 
-	// std::slice Nint(3, nSize, 1);
 	const std::size_t n_size = std::ranges::size(U)
 			- 2 * n_ghost_points;
 

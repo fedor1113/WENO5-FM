@@ -15,6 +15,7 @@ template<ArithmeticWith<numeric_val> T, typename... Args>
 void advanceTimestepTVDRK3(
 		std::ranges::common_range auto& U,
 		std::ranges::common_range auto& dflux,
+		std::ranges::common_range auto& dflux_temp,
 		std::ranges::common_range auto& Y2,
 		std::ranges::common_range auto& Y3,
 		T t, T dt, T dx,
@@ -37,11 +38,11 @@ void advanceTimestepTVDRK3(
 	 * also internally stable.)
 	 */
 
-	// std::slice Nint(3, nSize, 1);
 	const std::size_t n_size = std::ranges::size(U)
 			- 2 * n_ghost_points;
 
 	dflux.resize(std::ranges::size(U));
+	dflux_temp.resize(std::ranges::size(U));
 
 //	auto interior_view = std::views::drop(n_ghost_points)
 //			| std::views::take(n_size)
@@ -71,7 +72,7 @@ void advanceTimestepTVDRK3(
 
 
 	// ------------------------Second Stage---------------------------
-	dflux = calcdSpace(Y2, t, dx, max_eigenvalues,
+	dflux_temp = calcdSpace(Y2, t, dx, max_eigenvalues,
 		n_size, opts_args...);  // L2 = L[u(1)]
 
 	// Y3 = Vector4<T>(3.)*U + Vector4<T>(dt) * dflux + Y2;
@@ -84,8 +85,8 @@ void advanceTimestepTVDRK3(
 				std::execution::par_unseq,
 				std::ranges::begin(iv/* | interior_view*/),
 				std::ranges::end(iv/* | interior_view*/),
-				[dt, &Y3, &U, &dflux, &Y2](std::size_t k) {
-		Y3[k] = (3. * U[k] + dt * dflux[k] + Y2[k]) * 0.25;
+				[dt, &Y3, &U, &dflux_temp, &Y2](std::size_t k) {
+		Y3[k] = (3. * U[k] + dt * dflux_temp[k] + Y2[k]) * 0.25;
 	});
 	// u(2) = 0.75 * u^n + 0.25 * u(1) + 0.25 * Δt L[u(1)]
 
@@ -93,7 +94,7 @@ void advanceTimestepTVDRK3(
 
 
 	// ------------------------Third Stage----------------------------
-	dflux = calcdSpace(Y3, t, dx, max_eigenvalues,
+	dflux_temp = calcdSpace(Y3, t, dx, max_eigenvalues,
 		n_size, opts_args...);  // L3 = L[u(2)]
 
 
@@ -103,7 +104,7 @@ void advanceTimestepTVDRK3(
 				std::execution::par_unseq,
 				std::ranges::begin(Y3/* | interior_view*/),
 				std::ranges::end(Y3/* | interior_view*/),
-				std::ranges::begin(dflux/* | interior_view*/),
+				std::ranges::begin(dflux_temp/* | interior_view*/),
 				std::ranges::begin(Y3/* | interior_view*/),
 				[dt](const auto u, const auto df) {
 		return 2. * (u + dt * df);

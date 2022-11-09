@@ -18,7 +18,7 @@ void advanceTimestepSSPRK10_4(
 		std::ranges::common_range auto& u_temp,
 		T t, T dt, T dx,
 		const std::ranges::common_range auto& max_eigenvalues,
-		std::size_t n_size,
+		std::size_t n_ghost_points,
 		auto&& calcdSpace,
 		auto&& updateGhostPoints,
 		Args... opts_args) {
@@ -41,7 +41,8 @@ void advanceTimestepSSPRK10_4(
 	 * also internally stable.)
 	 */
 
-	// std::slice Nint(3, nSize, 1);
+	const std::size_t n_size = std::ranges::size(u)
+			- 2 * n_ghost_points;
 	dflux.resize(std::ranges::size(u));
 	u_temp = u;
 
