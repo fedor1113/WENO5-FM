@@ -17,11 +17,14 @@ SOURCES += \
 HEADERS += \
         _vector4.h \
 		arithmeticwith.h \
+    ebdf5.h \
 		eno3.h \
+    eos.h \
 		euler1d.h \
     eulerforward.h \
     exactsolver.h \
 		extrapolation.h \
+    hllc_solver.h \
     inviscidburgers1d.h \
 		inviscidburgers1d.h \
     kfr1d.h \
@@ -30,6 +33,7 @@ HEADERS += \
     miegruneisen.h \
     rk4_4.h \
     rk6_5.h \
+    roe.h \
     ssprk10_4.h \
 		ssprk33.h \
     tdrk3_5.h \
