@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
 //			2001, 2501, 5001,
 //			10001}) {
 //		 : {21, 41, 81, 161, 321, 641}) {
-		 : {500}) {
+		 : {100}) {
 //		 : {1001}) {
 //		 : {26, 51, 101, 201, 401, 801/*, 1601, 3206*/}) {
 //		 : {50, 100, 200, 400, 800, 1600/*, 3200, 6400*/}) {
@@ -224,8 +224,18 @@ int main(int argc, char **argv) {
 		std::valarray<numeric_val> x(0., N_full);
 
 		L = 1.;
-		cfl = 0.2;
-		tfinal = 0.17;
+		cfl = 0.15;
+//		cfl = 0.3;
+//		cfl = 0.45;
+//		tfinal = 0.15;
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			1., 0., 1.,
+//			0.125, 0., 0.1, 0.5,
+//			t, tfinal, 0., L,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // Sod's problem (expansion-contact-shock)
+		tfinal = 0.2;
 		solve1DRiemannProblemForEulerEq<numeric_val>(
 			u_res, x, gamma,
 			1., 0.75, 1.,
@@ -233,6 +243,87 @@ int main(int argc, char **argv) {
 			t, tfinal, 0., L,
 			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
 		);  // Modified Sod's problem JCP 27:1 1978 (expansion-contact-shock). Toro-1
+//		tfinal = 0.12;
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			.445, .698, 3.528,
+//			.5, 0., .571, 0.5,
+//			t, tfinal, 0., L,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // Lax's problem (expansion-contact-shock)
+//		L = 10.;
+//		tfinal = 1.3;
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			.445, .698, 3.528,
+//			.5, 0., .571, 0.,
+//			t, tfinal, -4.5, 4.5,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // Lax's problem (expansion-contact-shock)
+//		tfinal = 2.5 * std::pow(10., -6);
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			1., 0., std::pow(10, 10),
+//			.125, 0., .1, 0.5,
+//			t, tfinal, 0., L,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // Strong shock tube problem (expansion-contact-shock)
+//		tfinal = 0.09;
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			3.857, 0.92, 10.3333,
+//			1., 3.55, 1., 0.5,
+//			t, tfinal, 0., L,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // Mach 3 shock test (expansion-contact-shock)
+//		tfinal = 1.75 * std::pow(10., -4);
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			10., 2000., 500.,
+//			20., 0., 500., 0.5,
+//			t, tfinal, 0., L,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // High Mach flow test (shock-contact-shock)
+//		tfinal = 0.15;
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			1., -2., 0.4,
+//			1., 2., 0.4, 0.5,
+//			t, tfinal, 0., L,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // Two symmetric rarefaction waves (expansion-contact-expansion). Toro-2
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			1., 0., 1.,
+//			0.125, 0., 0.1, 0.0,
+//			t, tfinal, -0.5, 0.5,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // Sod's problem (expansion-contact-shock)
+//		tfinal = 0.012;
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			1., 0., 1000.,
+//			1., 0., .01, 0.5,
+//			t, tfinal, 0., L,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // Toro-3
+//		tfinal = 0.02;
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			3., 0., 1000.,
+//			2., 0., .1, 0.5,
+//			t, tfinal, 0., L,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // Left Expansion and right strong shock
+//		tfinal = 0.035;
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			5.99924, 19.5975, 460.894,
+//			5.99242, -6.19633, 46.0950, 0.4,
+//			t, tfinal, 0., L,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // Toro-4
+
 //		solve1DHighGradientLaserProblem<numeric_val>(
 //			u_res,
 //			x,
@@ -279,31 +370,20 @@ int main(int argc, char **argv) {
 
 		k = 0;
 		if (outfile.is_open()) {
-			 outfile << "TITLE=\"Riemann Problem 1D slice t="
+			outfile << "TITLE=\"Riemann Problem 1D slice t="
 					<< tfinal << "\"" << "\n";
-			 outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
-			 outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
+			outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
+//			outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
 //			outfile << "TITLE=\"Detonation Problem 1D slice t="
 //					<< tfinal << "\"" << "\n";
 //			outfile << "VARIABLES=\"x\",\"u\"" << "\n";
-//			outfile << "ZONE T=\"Numerical\", I="
-//					<< N_full << ", F=POINT" << "\n";
+			outfile << "ZONE T=\"Numerical\", I="
+					<< N_full << ", F=POINT" << "\n";
 
 			for (auto u : u_res) {
 				Vec4 q = conservativeToPrimitive(u, gamma);
 				// std::cout << u << "\n";
 
-				//			std::cout << x[k]
-				//					  << " " << q[0]
-				//					  << " " << q[1]
-				//					  << " " << q[2]
-				//					  << " " << q[3] << "\n";
-				//			G = (u[3]/u[0]*cp1+(1-u[3]/u[0])*cp2)/(u[3]/u[0]*cv1+(1-u[3]/u[0])*cv2);
-				//			outfile << x[k]
-				//					<< " " << q[0]
-				//					<< " " << u[1]/u[0]
-				//					<< " " << (u[2]-u[1]*(u[1]/u[0])/2)*(G-1)
-				//					<< " " << u[3]/u[0] << "\n";
 				outfile << std::setprecision(
 							   std::numeric_limits<numeric_val>::max_digits10 - 1)
 						<< std::scientific
@@ -364,5 +444,6 @@ int main(int argc, char **argv) {
 //			"gnuplot -e \"filename='" + u_filepath + "'\" plot.gnuplot"
 //		).c_str());
 	}
+
 	return 0;
 }
