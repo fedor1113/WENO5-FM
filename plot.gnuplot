@@ -11,7 +11,7 @@ set grid
 process = "< awk '(NR>2){print;}' "
 file = filename
 plt_data = process.file
-plot plt_data using 1:2 title "ρ" with linespoints ps 1 pointtype 7, \
+plot plt_data using 1:2 title "u_h" with linespoints ps 1 pointtype 7, \
     # sin(pi * (x - 2.) - sin(pi * (x - 2.)) / pi) title "u_a"
 	# exp(-8. * (x-1.) * (x-1.)) title "u_a"
 	# "< awk '(NR>2){print;}' res.dat" using 1:4 title "p", \
