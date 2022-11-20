@@ -23,7 +23,6 @@
 // #include "eulerforward.h"
 #include "weno5.h"
 
-
 template <ArithmeticWith<numeric_val> T>
 T average(T left, T right) {
 	/* A simple arithmetic mean average of 2 values. */

@@ -166,137 +166,137 @@ std::valarray<T> betaSmoothnessIndicators(
 }
 
 
-template <ArithmeticWith<numeric_val> T>
-//std::array<T, 3> smoothness_indicators(const T1& f_stencil) {
-std::valarray<T> betaSmoothnessIndicatorsWENO7BS(
-		const std::ranges::sized_range auto& f_stencil) {
-	/* Return the WENO7 smoothness indicators of Balsara and Shu (2000)
-	 * for each of the 4 substencils.
-	 * That is the sum of the normalized squares of the scaled
-	 * L2-norms of all the derivatives of 4 local interpolating
-	 * polynomials in the sub-stencils of 7-node `f_stencil`.
-	 *
-	 * This allows for (2*4-1)=8th order accuracy from the 4th
-	 * order ENO schemes.
-	 */
+//template <ArithmeticWith<numeric_val> T>
+////std::array<T, 3> smoothness_indicators(const T1& f_stencil) {
+//std::valarray<T> betaSmoothnessIndicatorsWENO7BS(
+//		const std::ranges::sized_range auto& f_stencil) {
+//	/* Return the WENO7 smoothness indicators of Balsara and Shu (2000)
+//	 * for each of the 4 substencils.
+//	 * That is the sum of the normalized squares of the scaled
+//	 * L2-norms of all the derivatives of 4 local interpolating
+//	 * polynomials in the sub-stencils of 7-node `f_stencil`.
+//	 *
+//	 * This allows for (2*4-1)=8th order accuracy from the 4th
+//	 * order ENO schemes.
+//	 */
 
-	// std::array<T, 3> res;
-	std::valarray<T> betas(4);
+//	// std::array<T, 3> res;
+//	std::valarray<T> betas(4);
 
-//	betas[0] = f_stencil[2] * (
-//				134241. * f_stencil[2]
-//				- 114894. * f_stencil[3])
-//			+ f_stencil[0] * (
-//				56694. * f_stencil[2]
-//				- 47214. * f_stencil[1]
-//				+ 6649. * f_stencil[0]
-//				- 22778. * f_stencil[3])
-//			+ 25729. * f_stencil[3] * f_stencil[3]
+////	betas[0] = f_stencil[2] * (
+////				134241. * f_stencil[2]
+////				- 114894. * f_stencil[3])
+////			+ f_stencil[0] * (
+////				56694. * f_stencil[2]
+////				- 47214. * f_stencil[1]
+////				+ 6649. * f_stencil[0]
+////				- 22778. * f_stencil[3])
+////			+ 25729. * f_stencil[3] * f_stencil[3]
+////			+ f_stencil[1] * (
+////				-210282. * f_stencil[2]
+////				+ 85641. * f_stencil[1]
+////				+ 86214. * f_stencil[3]);
+
+////	betas[1] = f_stencil[3] * (
+////				41001. * f_stencil[3]
+////				- 30414. * f_stencil[4])
+////			+ f_stencil[1] * (
+////				-19374. * f_stencil[2]
+////				+ 3169. * f_stencil[1]
+////				+ 19014. * f_stencil[3]
+////				- 5978. * f_stencil[4])
+////			+ 6649. * f_stencil[4] * f_stencil[4]
+////			+ f_stencil[2] * (
+////				33441. * f_stencil[2]
+////				- 70602. * f_stencil[3]
+////				+ 23094. * f_stencil[4]);
+
+////	betas[2] = f_stencil[4] * (
+////				33441. * f_stencil[4]
+////				- 19374. * f_stencil[5])
+////			+ f_stencil[2] * (
+////				6649. * f_stencil[2]
+////				- 30414. * f_stencil[3]
+////				+ 23094. * f_stencil[4]
+////				- 5978. * f_stencil[5])
+////			+ 3169. * f_stencil[5] * f_stencil[5]
+////			+ f_stencil[3] * (
+////				41001. * f_stencil[3]
+////				- 70602. * f_stencil[4]
+////				+ 19014. * f_stencil[5]);
+
+////	betas[3] = f_stencil[5] * (
+////				85641. * f_stencil[5]
+////				- 47214. * f_stencil[6])
+////			+ f_stencil[3] * (
+////				25729. * f_stencil[3]
+////				- 114894. * f_stencil[4]
+////				+ 86214. * f_stencil[5]
+////				- 22778. * f_stencil[6])
+////			+ 6649. * f_stencil[6] * f_stencil[6]
+////			+ f_stencil[4] * (
+////				134241. * f_stencil[4]
+////				- 210282. * f_stencil[5]
+////				+ 56694. * f_stencil[6]);
+
+//	betas[0] = f_stencil[0] * (
+//				547. * f_stencil[0]
+//				- 3882. * f_stencil[1]
+//				+ 4642. * f_stencil[2]
+//				- 1854. * f_stencil[3])
 //			+ f_stencil[1] * (
-//				-210282. * f_stencil[2]
-//				+ 85641. * f_stencil[1]
-//				+ 86214. * f_stencil[3]);
-
-//	betas[1] = f_stencil[3] * (
-//				41001. * f_stencil[3]
-//				- 30414. * f_stencil[4])
-//			+ f_stencil[1] * (
-//				-19374. * f_stencil[2]
-//				+ 3169. * f_stencil[1]
-//				+ 19014. * f_stencil[3]
-//				- 5978. * f_stencil[4])
-//			+ 6649. * f_stencil[4] * f_stencil[4]
+//				7043. * f_stencil[1]
+//				- 17246. * f_stencil[2]
+//				+ 7042. * f_stencil[3])
 //			+ f_stencil[2] * (
-//				33441. * f_stencil[2]
-//				- 70602. * f_stencil[3]
-//				+ 23094. * f_stencil[4]);
+//				11003. * f_stencil[2]
+//				- 9402. * f_stencil[3])
+//			+ 2107. * f_stencil[3] * f_stencil[3];
 
-//	betas[2] = f_stencil[4] * (
-//				33441. * f_stencil[4]
-//				- 19374. * f_stencil[5])
+//	betas[1] = f_stencil[1] * (
+//				267. * f_stencil[1]
+//				- 1642. * f_stencil[2]
+//				+ 1602. * f_stencil[3]
+//				- 494. * f_stencil[4])
 //			+ f_stencil[2] * (
-//				6649. * f_stencil[2]
-//				- 30414. * f_stencil[3]
-//				+ 23094. * f_stencil[4]
-//				- 5978. * f_stencil[5])
-//			+ 3169. * f_stencil[5] * f_stencil[5]
+//				2843. * f_stencil[2]
+//				- 5966. * f_stencil[3]
+//				+ 1922. * f_stencil[4])
 //			+ f_stencil[3] * (
-//				41001. * f_stencil[3]
-//				- 70602. * f_stencil[4]
-//				+ 19014. * f_stencil[5]);
+//				3443. * f_stencil[3]
+//				- 2522. * f_stencil[4])
+//			+ 547. * f_stencil[4] * f_stencil[4];
 
-//	betas[3] = f_stencil[5] * (
-//				85641. * f_stencil[5]
-//				- 47214. * f_stencil[6])
+//	betas[2] = f_stencil[2] * (
+//				547. * f_stencil[2]
+//				- 2522. * f_stencil[3]
+//				+ 1922. * f_stencil[4]
+//				- 494. * f_stencil[5])
 //			+ f_stencil[3] * (
-//				25729. * f_stencil[3]
-//				- 114894. * f_stencil[4]
-//				+ 86214. * f_stencil[5]
-//				- 22778. * f_stencil[6])
-//			+ 6649. * f_stencil[6] * f_stencil[6]
+//				3443. * f_stencil[3]
+//				- 5966. * f_stencil[4]
+//				+ 1602. * f_stencil[5])
 //			+ f_stencil[4] * (
-//				134241. * f_stencil[4]
-//				- 210282. * f_stencil[5]
-//				+ 56694. * f_stencil[6]);
+//				2843. * f_stencil[4]
+//				- 1642. * f_stencil[5])
+//			+ 267. * f_stencil[5] * f_stencil[5];
 
-	betas[0] = f_stencil[0] * (
-				547. * f_stencil[0]
-				- 3882. * f_stencil[1]
-				+ 4642. * f_stencil[2]
-				- 1854. * f_stencil[3])
-			+ f_stencil[1] * (
-				7043. * f_stencil[1]
-				- 17246. * f_stencil[2]
-				+ 7042. * f_stencil[3])
-			+ f_stencil[2] * (
-				11003. * f_stencil[2]
-				- 9402. * f_stencil[3])
-			+ 2107. * f_stencil[3] * f_stencil[3];
+//	betas[3] = f_stencil[3] * (
+//				2107. * f_stencil[3]
+//				- 9402. * f_stencil[4]
+//				+ 7042. * f_stencil[5]
+//				- 1854. * f_stencil[6])
+//			+ f_stencil[4] * (
+//				11003. * f_stencil[4]
+//				- 17246. * f_stencil[5]
+//				+ 4642. * f_stencil[6])
+//			+ f_stencil[5] * (
+//				7043. * f_stencil[5]
+//				- 3882. * f_stencil[6])
+//			+ 547. * f_stencil[6] * f_stencil[6];
 
-	betas[1] = f_stencil[1] * (
-				267. * f_stencil[1]
-				- 1642. * f_stencil[2]
-				+ 1602. * f_stencil[3]
-				- 494. * f_stencil[4])
-			+ f_stencil[2] * (
-				2843. * f_stencil[2]
-				- 5966. * f_stencil[3]
-				+ 1922. * f_stencil[4])
-			+ f_stencil[3] * (
-				3443. * f_stencil[3]
-				- 2522. * f_stencil[4])
-			+ 547. * f_stencil[4] * f_stencil[4];
-
-	betas[2] = f_stencil[2] * (
-				547. * f_stencil[2]
-				- 2522. * f_stencil[3]
-				+ 1922. * f_stencil[4]
-				- 494. * f_stencil[5])
-			+ f_stencil[3] * (
-				3443. * f_stencil[3]
-				- 5966. * f_stencil[4]
-				+ 1602. * f_stencil[5])
-			+ f_stencil[4] * (
-				2843. * f_stencil[4]
-				- 1642. * f_stencil[5])
-			+ 267. * f_stencil[5] * f_stencil[5];
-
-	betas[3] = f_stencil[3] * (
-				2107. * f_stencil[3]
-				- 9402. * f_stencil[4]
-				+ 7042. * f_stencil[5]
-				- 1854. * f_stencil[6])
-			+ f_stencil[4] * (
-				11003. * f_stencil[4]
-				- 17246. * f_stencil[5]
-				+ 4642. * f_stencil[6])
-			+ f_stencil[5] * (
-				7043. * f_stencil[5]
-				- 3882. * f_stencil[6])
-			+ 547. * f_stencil[6] * f_stencil[6];
-
-	return betas;
-}
+//	return betas;
+//}
 
 
 //template <ArithmeticWith<numeric_val> T>
@@ -395,202 +395,81 @@ std::valarray<T> betaSmoothnessIndicatorsWENO7BS(
 //}
 
 
-//template <ArithmeticWith<numeric_val> T>
-//std::valarray<T> betaSmoothnessIndicatorsWENO7BS(
-//		const std::ranges::sized_range auto& f_stencil) {
-//	/* Return the WENO7 smoothness indicators of Balsara and Shu (2000)
-//	 * for each of the 4 substencils.
-//	 * That is the sum of the normalized squares of the scaled
-//	 * L2-norms of all the derivatives of 4 local interpolating
-//	 * polynomials in the sub-stencils of 7-node `f_stencil`.
-//	 *
-//	 * This allows for (2*4-1)=8th order accuracy from the 4th
-//	 * order ENO schemes.
-//	 */
+template <ArithmeticWith<numeric_val> T>
+std::valarray<T> betaSmoothnessIndicatorsWENO7BS(
+		const std::ranges::sized_range auto& f_stencil) {
+	/* Return the WENO7 smoothness indicators of Balsara and Shu (2000)
+	 * for each of the 4 substencils.
+	 * That is the sum of the normalized squares of the scaled
+	 * L2-norms of all the derivatives of 4 local interpolating
+	 * polynomials in the sub-stencils of 7-node `f_stencil`.
+	 *
+	 * This allows for (2*4-1)=8th order accuracy from the 4th
+	 * order ENO schemes.
+	 */
 
-//	std::valarray<T> betas(4);
+	std::valarray<T> betas(4);
 
-//	static const Eigen::Matrix<T, 3, 4> g0 {
-//		{-1./3., 3./2., -3., 11./6.},
-//		{   -1.,    4., -5.,     2.},
-//		{   -1.,    3., -3.,     1.}
-//	};
+	static const Eigen::Matrix<T, 3, 4> g0 {
+		{-1./3., 3./2., -3., 11./6.},
+		{   -1.,    4., -5.,     2.},
+		{   -1.,    3., -3.,     1.}
+	};
 
-//	static const Eigen::Matrix<T, 3, 4> g1 {
-//		{1./6., -1., 1./2., 1./3.},
-//		{   0.,  1.,   -2.,    1.},
-//		{  -1.,  3.,   -3.,    1.}
-//	};
+	static const Eigen::Matrix<T, 3, 4> g1 {
+		{1./6., -1., 1./2., 1./3.},
+		{   0.,  1.,   -2.,    1.},
+		{  -1.,  3.,   -3.,    1.}
+	};
 
-//	static const Eigen::Matrix<T, 3, 4> g2 {
-//		{-1./3., -1./2.,  1., -1./6.},
-//		{    1.,    -2.,  1.,     0.},
-//		{   -1.,     3., -3.,     1.}
-//	};
+	static const Eigen::Matrix<T, 3, 4> g2 {
+		{-1./3., -1./2.,  1., -1./6.},
+		{    1.,    -2.,  1.,     0.},
+		{   -1.,     3., -3.,     1.}
+	};
 
-//	static const Eigen::Matrix<T, 3, 4> g3 {
-//		{-11./6.,  3.,  -3./2., 1./3.},
-//		{     2., -5.,      4.,   -1.},
-//		{    -1.,  3.,     -3.,    1.}
-//	};
+	static const Eigen::Matrix<T, 3, 4> g3 {
+		{-11./6.,  3.,  -3./2., 1./3.},
+		{     2., -5.,      4.,   -1.},
+		{    -1.,  3.,     -3.,    1.}
+	};
 
-//	Eigen::Matrix<T, 4, 1> substencil0 {
-//		f_stencil[0], f_stencil[1], f_stencil[2], f_stencil[3]
-//	};
-//	Eigen::Matrix<T, 4, 1> substencil1 {
-//		f_stencil[1], f_stencil[2], f_stencil[3], f_stencil[4]
-//	};
-//	Eigen::Matrix<T, 4, 1> substencil2 {
-//		f_stencil[2], f_stencil[3], f_stencil[4], f_stencil[5]
-//	};
-//	Eigen::Matrix<T, 4, 1> substencil3 {
-//		f_stencil[3], f_stencil[4], f_stencil[5], f_stencil[6]
-//	};
+	Eigen::Matrix<T, 4, 1> substencil0 {
+		f_stencil[0], f_stencil[1], f_stencil[2], f_stencil[3]
+	};
+	Eigen::Matrix<T, 4, 1> substencil1 {
+		f_stencil[1], f_stencil[2], f_stencil[3], f_stencil[4]
+	};
+	Eigen::Matrix<T, 4, 1> substencil2 {
+		f_stencil[2], f_stencil[3], f_stencil[4], f_stencil[5]
+	};
+	Eigen::Matrix<T, 4, 1> substencil3 {
+		f_stencil[3], f_stencil[4], f_stencil[5], f_stencil[6]
+	};
 
-//	Eigen::Matrix<T, 3, 1> v0 = g0 * substencil0;
-//	Eigen::Matrix<T, 3, 1> v1 = g1 * substencil1;
-//	Eigen::Matrix<T, 3, 1> v2 = g2 * substencil2;
-//	Eigen::Matrix<T, 3, 1> v3 = g3 * substencil3;
+	Eigen::Matrix<T, 3, 1> v0 = g0 * substencil0;
+	Eigen::Matrix<T, 3, 1> v1 = g1 * substencil1;
+	Eigen::Matrix<T, 3, 1> v2 = g2 * substencil2;
+	Eigen::Matrix<T, 3, 1> v3 = g3 * substencil3;
 
-//	betas[0] = v0[0] * v0[0]
-//			+ 13./12. * v0[1] * v0[1]
-//			+ 781./720. * v0[2] * v0[2];
+	betas[0] = v0[0] * v0[0]
+			+ 13./12. * v0[1] * v0[1]
+			+ 781./720. * v0[2] * v0[2];
 
-//	betas[1] = v1[0] * v1[0]
-//			+ 13./12. * v1[1] * v1[1]
-//			+ 781./720. * v1[2] * v1[2];
+	betas[1] = v1[0] * v1[0]
+			+ 13./12. * v1[1] * v1[1]
+			+ 781./720. * v1[2] * v1[2];
 
-//	betas[2] = v2[0] * v2[0]
-//			+ 13./12. * v2[1] * v2[1]
-//			+ 781./720. * v2[2] * v2[2];
+	betas[2] = v2[0] * v2[0]
+			+ 13./12. * v2[1] * v2[1]
+			+ 781./720. * v2[2] * v2[2];
 
-//	betas[3] = v3[0] * v3[0]
-//			+ 13./12. * v3[1] * v3[1]
-//			+ 781./720. * v3[2] * v3[2];
+	betas[3] = v3[0] * v3[0]
+			+ 13./12. * v3[1] * v3[1]
+			+ 781./720. * v3[2] * v3[2];
 
-//	return betas;
-//}
-
-
-//template <ArithmeticWith<numeric_val> T>
-////std::array<T, 3> smoothness_indicators(const T1& f_stencil) {
-//std::valarray<T> betaSmoothnessIndicatorsWENO9BS(
-//		const std::ranges::sized_range auto& f_stencil) {
-//	/* Return the WENO9 smoothness indicators of Balsara and Shu (2000)
-//	 * for each of the 5 substencils.
-//	 * That is the sum of the normalized squares of the scaled
-//	 * L2-norms of all the derivatives of 5 local interpolating
-//	 * polynomials in the sub-stencils of 9-node `f_stencil`.
-//	 *
-//	 * This allows for (2*5-1)=9th order accuracy from the 5th
-//	 * order ENO schemes.
-//	 */
-
-//	// std::array<T, 3> res;
-//	std::valarray<T> betas(5);
-
-//	betas[0] = f_stencil[0] * (
-//				   22658. * f_stencil[0]
-//				- 208501. * f_stencil[1]
-//				+ 364863. * f_stencil[2]
-//				- 288007. * f_stencil[3]
-//				+ 86329.  * f_stencil[4])
-//			+ f_stencil[1] * (
-//				   482963. * f_stencil[1]
-//				- 1704396. * f_stencil[2]
-//				+ 1358458. * f_stencil[3]
-//				- 411487.  * f_stencil[4])
-//			+ f_stencil[2] * (
-//				  1521393. * f_stencil[2]
-//				- 2462076. * f_stencil[3]
-//				+ 758823.  * f_stencil[4])
-//			+ f_stencil[3] * (
-//				 1020563. * f_stencil[3]
-//				- 649501. * f_stencil[4])
-//			+ 107918. * f_stencil[4] * f_stencil[4];
-
-//	betas[1] = f_stencil[1] * (
-//				  6908.  * f_stencil[1]
-//				- 60871. * f_stencil[2]
-//				+ 99213. * f_stencil[3]
-//				- 70237. * f_stencil[4]
-//				+ 18079. * f_stencil[5])
-//			+ f_stencil[2] * (
-//				  138563. * f_stencil[2]
-//				- 464976. * f_stencil[3]
-//				+ 337018. * f_stencil[4]
-//				- 88297.  * f_stencil[5])
-//			+ f_stencil[3] * (
-//				406293. * f_stencil[3]
-//				- 611976. * f_stencil[4]
-//				+ 165153. * f_stencil[5])
-//			+ f_stencil[4] * (
-//				  242723. * f_stencil[4]
-//				- 140251. * f_stencil[5])
-//			+ 22658. * f_stencil[5] * f_stencil[5];
-
-//	betas[2] = f_stencil[2] * (
-//				6908. * f_stencil[2]
-//				- 51001. * f_stencil[3]
-//				+ 67923. * f_stencil[4]
-//				- 38947. * f_stencil[5]
-//				+ 8209.  * f_stencil[6])
-//			+ f_stencil[3] * (
-//				104963. * f_stencil[3]
-//				- 299076. * f_stencil[4]
-//				+ 179098. * f_stencil[5]
-//				- 38947.  * f_stencil[6])
-//			+ f_stencil[4] * (
-//				231153. * f_stencil[4]
-//				- 299076. * f_stencil[5]
-//				+ 67923.  * f_stencil[6])
-//			+ f_stencil[5] * (
-//				 104963. * f_stencil[5]
-//				- 51001. * f_stencil[6])
-//			+ 6908. * f_stencil[6] * f_stencil[6];
-
-//	betas[3] = f_stencil[3] * (
-//				  22658.  * f_stencil[3]
-//				- 140251. * f_stencil[4]
-//				+ 165153. * f_stencil[5]
-//				- 88297.  * f_stencil[6]
-//				+ 18079.  * f_stencil[7])
-//			+ f_stencil[4] * (
-//				  242723. * f_stencil[4]
-//				- 611976. * f_stencil[5]
-//				+ 337018. * f_stencil[6]
-//				- 70237.  * f_stencil[7])
-//			+ f_stencil[5] * (
-//				  406293. * f_stencil[5]
-//				- 464976. * f_stencil[6]
-//				+ 99213.  * f_stencil[7])
-//			+ f_stencil[6] * (
-//				 138563. * f_stencil[6]
-//				- 60871. * f_stencil[7])
-//			+ 6908. * f_stencil[7] * f_stencil[7];
-
-//	betas[4] = f_stencil[4] * (
-//				  107918. * f_stencil[4]
-//				- 649501. * f_stencil[5]
-//				+ 758823. * f_stencil[6]
-//				- 411487. * f_stencil[7]
-//				+ 86329.  * f_stencil[8])
-//			+ f_stencil[5] * (
-//				  1020563. * f_stencil[5]
-//				- 2462076. * f_stencil[6]
-//				+ 1358458. * f_stencil[7]
-//				- 288007.  * f_stencil[8])
-//			+ f_stencil[6] * (
-//				  1521393. * f_stencil[6]
-//				- 1704396. * f_stencil[7]
-//				+ 364863.  * f_stencil[8])
-//			+ f_stencil[7] * (
-//				  482963. * f_stencil[7]
-//				- 208501. * f_stencil[8])
-//			+ 22658. * f_stencil[8] * f_stencil[8];
-
-//	return betas;
-//}
+	return betas;
+}
 
 
 template <ArithmeticWith<numeric_val> T>
@@ -609,130 +488,251 @@ std::valarray<T> betaSmoothnessIndicatorsWENO9BS(
 
 	// std::array<T, 3> res;
 	std::valarray<T> betas(5);
-	static const Eigen::DiagonalMatrix<T, 5> l0(
-				std::sqrt(793030.)/420.,
-				std::sqrt(193716587562.)/543792.,
-				2.*std::sqrt(248759756350023.)/42747945.,
-				std::sqrt(96904093308502161.)/349153284.,
-				0.);
-	static const Eigen::Matrix<T, 5, 5> c0 {
-		{1., -208501./45316., 364863./45316., -288007./45316., 86329./45316.},
-		{0., 1., -55338513./14249315., 71911201./14249315., -1813059./838195.},
-		{0., 0., 1., -583582777./232768856., 350813921./232768856.},
-		{0., 0., 0., 1., -1.},
-		{0., 0., 0., 0., 0.}
-	};
-	static const Eigen::Matrix<T, 5, 5> b0 = l0 * c0;
 
-	static const Eigen::DiagonalMatrix<T, 5> l1(
-				std::sqrt(60445.)/210.,
-				std::sqrt(677061715.)/27632.,
-				2.*std::sqrt(11406983268815.)/5880675.,
-				std::sqrt(96904093308502161.)/349153284.,
-				0.);
-	static const Eigen::Matrix<T, 5, 5> c1 {
-		{1., -60871./13816., 99213./13816., -70237./13816., 18079./13816.},
-		{0., 1., -18329233./5880675., 67923./22025., -5686883./5880675.},
-		{0., 0., 1., -379530087./232768856., 146761231./232768856.},
-		{0., 0., 0., 1., -1.},
-		{0., 0., 0., 0., 0.}
-	};
-	static const Eigen::Matrix<T, 5, 5> b1 = l1 * c1;
+	betas[0] = f_stencil[0] * (
+				   22658. * f_stencil[0]
+				- 208501. * f_stencil[1]
+				+ 364863. * f_stencil[2]
+				- 288007. * f_stencil[3]
+				+ 86329.  * f_stencil[4])
+			+ f_stencil[1] * (
+				   482963. * f_stencil[1]
+				- 1704396. * f_stencil[2]
+				+ 1358458. * f_stencil[3]
+				- 411487.  * f_stencil[4])
+			+ f_stencil[2] * (
+				  1521393. * f_stencil[2]
+				- 2462076. * f_stencil[3]
+				+ 758823.  * f_stencil[4])
+			+ f_stencil[3] * (
+				 1020563. * f_stencil[3]
+				- 649501. * f_stencil[4])
+			+ 107918. * f_stencil[4] * f_stencil[4];
 
-	/*constexpr*/ static Eigen::DiagonalMatrix<T, 5> l2(
-				std::sqrt(60445.)/210.,
-				std::sqrt(14765140203.)/82896.,
-				std::sqrt(12846941339118.)/2514585.,
-				std::sqrt(1446303987150483714.)/2605575108.,
-				0.);
-	static const Eigen::Matrix<T, 5, 5> c2 {
-		{1., -51001./13816., 67923./13816., -38947./13816., 8209./13816.},
-		{0., 1., -1870849./838195., 23242001./14249315., -5686883./14249315.},
-		{0., 0., 1., -71725821./51089708., 20636113./51089708.},
-		{0., 0., 0., 1., -1.},
-		{0., 0., 0., 0., 0.}
-	};
-	static const Eigen::Matrix<T, 5, 5> b2 = l2 * c2;
+	betas[1] = f_stencil[1] * (
+				  6908.  * f_stencil[1]
+				- 60871. * f_stencil[2]
+				+ 99213. * f_stencil[3]
+				- 70237. * f_stencil[4]
+				+ 18079. * f_stencil[5])
+			+ f_stencil[2] * (
+				  138563. * f_stencil[2]
+				- 464976. * f_stencil[3]
+				+ 337018. * f_stencil[4]
+				- 88297.  * f_stencil[5])
+			+ f_stencil[3] * (
+				406293. * f_stencil[3]
+				- 611976. * f_stencil[4]
+				+ 165153. * f_stencil[5])
+			+ f_stencil[4] * (
+				  242723. * f_stencil[4]
+				- 140251. * f_stencil[5])
+			+ 22658. * f_stencil[5] * f_stencil[5];
 
-	static const Eigen::DiagonalMatrix<T, 5> l3(
-				std::sqrt(793030.)/420.,
-				7.*std::sqrt(30758438922.)/543792.,
-				std::sqrt(2862368513038002.)/47512815.,
-				std::sqrt(7022472797218781694.)/12651268668.,
-				0.);
-	static const Eigen::Matrix<T, 5, 5> c3 {
-		{1., -140251./45316., 165153./45316., -88297./45316., 18079./45316.},
-		{0., 1., -217591953./110863235., 19650103./15837605., -30822003./110863235.},
-		{0., 0., 1., -5962732027./4217089556., 1745642471./4217089556.},
-		{0., 0., 0., 1., -1.},
-		{0., 0., 0., 0., 0.}
-	};
-	static const Eigen::Matrix<T, 5, 5> b3 = l3 * c3;
+	betas[2] = f_stencil[2] * (
+				6908. * f_stencil[2]
+				- 51001. * f_stencil[3]
+				+ 67923. * f_stencil[4]
+				- 38947. * f_stencil[5]
+				+ 8209.  * f_stencil[6])
+			+ f_stencil[3] * (
+				104963. * f_stencil[3]
+				- 299076. * f_stencil[4]
+				+ 179098. * f_stencil[5]
+				- 38947.  * f_stencil[6])
+			+ f_stencil[4] * (
+				231153. * f_stencil[4]
+				- 299076. * f_stencil[5]
+				+ 67923.  * f_stencil[6])
+			+ f_stencil[5] * (
+				 104963. * f_stencil[5]
+				- 51001. * f_stencil[6])
+			+ 6908. * f_stencil[6] * f_stencil[6];
 
-	static const Eigen::DiagonalMatrix<T, 5> l4(
-				std::sqrt(3777130.)/420.,
-				std::sqrt(6405506236662.)/863344.,
-				2.*std::sqrt(132391829280434178.)/890329635.,
-				std::sqrt(7428632088185797566.)/26765962104.,
-				0.);
-	static const Eigen::Matrix<T, 5, 5> c4 {
-		{1., -649501./215836., 758823./215836., -411487./215836., 86329./215836.},
-		{0., 1., -1835635153./890329635., 411792427./296776545., -290071763./890329635.},
-		{0., 0., 1., -26228937057./17843974736., 8384962321./17843974736.},
-		{0., 0., 0., 1., -1.},
-		{0., 0., 0., 0., 0.}
-	};
-	static const Eigen::Matrix<T, 5, 5> b4 = l4 * c4;
+	betas[3] = f_stencil[3] * (
+				  22658.  * f_stencil[3]
+				- 140251. * f_stencil[4]
+				+ 165153. * f_stencil[5]
+				- 88297.  * f_stencil[6]
+				+ 18079.  * f_stencil[7])
+			+ f_stencil[4] * (
+				  242723. * f_stencil[4]
+				- 611976. * f_stencil[5]
+				+ 337018. * f_stencil[6]
+				- 70237.  * f_stencil[7])
+			+ f_stencil[5] * (
+				  406293. * f_stencil[5]
+				- 464976. * f_stencil[6]
+				+ 99213.  * f_stencil[7])
+			+ f_stencil[6] * (
+				 138563. * f_stencil[6]
+				- 60871. * f_stencil[7])
+			+ 6908. * f_stencil[7] * f_stencil[7];
 
-	Eigen::Matrix<T, 5, 1> substencil0 {
-		f_stencil[0],
-		f_stencil[1],
-		f_stencil[2],
-		f_stencil[3],
-		f_stencil[4]
-	};
-	Eigen::Matrix<T, 5, 1> substencil1 {
-		f_stencil[1],
-		f_stencil[2],
-		f_stencil[3],
-		f_stencil[4],
-		f_stencil[5]
-	};
-	Eigen::Matrix<T, 5, 1> substencil2 {
-		f_stencil[2],
-		f_stencil[3],
-		f_stencil[4],
-		f_stencil[5],
-		f_stencil[6]
-	};
-	Eigen::Matrix<T, 5, 1> substencil3 {
-		f_stencil[3],
-		f_stencil[4],
-		f_stencil[5],
-		f_stencil[6],
-		f_stencil[7]
-	};
-	Eigen::Matrix<T, 5, 1> substencil4 {
-		f_stencil[4],
-		f_stencil[5],
-		f_stencil[6],
-		f_stencil[7],
-		f_stencil[8]
-	};
-
-	betas[0] = ((b0 * substencil0).transpose())
-				* (b0 * substencil0);
-	betas[1] = ((b1 * substencil1).transpose())
-				* (b1 * substencil1);
-	betas[2] = ((b2 * substencil2).transpose())
-				* (b2 * substencil2);
-	betas[3] = ((b3 * substencil3).transpose())
-				* (b3 * substencil3);
-	betas[4] = ((b4 * substencil4).transpose())
-				* (b4 * substencil4);
+	betas[4] = f_stencil[4] * (
+				  107918. * f_stencil[4]
+				- 649501. * f_stencil[5]
+				+ 758823. * f_stencil[6]
+				- 411487. * f_stencil[7]
+				+ 86329.  * f_stencil[8])
+			+ f_stencil[5] * (
+				  1020563. * f_stencil[5]
+				- 2462076. * f_stencil[6]
+				+ 1358458. * f_stencil[7]
+				- 288007.  * f_stencil[8])
+			+ f_stencil[6] * (
+				  1521393. * f_stencil[6]
+				- 1704396. * f_stencil[7]
+				+ 364863.  * f_stencil[8])
+			+ f_stencil[7] * (
+				  482963. * f_stencil[7]
+				- 208501. * f_stencil[8])
+			+ 22658. * f_stencil[8] * f_stencil[8];
 
 	return betas;
 }
+
+
+//template <ArithmeticWith<numeric_val> T>
+////std::array<T, 3> smoothness_indicators(const T1& f_stencil) {
+//std::valarray<T> betaSmoothnessIndicatorsWENO9BS(
+//		const std::ranges::sized_range auto& f_stencil) {
+//	/* Return the WENO9 smoothness indicators of Balsara and Shu (2000)
+//	 * for each of the 5 substencils.
+//	 * That is the sum of the normalized squares of the scaled
+//	 * L2-norms of all the derivatives of 5 local interpolating
+//	 * polynomials in the sub-stencils of 9-node `f_stencil`.
+//	 *
+//	 * This allows for (2*5-1)=9th order accuracy from the 5th
+//	 * order ENO schemes.
+//	 */
+
+//	// std::array<T, 3> res;
+//	std::valarray<T> betas(5);
+//	static const Eigen::DiagonalMatrix<T, 5> l0(
+//				std::sqrt(793030.)/420.,
+//				std::sqrt(193716587562.)/543792.,
+//				2.*std::sqrt(248759756350023.)/42747945.,
+//				std::sqrt(96904093308502161.)/349153284.,
+//				0.);
+//	static const Eigen::Matrix<T, 5, 5> c0 {
+//		{1., -208501./45316., 364863./45316., -288007./45316., 86329./45316.},
+//		{0., 1., -55338513./14249315., 71911201./14249315., -1813059./838195.},
+//		{0., 0., 1., -583582777./232768856., 350813921./232768856.},
+//		{0., 0., 0., 1., -1.},
+//		{0., 0., 0., 0., 0.}
+//	};
+//	static const Eigen::Matrix<T, 5, 5> b0 = l0 * c0;
+
+//	static const Eigen::DiagonalMatrix<T, 5> l1(
+//				std::sqrt(60445.)/210.,
+//				std::sqrt(677061715.)/27632.,
+//				2.*std::sqrt(11406983268815.)/5880675.,
+//				std::sqrt(96904093308502161.)/349153284.,
+//				0.);
+//	static const Eigen::Matrix<T, 5, 5> c1 {
+//		{1., -60871./13816., 99213./13816., -70237./13816., 18079./13816.},
+//		{0., 1., -18329233./5880675., 67923./22025., -5686883./5880675.},
+//		{0., 0., 1., -379530087./232768856., 146761231./232768856.},
+//		{0., 0., 0., 1., -1.},
+//		{0., 0., 0., 0., 0.}
+//	};
+//	static const Eigen::Matrix<T, 5, 5> b1 = l1 * c1;
+
+//	/*constexpr*/ static Eigen::DiagonalMatrix<T, 5> l2(
+//				std::sqrt(60445.)/210.,
+//				std::sqrt(14765140203.)/82896.,
+//				std::sqrt(12846941339118.)/2514585.,
+//				std::sqrt(1446303987150483714.)/2605575108.,
+//				0.);
+//	static const Eigen::Matrix<T, 5, 5> c2 {
+//		{1., -51001./13816., 67923./13816., -38947./13816., 8209./13816.},
+//		{0., 1., -1870849./838195., 23242001./14249315., -5686883./14249315.},
+//		{0., 0., 1., -71725821./51089708., 20636113./51089708.},
+//		{0., 0., 0., 1., -1.},
+//		{0., 0., 0., 0., 0.}
+//	};
+//	static const Eigen::Matrix<T, 5, 5> b2 = l2 * c2;
+
+//	static const Eigen::DiagonalMatrix<T, 5> l3(
+//				std::sqrt(793030.)/420.,
+//				7.*std::sqrt(30758438922.)/543792.,
+//				std::sqrt(2862368513038002.)/47512815.,
+//				std::sqrt(7022472797218781694.)/12651268668.,
+//				0.);
+//	static const Eigen::Matrix<T, 5, 5> c3 {
+//		{1., -140251./45316., 165153./45316., -88297./45316., 18079./45316.},
+//		{0., 1., -217591953./110863235., 19650103./15837605., -30822003./110863235.},
+//		{0., 0., 1., -5962732027./4217089556., 1745642471./4217089556.},
+//		{0., 0., 0., 1., -1.},
+//		{0., 0., 0., 0., 0.}
+//	};
+//	static const Eigen::Matrix<T, 5, 5> b3 = l3 * c3;
+
+//	static const Eigen::DiagonalMatrix<T, 5> l4(
+//				std::sqrt(3777130.)/420.,
+//				std::sqrt(6405506236662.)/863344.,
+//				2.*std::sqrt(132391829280434178.)/890329635.,
+//				std::sqrt(7428632088185797566.)/26765962104.,
+//				0.);
+//	static const Eigen::Matrix<T, 5, 5> c4 {
+//		{1., -649501./215836., 758823./215836., -411487./215836., 86329./215836.},
+//		{0., 1., -1835635153./890329635., 411792427./296776545., -290071763./890329635.},
+//		{0., 0., 1., -26228937057./17843974736., 8384962321./17843974736.},
+//		{0., 0., 0., 1., -1.},
+//		{0., 0., 0., 0., 0.}
+//	};
+//	static const Eigen::Matrix<T, 5, 5> b4 = l4 * c4;
+
+//	Eigen::Matrix<T, 5, 1> substencil0 {
+//		f_stencil[0],
+//		f_stencil[1],
+//		f_stencil[2],
+//		f_stencil[3],
+//		f_stencil[4]
+//	};
+//	Eigen::Matrix<T, 5, 1> substencil1 {
+//		f_stencil[1],
+//		f_stencil[2],
+//		f_stencil[3],
+//		f_stencil[4],
+//		f_stencil[5]
+//	};
+//	Eigen::Matrix<T, 5, 1> substencil2 {
+//		f_stencil[2],
+//		f_stencil[3],
+//		f_stencil[4],
+//		f_stencil[5],
+//		f_stencil[6]
+//	};
+//	Eigen::Matrix<T, 5, 1> substencil3 {
+//		f_stencil[3],
+//		f_stencil[4],
+//		f_stencil[5],
+//		f_stencil[6],
+//		f_stencil[7]
+//	};
+//	Eigen::Matrix<T, 5, 1> substencil4 {
+//		f_stencil[4],
+//		f_stencil[5],
+//		f_stencil[6],
+//		f_stencil[7],
+//		f_stencil[8]
+//	};
+
+//	betas[0] = ((b0 * substencil0).transpose())
+//				* (b0 * substencil0);
+//	betas[1] = ((b1 * substencil1).transpose())
+//				* (b1 * substencil1);
+//	betas[2] = ((b2 * substencil2).transpose())
+//				* (b2 * substencil2);
+//	betas[3] = ((b3 * substencil3).transpose())
+//				* (b3 * substencil3);
+//	betas[4] = ((b4 * substencil4).transpose())
+//				* (b4 * substencil4);
+
+//	return betas;
+//}
 
 
 //template <ArithmeticWith<numeric_val> T>
@@ -873,6 +873,62 @@ std::valarray<T> f5OrdReconstructionFromStencil(
 				- 43. * f_stencil[6]
 				+ 17. * f_stencil[7]
 				-  3. * f_stencil[8]) / 60.;
+
+	return q_res;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+std::valarray<T> f6OrdReconstructionFromStencil(
+		const std::ranges::sized_range auto& f_stencil) {
+	/* 5th order reconstructions of f(j) from all the 4 4-element
+	 * substencils of `f_stencil` (f_plus or reversed f_minus:
+	 * receives 11 values...).
+	 */
+
+	std::valarray<T> q_res(6);
+
+	q_res[0] = (-  10. * f_stencil[0]
+				+  62. * f_stencil[1]
+				- 163. * f_stencil[2]
+				+ 237. * f_stencil[3]
+				- 213. * f_stencil[4]
+				+ 147. * f_stencil[5]) / 60.;
+
+	q_res[1] = (+  2. * f_stencil[1]
+				- 13. * f_stencil[2]
+				+ 37. * f_stencil[3]
+				- 63. * f_stencil[4]
+				+ 87. * f_stencil[5]
+				+ 10. * f_stencil[6]) / 60.;
+
+	q_res[2] = (-  1. * f_stencil[2]
+				+  7. * f_stencil[3]
+				- 23. * f_stencil[4]
+				+ 57. * f_stencil[5]
+				+ 22. * f_stencil[6]
+				-  2. * f_stencil[7]) / 60.;
+
+	q_res[3] = (+  1. * f_stencil[3]
+				-  8. * f_stencil[4]
+				+ 37. * f_stencil[5]
+				+ 37. * f_stencil[6]
+				-  8. * f_stencil[7]
+				+  1. * f_stencil[8]) / 60.;
+
+	q_res[4] = (-  2. * f_stencil[4]
+				+ 22. * f_stencil[5]
+				+ 57. * f_stencil[6]
+				- 23. * f_stencil[7]
+				+  7. * f_stencil[8]
+				-  1. * f_stencil[9]) / 60.;
+
+	q_res[5] = (+ 10. * f_stencil[5]
+				+ 87. * f_stencil[6]
+				- 63. * f_stencil[7]
+				+ 37. * f_stencil[8]
+				- 13. * f_stencil[9]
+				+  2. * f_stencil[10]) / 60.;
 
 	return q_res;
 }
@@ -1031,6 +1087,10 @@ std::valarray<numeric_val> DISCRETE_LAMBDA9
 			= prediscretizeWENO5LambdaMapping<numeric_val>(100000000,
 														   1./5.);
 
+std::valarray<numeric_val> DISCRETE_LAMBDA11
+			= prediscretizeWENO5LambdaMapping<numeric_val>(100000000,
+														   1./6.);
+
 
 template <ArithmeticWith<numeric_val> T>
 std::ranges::common_range auto omegaWENOFMWeights(
@@ -1135,6 +1195,22 @@ std::ranges::common_range auto omegaWENO9FMWeights(
 	return omegaWENOFMWeights<T>(
 				std::move(lambda_weights), d_lin_weights,
 				DISCRETE_LAMBDA9);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+std::ranges::common_range auto omegaWENO11FMWeights(
+		const std::ranges::common_range auto&& lambda_weights) {
+	// The ideal weights (they generate the central upstream ninth-order
+	// scheme for the 9-point stencil), which are in WENO usu. called
+	// (optimal) linear weights:
+	std::valarray<T> d_lin_weights = {
+		1./462., 30./462., 150./462., 200./462., 75./462., 6./462.
+	};
+
+	return omegaWENOFMWeights<T>(
+				std::move(lambda_weights), d_lin_weights,
+				DISCRETE_LAMBDA11);
 }
 
 
@@ -1749,6 +1825,89 @@ T computeFHatWENO7BSReconstructionKernel(
 
 
 template <ArithmeticWith<numeric_val> T>
+T computeFHatWENO7MReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-40, T p = 2.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical
+	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
+	 * (receives the following 7 values
+	 *     [j-3, j-2, j-1, j+0, j+1, j+2, j+3, ...] for '+'
+	 * (or [j+4, j+3, j+2, j+1, j+0, j-1, j-2, ...] for '-')
+	 *       ^    ^    ^    ^    ^    ^    ^    ^
+	 *       0    1    2    3    4    5    6    |
+	 * in either case for convenience).
+	 *
+	 * I.e. this function implements the upwind reconstruction which
+	 * should be used for positive fluxes (with information propagated
+	 * from left to right) if the nodes are passed in order. However,
+	 * the downwind reconstruction should obviously look the same
+	 * modulo flipping the values with respect to j+0, so that it
+	 * becomes downwind biased and takes one extra point to the right
+	 * instead of taking one extra to the left. In other words, to get
+	 * this to behave as a downwind reconstrution we need to pass
+	 * the points symmetric to those of upwind reconstruction with
+	 * respect to j+0:
+	 * [j+4, j+3, j+2, j+1, j+0, j-1, j-2, ...]. (We reverse the points in
+	 *      [j-3, j-2, j-1, j+0, j+1, j+2, j+3] j+4 and get
+	 *                       |
+	 * [j+4, j+3, j+2, j+1, j+0, j-1, j-2] j-3.)
+	 */
+
+	// `p` controls (increases) the amount of numerical dissipation
+	// (and nothing more in WENO and WENO-(F)M);
+	// but in WENO-Z(M) changing the value of p alters convergence
+	// rates at critical points (it's recommended to take it = r-1
+	// for 2r-1 order schemes, so 2 for WENO5-Z(M)).
+	//
+	// `eps` is a small positive parameter to avoid the denominator
+	// of weights being zero
+	// (though it, too, can be significant for convergence properties
+	// and should ideally be tailored to the specific comp. problem,
+	// as first noted and more or less fully outlined by Henrick et al.)
+
+	// f_stencil = f_plus (or a reversed stencil for f_minus)
+
+	std::valarray<T> beta_IS_coefs(4);
+
+	T f_hat = 0.;
+	beta_IS_coefs = betaSmoothnessIndicatorsWENO7BS<T>(f_stencil);
+
+	// non-linear non-scaled (α-)weights
+	std::valarray<T> d_lin_weights = {1./35., 12./35., 18./35., 4./35.};
+	std::valarray<T> alpha_weights = d_lin_weights
+			/ std::pow(eps + beta_IS_coefs, p);
+	// — we have no need of them in WENO-FM!
+
+	// scaled (normalized) non-linear (ω-)weights (ENO weights)
+	std::valarray<T> omega_weights = alpha_weights
+			/ alpha_weights.sum();
+
+	std::transform(
+				/*std::execution::par_unseq,*/
+				std::ranges::begin(omega_weights),
+				std::ranges::end(omega_weights),
+				std::ranges::begin(d_lin_weights),
+				std::ranges::begin(omega_weights),
+				[](auto w, auto d) {
+		return henrickGMappingForLambda(w, d);
+	});  // we obtain a new non-normalized weight alpha*
+
+	omega_weights = omega_weights
+			/ omega_weights.sum();  // normalize it
+
+	std::valarray<T> eno_reconstructed_f
+			= f4OrdReconstructionFromStencil<T>(f_stencil);
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2]
+			+ omega_weights[3] * eno_reconstructed_f[3];
+
+	return f_hat;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
 T computeFHatWENO7FMReconstructionKernel(
 		const std::ranges::sized_range auto&& f_stencil,
 		T eps = 1e-40, T p = 2.) {
@@ -1802,6 +1961,85 @@ T computeFHatWENO7FMReconstructionKernel(
 				std::ranges::begin(alpha_weights),
 				[eps, p](auto beta) {
 		return alphaWENO5FMWeight(beta, eps, p);
+	});
+
+	std::array<T, 4> lambda_weights;
+	lambdaWENO5FMWeights<T>(std::move(alpha_weights), lambda_weights);
+
+	std::valarray<T> omega_weights = omegaWENO7FMWeights<T>(
+				std::move(lambda_weights));
+
+	std::valarray<T> eno_reconstructed_f
+			= f4OrdReconstructionFromStencil<T>(f_stencil);
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2]
+			+ omega_weights[3] * eno_reconstructed_f[3];
+
+	return f_hat;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T computeFHatWENO7ZMReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-40, T p = 2.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical
+	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
+	 * (receives the following 7 values
+	 *     [j-3, j-2, j-1, j+0, j+1, j+2, j+3, ...] for '+'
+	 * (or [j+4, j+3, j+2, j+1, j+0, j-1, j-2, ...] for '-')
+	 *       ^    ^    ^    ^    ^    ^    ^    ^
+	 *       0    1    2    3    4    5    6    |
+	 * in either case for convenience).
+	 *
+	 * I.e. this function implements the upwind reconstruction which
+	 * should be used for positive fluxes (with information propagated
+	 * from left to right) if the nodes are passed in order. However,
+	 * the downwind reconstruction should obviously look the same
+	 * modulo flipping the values with respect to j+0, so that it
+	 * becomes downwind biased and takes one extra point to the right
+	 * instead of taking one extra to the left. In other words, to get
+	 * this to behave as a downwind reconstrution we need to pass
+	 * the points symmetric to those of upwind reconstruction with
+	 * respect to j+0:
+	 * [j+4, j+3, j+2, j+1, j+0, j-1, j-2, ...]. (We reverse the points in
+	 *      [j-3, j-2, j-1, j+0, j+1, j+2, j+3] j+4 and get
+	 *                       |
+	 * [j+4, j+3, j+2, j+1, j+0, j-1, j-2] j-3.)
+	 */
+
+	// `p` controls (increases) the amount of numerical dissipation
+	// (and nothing more in WENO and WENO-(F)M);
+	// but in WENO-Z(M) changing the value of p alters convergence
+	// rates at critical points (it's recommended to take it = r-1
+	// for 2r-1 order schemes, so 2 for WENO5-Z(M)).
+	//
+	// `eps` is a small positive parameter to avoid the denominator
+	// of weights being zero
+	// (though it, too, can be significant for convergence properties
+	// and should ideally be tailored to the specific comp. problem,
+	// as first noted and more or less fully outlined by Henrick et al.)
+
+	// f_stencil = f_plus (or a reversed stencil for f_minus)
+
+	std::valarray<T> beta_IS_coefs(4);
+
+	T f_hat = 0.;
+	beta_IS_coefs = betaSmoothnessIndicatorsWENO7BS<T>(f_stencil);
+
+	T tau_7 = std::abs(-beta_IS_coefs[0]
+				- 3. * beta_IS_coefs[1]
+				+ 3. * beta_IS_coefs[2]
+				+ beta_IS_coefs[3]);
+
+	std::array<T, 4> alpha_weights;
+	std::ranges::transform(
+				beta_IS_coefs,
+				std::ranges::begin(alpha_weights),
+				[tau_7, eps, p](auto beta) {
+		return alphaWENO5ZMWeight(beta, tau_7, eps, p);
 	});
 
 	std::array<T, 4> lambda_weights;
@@ -1897,6 +2135,199 @@ T computeFHatWENO7ZReconstructionKernel(
 
 
 template <ArithmeticWith<numeric_val> T>
+T computeFHatWENO7SReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-80, T p = 1.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical
+	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
+	 * (receives the following 7 values
+	 *     [j-3, j-2, j-1, j+0, j+1, j+2, j+3, ...] for '+'
+	 * (or [j+4, j+3, j+2, j+1, j+0, j-1, j-2, ...] for '-')
+	 *       ^    ^    ^    ^    ^    ^    ^    ^
+	 *       0    1    2    3    4    5    6    |
+	 * in either case for convenience).
+	 *
+	 * I.e. this function implements the upwind reconstruction which
+	 * should be used for positive fluxes (with information propagated
+	 * from left to right) if the nodes are passed in order. However,
+	 * the downwind reconstruction should obviously look the same
+	 * modulo flipping the values with respect to j+0, so that it
+	 * becomes downwind biased and takes one extra point to the right
+	 * instead of taking one extra to the left. In other words, to get
+	 * this to behave as a downwind reconstrution we need to pass
+	 * the points symmetric to those of upwind reconstruction with
+	 * respect to j+0:
+	 * [j+4, j+3, j+2, j+1, j+0, j-1, j-2, ...]. (We reverse the points in
+	 *      [j-3, j-2, j-1, j+0, j+1, j+2, j+3] j+4 and get
+	 *                       |
+	 * [j+4, j+3, j+2, j+1, j+0, j-1, j-2] j-3.)
+	 */
+
+	std::valarray<T> beta_IS_coefs(4);
+	std::valarray<T> c_k_coefs(4);
+
+	T f_hat = 0.;
+	auto f_stencil_view = std::ranges::views::all(f_stencil);
+
+	for (std::size_t k = 0; k <= std::ranges::size(f_stencil) - 4; ++ k) {
+		auto substencil = f_stencil_view
+				| std::ranges::views::drop(k)
+				| std::ranges::views::take(4);
+
+		c_k_coefs[k] = -substencil[0]
+					+ 3. * substencil[1]
+					- 3. * substencil[2]
+					+ substencil[3];
+
+		beta_IS_coefs[k] = std::pow(
+						substencil[0]
+						- substencil[1]
+						- substencil[2]
+						+ substencil[3], 2)
+					+ std::abs((
+						-substencil[0]
+							- substencil[1]
+							+ substencil[2]
+							+ substencil[3])
+						* c_k_coefs[k]
+					);
+	}
+
+	T tau_7s = std::pow(
+					c_k_coefs[0]
+					- c_k_coefs[1]
+					- c_k_coefs[2]
+					+ c_k_coefs[3], 2)
+				+ std::abs(
+					(-c_k_coefs[0]
+						- c_k_coefs[1]
+						+ c_k_coefs[2]
+						+ c_k_coefs[3])
+					* (-c_k_coefs[0]
+						+ 3. * c_k_coefs[1]
+						- 3. * c_k_coefs[2]
+						+ c_k_coefs[3]));
+
+	// non-linear non-scaled (α-)weights
+	std::valarray<T> d_lin_weights = {1./35., 12./35., 18./35., 4./35.};
+
+	std::valarray<T> alpha_weights = d_lin_weights
+			* (1. + std::pow(tau_7s / (eps + beta_IS_coefs), p));
+
+	// scaled (normalized) non-linear (ω-)weights (ENO weights)
+	std::valarray<T> omega_weights = alpha_weights
+			/ alpha_weights.sum();
+
+	std::valarray<T> eno_reconstructed_f
+			= f4OrdReconstructionFromStencil<T>(f_stencil);
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2]
+			+ omega_weights[3] * eno_reconstructed_f[3];
+
+	return f_hat;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T computeFHatWENO7SMReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-80, T p = 1.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical
+	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
+	 * (receives the following 7 values
+	 *     [j-3, j-2, j-1, j+0, j+1, j+2, j+3, ...] for '+'
+	 * (or [j+4, j+3, j+2, j+1, j+0, j-1, j-2, ...] for '-')
+	 *       ^    ^    ^    ^    ^    ^    ^    ^
+	 *       0    1    2    3    4    5    6    |
+	 * in either case for convenience).
+	 *
+	 * I.e. this function implements the upwind reconstruction which
+	 * should be used for positive fluxes (with information propagated
+	 * from left to right) if the nodes are passed in order. However,
+	 * the downwind reconstruction should obviously look the same
+	 * modulo flipping the values with respect to j+0, so that it
+	 * becomes downwind biased and takes one extra point to the right
+	 * instead of taking one extra to the left. In other words, to get
+	 * this to behave as a downwind reconstrution we need to pass
+	 * the points symmetric to those of upwind reconstruction with
+	 * respect to j+0:
+	 * [j+4, j+3, j+2, j+1, j+0, j-1, j-2, ...]. (We reverse the points in
+	 *      [j-3, j-2, j-1, j+0, j+1, j+2, j+3] j+4 and get
+	 *                       |
+	 * [j+4, j+3, j+2, j+1, j+0, j-1, j-2] j-3.)
+	 */
+
+	std::valarray<T> beta_IS_coefs(4);
+	std::valarray<T> c_k_coefs(4);
+
+	T f_hat = 0.;
+	auto f_stencil_view = std::ranges::views::all(f_stencil);
+
+	for (std::size_t k = 0; k <= std::ranges::size(f_stencil) - 4; ++ k) {
+		auto substencil = f_stencil_view
+				| std::ranges::views::drop(k)
+				| std::ranges::views::take(4);
+
+		c_k_coefs[k] = -substencil[0]
+					+ 3. * substencil[1]
+					- 3. * substencil[2]
+					+ substencil[3];
+
+		beta_IS_coefs[k] = std::pow(
+						substencil[0]
+						- substencil[1]
+						- substencil[2]
+						+ substencil[3], 2)
+					+ std::abs((
+						-substencil[0]
+							- substencil[1]
+							+ substencil[2]
+							+ substencil[3])
+						* c_k_coefs[k]
+					);
+	}
+
+	T tau_7s = std::pow(
+					c_k_coefs[0]
+					- c_k_coefs[1]
+					- c_k_coefs[2]
+					+ c_k_coefs[3], 2)
+				+ std::abs(
+					(-c_k_coefs[0]
+						- c_k_coefs[1]
+						+ c_k_coefs[2]
+						+ c_k_coefs[3])
+					* (-c_k_coefs[0]
+						+ 3. * c_k_coefs[1]
+						- 3. * c_k_coefs[2]
+						+ c_k_coefs[3]));
+
+	// non-linear non-scaled (α-)weights
+	std::valarray<T> alpha_weights = 1.
+				+ std::pow(tau_7s / (eps + beta_IS_coefs), p);
+
+	std::array<T, 4> lambda_weights;
+	lambdaWENO5FMWeights<T>(std::move(alpha_weights), lambda_weights);
+
+	// scaled (normalized) non-linear (ω-)weights (ENO weights)
+	std::valarray<T> omega_weights = omegaWENO7FMWeights<T>(
+				std::move(lambda_weights));
+
+	std::valarray<T> eno_reconstructed_f
+			= f4OrdReconstructionFromStencil<T>(f_stencil);
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2]
+			+ omega_weights[3] * eno_reconstructed_f[3];
+
+	return f_hat;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
 T computeFHatWENO9BSReconstructionKernel(
 		const std::ranges::sized_range auto&& f_stencil,
 		T eps = 1e-40, T p = 2.) {
@@ -1957,6 +2388,94 @@ T computeFHatWENO9BSReconstructionKernel(
 	// scaled (normalized) non-linear (ω-)weights (ENO weights)
 	std::valarray<T> omega_weights = alpha_weights
 			/ alpha_weights.sum();
+
+	std::valarray<T> eno_reconstructed_f
+			= f5OrdReconstructionFromStencil<T>(f_stencil);
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2]
+			+ omega_weights[3] * eno_reconstructed_f[3]
+			+ omega_weights[4] * eno_reconstructed_f[4];
+
+	return f_hat;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T computeFHatWENO9MReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-40, T p = 2.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical
+	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
+	 * (receives the following 9 values
+	 *     [j-4, j-3, j-2, j-1, j+0, j+1, j+2, j+3, j+4, ...] for '+'
+	 * (or [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3, ...] for '-')
+	 *       ^    ^    ^    ^    ^    ^    ^    ^    ^    ^
+	 *       0    1    2    3    4    5    6    7    8    |
+	 * in either case for convenience).
+	 *
+	 * I.e. this function implements the upwind reconstruction which
+	 * should be used for positive fluxes (with information propagated
+	 * from left to right) if the nodes are passed in order. However,
+	 * the downwind reconstruction should obviously look the same
+	 * modulo flipping the values with respect to j+0, so that it
+	 * becomes downwind biased and takes one extra point to the right
+	 * instead of taking one extra to the left. In other words, to get
+	 * this to behave as a downwind reconstrution we need to pass
+	 * the points symmetric to those of upwind reconstruction with
+	 * respect to j+0:
+	 * [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3, ...].
+	 * (We reverse the points in
+	 *      [j-4, j-3, j-2, j-1, j+0, j+1, j+2, j+3, j+4] j+5 and get
+	 *                            |
+	 * [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3] j-4.)
+	 */
+
+	// `p` controls (increases) the amount of numerical dissipation
+	// (and nothing more in WENO and WENO-(F)M);
+	// but in WENO-Z(M) changing the value of p alters convergence
+	// rates at critical points (it's recommended to take it = r-1
+	// for 2r-1 order schemes, so 2 for WENO5-Z(M)).
+	//
+	// `eps` is a small positive parameter to avoid the denominator
+	// of weights being zero
+	// (though it, too, can be significant for convergence properties
+	// and should ideally be tailored to the specific comp. problem,
+	// as first noted and more or less fully outlined by Henrick et al.)
+
+	// f_stencil = f_plus (or a reversed stencil for f_minus)
+
+	std::valarray<T> beta_IS_coefs(5);
+
+	T f_hat = 0.;
+
+	beta_IS_coefs = betaSmoothnessIndicatorsWENO9BS<T>(f_stencil);
+
+	// non-linear non-scaled (α-)weights
+	std::valarray<T> d_lin_weights = {
+		1./126., 10./63., 10./21., 20./63., 5./126.
+	};
+	std::valarray<T> alpha_weights = d_lin_weights
+			/ std::pow(eps + beta_IS_coefs, p);
+	// — we have no need of them in WENO-FM!
+
+	// scaled (normalized) non-linear (ω-)weights (ENO weights)
+	std::valarray<T> omega_weights = alpha_weights
+			/ alpha_weights.sum();
+
+	std::transform(
+				/*std::execution::par_unseq,*/
+				std::ranges::begin(omega_weights),
+				std::ranges::end(omega_weights),
+				std::ranges::begin(d_lin_weights),
+				std::ranges::begin(omega_weights),
+				[](auto w, auto d) {
+		return henrickGMappingForLambda(w, d);
+	});  // we obtain a new non-normalized weight alpha*
+
+	omega_weights = omega_weights
+			/ omega_weights.sum();  // normalize it
 
 	std::valarray<T> eno_reconstructed_f
 			= f5OrdReconstructionFromStencil<T>(f_stencil);
@@ -2043,6 +2562,430 @@ T computeFHatWENO9FMReconstructionKernel(
 			+ omega_weights[2] * eno_reconstructed_f[2]
 			+ omega_weights[3] * eno_reconstructed_f[3]
 			+ omega_weights[4] * eno_reconstructed_f[4];
+
+	return f_hat;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T computeFHatWENO9SReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-80, T p = 1.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical
+	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
+	 * (receives the following 9 values
+	 *     [j-4, j-3, j-2, j-1, j+0, j+1, j+2, j+3, j+4, ...] for '+'
+	 * (or [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3, ...] for '-')
+	 *       ^    ^    ^    ^    ^    ^    ^    ^    ^    ^
+	 *       0    1    2    3    4    5    6    7    8    |
+	 * in either case for convenience).
+	 *
+	 * I.e. this function implements the upwind reconstruction which
+	 * should be used for positive fluxes (with information propagated
+	 * from left to right) if the nodes are passed in order. However,
+	 * the downwind reconstruction should obviously look the same
+	 * modulo flipping the values with respect to j+0, so that it
+	 * becomes downwind biased and takes one extra point to the right
+	 * instead of taking one extra to the left. In other words, to get
+	 * this to behave as a downwind reconstrution we need to pass
+	 * the points symmetric to those of upwind reconstruction with
+	 * respect to j+0:
+	 * [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3, ...].
+	 * (We reverse the points in
+	 *      [j-4, j-3, j-2, j-1, j+0, j+1, j+2, j+3, j+4] j+5 and get
+	 *                            |
+	 * [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3] j-4.)
+	 */
+
+	constexpr const std::size_t substencil_order = 5;
+
+	std::valarray<T> beta_IS_coefs(substencil_order);
+	std::valarray<T> c_k_coefs(substencil_order);
+
+	T f_hat = 0.;
+	auto f_stencil_view = std::ranges::views::all(f_stencil);
+
+	auto a_func = [](auto substencilv) -> T {
+		return substencilv[0]
+					- 2. * substencilv[2]
+					+ substencilv[4];
+	};
+
+	auto b_func = [](auto substencilv) -> T {
+		return -substencilv[0]
+					+ 2. * substencilv[1]
+					- 2. * substencilv[3]
+					+ substencilv[4];
+	};
+
+	auto c_func = [](auto substencilv) -> T {
+		return substencilv[0]
+					- 4. * substencilv[1]
+					+ 6. * substencilv[2]
+					- 4. * substencilv[3]
+					+ substencilv[4];
+	};
+
+	T a;
+	T b;
+	for (std::size_t k = 0;
+			k <= std::ranges::size(f_stencil) - substencil_order; ++ k) {
+		auto substencil = f_stencil_view
+				| std::ranges::views::drop(k)
+				| std::ranges::views::take(substencil_order);
+
+		a = a_func(substencil);
+		b = b_func(substencil);
+		c_k_coefs[k] = c_func(substencil);
+
+		beta_IS_coefs[k] = std::pow(b, 2) + std::abs(a * c_k_coefs[k]);
+	}
+
+	T tau_s = std::pow(b_func(c_k_coefs), 2)
+				+ std::abs(a_func(c_k_coefs) * c_func(c_k_coefs));
+
+	// non-linear non-scaled (α-)weights
+	std::valarray<T> d_lin_weights = {
+		1./126., 10./63., 10./21., 20./63., 5./126.
+	};
+
+	std::valarray<T> alpha_weights = d_lin_weights
+			* (1. + std::pow(tau_s / (eps + beta_IS_coefs), p));
+
+	// scaled (normalized) non-linear (ω-)weights (ENO weights)
+	std::valarray<T> omega_weights = alpha_weights
+			/ alpha_weights.sum();
+
+	std::valarray<T> eno_reconstructed_f
+			= f5OrdReconstructionFromStencil<T>(f_stencil);
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2]
+			+ omega_weights[3] * eno_reconstructed_f[3]
+			+ omega_weights[4] * eno_reconstructed_f[4];
+
+	return f_hat;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T computeFHatWENO9SMReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-80, T p = 1.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical
+	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
+	 * (receives the following 9 values
+	 *     [j-4, j-3, j-2, j-1, j+0, j+1, j+2, j+3, j+4, ...] for '+'
+	 * (or [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3, ...] for '-')
+	 *       ^    ^    ^    ^    ^    ^    ^    ^    ^    ^
+	 *       0    1    2    3    4    5    6    7    8    |
+	 * in either case for convenience).
+	 *
+	 * I.e. this function implements the upwind reconstruction which
+	 * should be used for positive fluxes (with information propagated
+	 * from left to right) if the nodes are passed in order. However,
+	 * the downwind reconstruction should obviously look the same
+	 * modulo flipping the values with respect to j+0, so that it
+	 * becomes downwind biased and takes one extra point to the right
+	 * instead of taking one extra to the left. In other words, to get
+	 * this to behave as a downwind reconstrution we need to pass
+	 * the points symmetric to those of upwind reconstruction with
+	 * respect to j+0:
+	 * [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3, ...].
+	 * (We reverse the points in
+	 *      [j-4, j-3, j-2, j-1, j+0, j+1, j+2, j+3, j+4] j+5 and get
+	 *                            |
+	 * [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3] j-4.)
+	 */
+
+	constexpr const std::size_t substencil_order = 5;
+
+	std::valarray<T> beta_IS_coefs(substencil_order);
+	std::valarray<T> c_k_coefs(substencil_order);
+
+	T f_hat = 0.;
+	auto f_stencil_view = std::ranges::views::all(f_stencil);
+
+	auto a_func = [](auto substencilv) -> T {
+		return substencilv[0]
+					- 2. * substencilv[2]
+					+ substencilv[4];
+	};
+
+	auto b_func = [](auto substencilv) -> T {
+		return -substencilv[0]
+					+ 2. * substencilv[1]
+					- 2. * substencilv[3]
+					+ substencilv[4];
+	};
+
+	auto c_func = [](auto substencilv) -> T {
+		return substencilv[0]
+					- 4. * substencilv[1]
+					+ 6. * substencilv[2]
+					- 4. * substencilv[3]
+					+ substencilv[4];
+	};
+
+	T a;
+	T b;
+
+	for (std::size_t k = 0;
+			k <= std::ranges::size(f_stencil) - substencil_order; ++ k) {
+		auto substencil = f_stencil_view
+				| std::ranges::views::drop(k)
+				| std::ranges::views::take(substencil_order);
+
+		a = a_func(substencil);
+		b = b_func(substencil);
+		c_k_coefs[k] = c_func(substencil);
+
+		beta_IS_coefs[k] = std::pow(b, 2) + std::abs(a * c_k_coefs[k]);
+	}
+
+	T tau_s = std::pow(b_func(c_k_coefs), 2)
+				+ std::abs(a_func(c_k_coefs) * c_func(c_k_coefs));
+
+	// non-linear non-scaled (α-)weights
+	std::valarray<T> alpha_weights = 1.
+				+ std::pow(tau_s / (eps + beta_IS_coefs), p);
+
+	std::array<T, substencil_order> lambda_weights;
+	lambdaWENO5FMWeights<T>(std::move(alpha_weights), lambda_weights);
+
+	// scaled (normalized) non-linear (ω-)weights (ENO weights)
+	std::valarray<T> omega_weights = omegaWENO9FMWeights<T>(
+				std::move(lambda_weights));
+
+	std::valarray<T> eno_reconstructed_f
+			= f5OrdReconstructionFromStencil<T>(f_stencil);
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2]
+			+ omega_weights[3] * eno_reconstructed_f[3]
+			+ omega_weights[4] * eno_reconstructed_f[4];
+
+	return f_hat;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T computeFHatWENO11SReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-80, T p = 1.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical
+	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
+	 * (receives the following 11 values
+	 *     [j-4, j-3, j-2, j-1, j+0, j+1, j+2, j+3, j+4, ...] for '+'
+	 * (or [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3, ...] for '-')
+	 *       ^    ^    ^    ^    ^    ^    ^    ^    ^    ^
+	 *       0    1    2    3    4    5    6    7    8    |
+	 * in either case for convenience).
+	 *
+	 * I.e. this function implements the upwind reconstruction which
+	 * should be used for positive fluxes (with information propagated
+	 * from left to right) if the nodes are passed in order. However,
+	 * the downwind reconstruction should obviously look the same
+	 * modulo flipping the values with respect to j+0, so that it
+	 * becomes downwind biased and takes one extra point to the right
+	 * instead of taking one extra to the left. In other words, to get
+	 * this to behave as a downwind reconstrution we need to pass
+	 * the points symmetric to those of upwind reconstruction with
+	 * respect to j+0:
+	 * [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3, ...].
+	 * (We reverse the points in
+	 *      [j-4, j-3, j-2, j-1, j+0, j+1, j+2, j+3, j+4] j+5 and get
+	 *                            |
+	 * [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3] j-4.)
+	 */
+
+	constexpr const std::size_t substencil_order = 6;
+
+	std::valarray<T> beta_IS_coefs(substencil_order);
+	std::valarray<T> c_k_coefs(substencil_order);
+
+	T f_hat = 0.;
+	auto f_stencil_view = std::ranges::views::all(f_stencil);
+
+	auto a_func = [](auto substencilv) -> T {
+		return -substencilv[0]
+					+ substencilv[1]
+					+ 2. * substencilv[2]
+					- 2. * substencilv[3]
+					- substencilv[4]
+					+ substencilv[5];
+	};
+
+	auto b_func = [](auto substencilv) -> T {
+		return substencilv[0]
+					- 3. * substencilv[1]
+					+ 2. * substencilv[2]
+					+ 2. * substencilv[3]
+					- 3. * substencilv[4]
+					+ substencilv[5];
+	};
+
+	auto c_func = [](auto substencilv) -> T {
+		return -substencilv[0]
+					+ 5. * substencilv[1]
+					- 10. * substencilv[2]
+					+ 10. * substencilv[3]
+					- 5. * substencilv[4]
+					+ substencilv[5];
+	};
+
+	T a;
+	T b;
+	for (std::size_t k = 0;
+			k <= std::ranges::size(f_stencil) - substencil_order; ++ k) {
+		auto substencil = f_stencil_view
+				| std::ranges::views::drop(k)
+				| std::ranges::views::take(substencil_order);
+
+		a = a_func(substencil);
+		b = b_func(substencil);
+		c_k_coefs[k] = c_func(substencil);
+
+		beta_IS_coefs[k] = std::pow(b, 2) + std::abs(a * c_k_coefs[k]);
+	}
+
+	T tau_s = std::pow(b_func(c_k_coefs), 2)
+				+ std::abs(a_func(c_k_coefs) * c_func(c_k_coefs));
+
+	// non-linear non-scaled (α-)weights
+	std::valarray<T> d_lin_weights = {
+		1./462., 30./462., 150./462., 200./462., 75./462., 6./462.
+	};
+//	std::valarray<T> d_lin_weights = {
+//		1./462., 5./77., 25./77., 100./231., 25./154., 1./77.
+//	};
+
+	std::valarray<T> alpha_weights = d_lin_weights
+			* (1. + std::pow(tau_s / (eps + beta_IS_coefs), p));
+
+	// scaled (normalized) non-linear (ω-)weights (ENO weights)
+	std::valarray<T> omega_weights = alpha_weights
+			/ alpha_weights.sum();
+
+	std::valarray<T> eno_reconstructed_f
+			= f6OrdReconstructionFromStencil<T>(f_stencil);
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2]
+			+ omega_weights[3] * eno_reconstructed_f[3]
+			+ omega_weights[4] * eno_reconstructed_f[4]
+			+ omega_weights[5] * eno_reconstructed_f[5];
+
+	return f_hat;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T computeFHatWENO11SMReconstructionKernel(
+		const std::ranges::sized_range auto&& f_stencil,
+		T eps = 1e-80, T p = 1.) {
+	/* Calculate (reconstruct) one of the two split monotone numerical
+	 * fluxes `fhatplus`/`fhatminus` at a point j+0 for a given stencil
+	 * (receives the following 11 values
+	 *     [j-4, j-3, j-2, j-1, j+0, j+1, j+2, j+3, j+4, ...] for '+'
+	 * (or [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3, ...] for '-')
+	 *       ^    ^    ^    ^    ^    ^    ^    ^    ^    ^
+	 *       0    1    2    3    4    5    6    7    8    |
+	 * in either case for convenience).
+	 *
+	 * I.e. this function implements the upwind reconstruction which
+	 * should be used for positive fluxes (with information propagated
+	 * from left to right) if the nodes are passed in order. However,
+	 * the downwind reconstruction should obviously look the same
+	 * modulo flipping the values with respect to j+0, so that it
+	 * becomes downwind biased and takes one extra point to the right
+	 * instead of taking one extra to the left. In other words, to get
+	 * this to behave as a downwind reconstrution we need to pass
+	 * the points symmetric to those of upwind reconstruction with
+	 * respect to j+0:
+	 * [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3, ...].
+	 * (We reverse the points in
+	 *      [j-4, j-3, j-2, j-1, j+0, j+1, j+2, j+3, j+4] j+5 and get
+	 *                            |
+	 * [j+5, j+4, j+3, j+2, j+1, j+0, j-1, j-2, j-3] j-4.)
+	 */
+
+	constexpr const std::size_t substencil_order = 6;
+
+	std::valarray<T> beta_IS_coefs(substencil_order);
+	std::valarray<T> c_k_coefs(substencil_order);
+
+	T f_hat = 0.;
+	auto f_stencil_view = std::ranges::views::all(f_stencil);
+
+	auto a_func = [](auto substencilv) -> T {
+		return -substencilv[0]
+					+ substencilv[1]
+					+ 2. * substencilv[2]
+					- 2. * substencilv[3]
+					- substencilv[4]
+					+ substencilv[5];
+	};
+
+	auto b_func = [](auto substencilv) -> T {
+		return substencilv[0]
+					- 3. * substencilv[1]
+					+ 2. * substencilv[2]
+					+ 2. * substencilv[3]
+					- 3. * substencilv[4]
+					+ substencilv[5];
+	};
+
+	auto c_func = [](auto substencilv) -> T {
+		return -substencilv[0]
+					+ 5. * substencilv[1]
+					- 10. * substencilv[2]
+					+ 10. * substencilv[3]
+					- 5. * substencilv[4]
+					+ substencilv[5];
+	};
+
+	T a;
+	T b;
+	for (std::size_t k = 0;
+			k <= std::ranges::size(f_stencil) - substencil_order; ++ k) {
+		auto substencil = f_stencil_view
+				| std::ranges::views::drop(k)
+				| std::ranges::views::take(substencil_order);
+
+		a = a_func(substencil);
+		b = b_func(substencil);
+		c_k_coefs[k] = c_func(substencil);
+
+		beta_IS_coefs[k] = std::pow(b, 2) + std::abs(a * c_k_coefs[k]);
+	}
+
+	T tau_s = std::pow(b_func(c_k_coefs), 2)
+				+ std::abs(a_func(c_k_coefs) * c_func(c_k_coefs));
+
+	// non-linear non-scaled (α-)weights
+	std::valarray<T> alpha_weights = 1.
+				+ std::pow(tau_s / (eps + beta_IS_coefs), p);
+
+	std::array<T, substencil_order> lambda_weights;
+	lambdaWENO5FMWeights<T>(std::move(alpha_weights), lambda_weights);
+
+	// scaled (normalized) non-linear (ω-)weights (ENO weights)
+	std::valarray<T> omega_weights = omegaWENO11FMWeights<T>(
+				std::move(lambda_weights));
+
+	std::valarray<T> eno_reconstructed_f
+			= f6OrdReconstructionFromStencil<T>(f_stencil);
+
+	f_hat = omega_weights[0] * eno_reconstructed_f[0]
+			+ omega_weights[1] * eno_reconstructed_f[1]
+			+ omega_weights[2] * eno_reconstructed_f[2]
+			+ omega_weights[3] * eno_reconstructed_f[3]
+			+ omega_weights[4] * eno_reconstructed_f[4]
+			+ omega_weights[5] * eno_reconstructed_f[5];
 
 	return f_hat;
 }
@@ -2571,6 +3514,48 @@ void calcHydroStageFDWENO5M(
 
 
 template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFDWENO9M(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_ghost_cells = 5,
+		T eps = 1e-40,
+		T p = 2.) {
+	calcHydroStageFDWENO<T, 9>(
+				std::ranges::views::all(f_plus),
+				std::ranges::views::all(f_minus), t,
+				std::ranges::views::all(numerical_flux),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO9MReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				}, n_ghost_cells, eps, p);
+}
+
+
+//template <ArithmeticWith<numeric_val> T>
+//void calcHydroStageFDWENO5FM(
+//		const std::ranges::common_range auto&& f_plus,
+//		const std::ranges::common_range auto&& f_minus,
+//		T t,
+//		std::ranges::common_range auto&& numerical_flux,
+//		std::size_t n_ghost_cells = 3,
+//		T eps = 1e-40,
+//		T p = 2.) {
+//	calcHydroStageFDWENO5<T>(
+//				std::ranges::views::all(f_plus),
+//				std::ranges::views::all(f_minus), t,
+//				std::ranges::views::all(numerical_flux),
+//				[](const std::ranges::sized_range auto&& stencil,
+//							T eps, T p) -> T {
+//					return computeFHatWENO5FMReconstructionKernel<T>(
+//								std::ranges::views::all(stencil), eps, p);
+//				}, n_ghost_cells, eps, p);
+//}
+
+
+template <ArithmeticWith<numeric_val> T>
 void calcHydroStageFDWENO5FM(
 		const std::ranges::common_range auto&& f_plus,
 		const std::ranges::common_range auto&& f_minus,
@@ -2579,14 +3564,14 @@ void calcHydroStageFDWENO5FM(
 		std::size_t n_ghost_cells = 3,
 		T eps = 1e-40,
 		T p = 2.) {
-	calcHydroStageFDWENO5<T>(
-				std::ranges::views::all(f_plus),
-				std::ranges::views::all(f_minus), t,
-				std::ranges::views::all(numerical_flux),
+	calcHydroStageFDWENO<T, 5>(
+				std::move(f_plus),
+				std::move(f_minus), t,
+				std::move(numerical_flux),
 				[](const std::ranges::sized_range auto&& stencil,
 							T eps, T p) -> T {
 					return computeFHatWENO5FMReconstructionKernel<T>(
-								std::ranges::views::all(stencil), eps, p);
+								std::move(stencil), eps, p);
 				}, n_ghost_cells, eps, p);
 }
 
@@ -2600,7 +3585,7 @@ void calcHydroStageFDWENO7FM(
 		std::size_t n_ghost_cells = 4,
 		T eps = 1e-40,
 		T p = 2.) {
-	calcHydroStageFDWENO7<T>(
+	calcHydroStageFDWENO<T, 7>(
 				std::move(f_plus),
 				std::move(f_minus), t,
 				std::move(numerical_flux),
@@ -2649,6 +3634,153 @@ void calcHydroStageFDWENO7Z(
 				[](const std::ranges::sized_range auto&& stencil,
 							T eps, T p) -> T {
 					return computeFHatWENO7ZReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				}, n_ghost_cells, eps, p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFDWENO7ZM(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_ghost_cells = 4,
+		T eps = 1e-40,
+		T p = 2.) {
+	calcHydroStageFDWENO<T, 7>(
+				std::ranges::views::all(f_plus),
+				std::ranges::views::all(f_minus), t,
+				std::ranges::views::all(numerical_flux),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO7ZMReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				}, n_ghost_cells, eps, p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFDWENO7S(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_ghost_cells = 4,
+		T eps = 1e-80,
+		T p = 1.) {
+	calcHydroStageFDWENO<T, 7>(
+				std::ranges::views::all(f_plus),
+				std::ranges::views::all(f_minus), t,
+				std::ranges::views::all(numerical_flux),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO7SReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				}, n_ghost_cells, eps, p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFDWENO7SM(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_ghost_cells = 4,
+		T eps = 1e-80,
+		T p = 1.) {
+	calcHydroStageFDWENO<T, 7>(
+				std::ranges::views::all(f_plus),
+				std::ranges::views::all(f_minus), t,
+				std::ranges::views::all(numerical_flux),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO7SMReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				}, n_ghost_cells, eps, p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFDWENO9S(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_ghost_cells = 5,
+		T eps = 1e-80,
+		T p = 1.) {
+	calcHydroStageFDWENO<T, 9>(
+				std::ranges::views::all(f_plus),
+				std::ranges::views::all(f_minus), t,
+				std::ranges::views::all(numerical_flux),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO9SReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				}, n_ghost_cells, eps, p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFDWENO9SM(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_ghost_cells = 5,
+		T eps = 1e-80,
+		T p = 1.) {
+	calcHydroStageFDWENO<T, 9>(
+				std::ranges::views::all(f_plus),
+				std::ranges::views::all(f_minus), t,
+				std::ranges::views::all(numerical_flux),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO9SMReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				}, n_ghost_cells, eps, p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFDWENO11S(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_ghost_cells = 6,
+		T eps = 1e-80,
+		T p = 1.) {
+	calcHydroStageFDWENO<T, 11>(
+				std::ranges::views::all(f_plus),
+				std::ranges::views::all(f_minus), t,
+				std::ranges::views::all(numerical_flux),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO11SReconstructionKernel<T>(
+								std::ranges::views::all(stencil), eps, p);
+				}, n_ghost_cells, eps, p);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+void calcHydroStageFDWENO11SM(
+		const std::ranges::common_range auto&& f_plus,
+		const std::ranges::common_range auto&& f_minus,
+		T t,
+		std::ranges::common_range auto&& numerical_flux,
+		std::size_t n_ghost_cells = 6,
+		T eps = 1e-100,
+		T p = 2.) {
+	calcHydroStageFDWENO<T, 11>(
+				std::ranges::views::all(f_plus),
+				std::ranges::views::all(f_minus), t,
+				std::ranges::views::all(numerical_flux),
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO11SMReconstructionKernel<T>(
 								std::ranges::views::all(stencil), eps, p);
 				}, n_ghost_cells, eps, p);
 }
@@ -3298,11 +4430,14 @@ void updateGhostPointsPeriodic(
 //	U[0] = U[n_full_size - 1 - 3 - 2];
 //	U[1] = U[n_full_size - 1 - 3 - 1];
 //	U[2] = U[n_full_size - 1 - 3 - 0];
-	U[0] = U[n_full_size - 1 - 5 - 5];
-	U[1] = U[n_full_size - 1 - 5 - 4];
-	U[2] = U[n_full_size - 1 - 5 - 3];
-	U[3] = U[n_full_size - 1 - 5 - 2];
-	U[4] = U[n_full_size - 1 - 5 - 1];
+	for (std::size_t k = 0; k < left_bound_size; ++ k)
+		U[k] = U[n_full_size - 1 - left_bound_size
+					- (left_bound_size - k)];
+//	U[0] = U[n_full_size - 1 - 5 - 5];
+//	U[1] = U[n_full_size - 1 - 5 - 4];
+//	U[2] = U[n_full_size - 1 - 5 - 3];
+//	U[3] = U[n_full_size - 1 - 5 - 2];
+//	U[4] = U[n_full_size - 1 - 5 - 1];
 
 //	std::ranges::transform(
 //				U | std::ranges::views::drop(right_start_index),
@@ -3321,11 +4456,14 @@ void updateGhostPointsPeriodic(
 //	U[n_full_size - 1 - 2] = U[3 + 0];
 //	U[n_full_size - 1 - 1] = U[3 + 1];
 //	U[n_full_size - 1 - 0] = U[3 + 2];
-	U[n_full_size - 1 - 4] = U[5 + 1];
-	U[n_full_size - 1 - 3] = U[5 + 2];
-	U[n_full_size - 1 - 2] = U[5 + 3];
-	U[n_full_size - 1 - 1] = U[5 + 4];
-	U[n_full_size - 1 - 0] = U[5 + 5];
+	for (std::size_t k = 0; k < right_bound_size.value(); ++ k)
+		U[n_full_size - 1 - (right_bound_size.value() - k - 1)]
+				= U[left_bound_size + k + 1];
+//	U[n_full_size - 1 - 4] = U[5 + 1];
+//	U[n_full_size - 1 - 3] = U[5 + 2];
+//	U[n_full_size - 1 - 2] = U[5 + 3];
+//	U[n_full_size - 1 - 1] = U[5 + 4];
+//	U[n_full_size - 1 - 0] = U[5 + 5];
 }
 
 
@@ -3353,7 +4491,7 @@ void timeOperator(
 	long long counter = 0;
 	clock_t t_start = 0;
 	clock_t t_end = 0;
-	double t_calc = 0;
+	double t_calc = 0.;
 	clock_t t_start_global = 0;
 	clock_t t_end_global = 0;
 
@@ -3363,10 +4501,10 @@ void timeOperator(
 
 		dt = cfl * dx / lam[0];
 
-//		if (counter < 5) {
-//			// cfl = cfl * .2;
-//			dt *= .2;
-//		}
+		if (counter < 5) {
+			// cfl = cfl * .2;
+			dt *= .2;
+		}
 		// dt = /*8. **/ cfl * std::pow(dx, 5./3.);
 		// dt = 8. * std::pow(dx, 3.);;
 

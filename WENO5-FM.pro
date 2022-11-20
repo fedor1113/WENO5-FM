@@ -30,12 +30,17 @@ HEADERS += \
     kfr1d.h \
 		kfr1d.h \
     lf_flux.h \
+    lssperk10_9.h \
+    lssperk12_11.h \
     miegruneisen.h \
+    ossperk4_3.h \
     rk4_4.h \
     rk6_5.h \
     roe.h \
     ssprk10_4.h \
 		ssprk33.h \
+    ssptserk12_8.h \
+    ssptserk8_5.h \
     tdrk3_5.h \
     twoderrk3_5.h \
 		weno5.h \

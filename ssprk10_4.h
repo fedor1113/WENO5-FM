@@ -23,7 +23,7 @@ void advanceTimestepSSPRK10_4(
 		auto&& updateGhostPoints,
 		Args... opts_args) {
 	/* Optimal Low-Storage 4th-Order 10-Stage Explicit
-	 * Total Variation Diming / Diminishing
+	 * Total Variation Dimming / Diminishing
 	 * (Strong Stability Preserving)
 	 * Runge-Kutta Scheme (TVD RK4 / SSPRK(10,4))
 	 * to discretize a method-of-lines (MOL) ODE

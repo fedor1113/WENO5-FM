@@ -96,11 +96,17 @@ s = []
         #u.append(float(ROWS[2]))
         #p.append(float(ROWS[3]))
         #s.append(float(ROWS[4]))
-n = 100
-filename = f'res_n_{n}.dat'
+n = 501
+# filename = f'./data/det/SSPTSERK12_8-FD-WENO7-SM-CFL-1.0-ext_ord-6-no_source_at_shock/res_n_{n}.dat'
+# filename = f'u_res_n_{n}.dat'
+# filename = f'./data/det/eBDF5-EF_start-FD-WENO5-FM-CFL-0.16-ext_ord-5D/alpha_3.9_beta_0.1/a_0.0_k_0.0/res_n_{n}.dat'
+filename = f'/home/fedor1113/Programming/WENO5-FM/data/adv/Henrick/res_n_{n}.dat'
+# filename = f'res_n_{n}.dat'
+# filename = f'./data/adv/Jiang-Shu combination of four waves/SSPERK12_8-FD-WENO9-M-LF-CFL-0.9/res_n_{n}.dat'
 df = pd.read_csv(filename,
                  skiprows = 3, sep=' ',
-				 names = ['x', 'rho', 'u', 'p', 'e'])
+#				 names = ['x', 'rho', 'u', 'p', 'e'])
+                 names = ['x', 'u_h'])
 
 with open(filename, 'r') as datafile:
     title = datafile.readline()
@@ -110,53 +116,56 @@ with open(filename, 'r') as datafile:
 L = 1
 
 x = list(map(float, df['x'].tolist()))
-rho = list(map(float, df['rho'].tolist()))
-u = list(map(float, df['u'].tolist()))
-p = list(map(float, df['p'].tolist()))
-e = list(map(float, df['e'].tolist()))
+# rho = list(map(float, df['rho'].tolist()))
+# u = list(map(float, df['u'].tolist()))
+# p = list(map(float, df['p'].tolist()))
+# e = list(map(float, df['e'].tolist()))
+u_h = list(map(float, df['u_h'].tolist()))
 
 
 
 plt.figure(1)
-plt.subplot(4, 1, 1)
+# plt.plot(x, u_h, 'b-')
+plt.plot(x, u_h, '.b-')
+#plt.subplot(4, 1, 1)
 # plt.subplot(3, 1, 1)
-plt.title("t={:0.4f}".format(t))
+#plt.title("t={:0.4f}".format(t))
 # plt.plot(x, rho, '.b-')
-plt.plot(x, rho, 'b-')
+#plt.plot(x, rho, 'b-')
 plt.grid(True, ls=':')
 # plt.plot(x500, rho500, 'g-')
 # plt.plot(x1000, rho1000, 'b-')
 # plt.plot(xex,Rhoex,'r--', linewidth=0.5)
-plt.ylabel('Density ρ')
+#plt.ylabel('Density ρ')
 # plt.xlim([0, L])
-plt.subplot(4, 1, 2)
-plt.grid(True, ls=':')
+#plt.subplot(4, 1, 2)
+#plt.grid(True, ls=':')
 #plt.subplot(3, 1, 2)
 # plt.plot(x, u, '.b-')
-plt.plot(x, u, 'b-')
+#plt.plot(x, u, 'b-')
 # plt.plot(x500, u500, 'g-')
 # plt.plot(x1000, u1000, 'b-')
 # plt.plot(xex,Uex,'r--', linewidth=0.5)
-plt.ylabel('Velocity v')
+#plt.ylabel('Velocity v')
 # plt.xlim([0, L])
-plt.subplot(4, 1, 3)
-plt.grid(True, ls=':')
+#plt.subplot(4, 1, 3)
+#plt.grid(True, ls=':')
 # plt.subplot(3, 1, 3)
 # plt.plot(x, p, '.b-')
-plt.plot(x, p, 'b-')
+#plt.plot(x, p, 'b-')
 # plt.plot(x500, p500, 'g-')
 # plt.plot(x1000, p1000, 'b-')
 # plt.xlim([0, L])
 # plt.plot(xex,Pex,'r--', linewidth=0.5)
-plt.ylabel('Pressure p')
-plt.subplot(4, 1, 4)
-plt.grid(True, ls=':')
+#plt.ylabel('Pressure p')
+#plt.subplot(4, 1, 4)
+#plt.grid(True, ls=':')
 # plt.plot(x, e, '.b-');
-plt.plot(x, e, 'b-');
+#plt.plot(x, e, 'b-');
 #plt.plot(x, [1 - dp for dp in s], 'r-');
 #plt.xlim([0,L])
 #plt.ylabel('Species Fraction')
-plt.ylabel('Energy e')
+#plt.ylabel('Energy e')
 
 
 plt.tight_layout()

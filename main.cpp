@@ -1,6 +1,6 @@
-#pragma GCC optimize("Ofast")
-#pragma GCC target("avx,avx2,fma")
-#pragma GCC optimize("unroll-loops")
+//#pragma GCC optimize("Ofast")
+//#pragma GCC target("avx,avx2,fma")
+//#pragma GCC optimize("unroll-loops")
 
 #include <algorithm>
 #include <cstdio>
@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
 
 	std::size_t Nx = 201;
 	// const std::size_t N_ghost_points = 3;
-	const std::size_t N_ghost_points = 5;
+	const std::size_t N_ghost_points = 6;
 	std::size_t N_full = Nx + 2*N_ghost_points;
 	// Nx = Nx + 6;  // Add in ghost cells
 	numeric_val L = 1.;  // [L]
@@ -260,7 +260,7 @@ int main(int argc, char **argv) {
 //			1000, 1200, 1600, 2000, 3200/*, 6400, 10000*/}) {
 //		 : {101, 201, 401, 501, 601, 701, 801, 901
 //			1001, 1201, 1601/*, 3201*/}) {
-		 : {21, 41, 81, 161}) {
+		 : {/*201*//*81, 101, 121, 151, 201, 301, 401, 451, 501, 601, 801*/3501/*, 1001, 1501, 2001*/}) {
 //		 : {301}) {
 //		 : {321}) {
 //		 : {1201}) {
@@ -269,7 +269,8 @@ int main(int argc, char **argv) {
 		Nx = j; N_full = Nx + 2 * N_ghost_points;
 		L = 10.;
 		// L = 1.;
-		cfl = 1.5;
+		cfl = 1.;
+		// cfl = 0.16;
 		tfinal = 3000.;
 		// tfinal = 1.5;
 
@@ -302,14 +303,14 @@ int main(int argc, char **argv) {
 //			tfinal
 //		);
 
-//		solve1DDetonationProfileProblem<numeric_val>(
-//					u_res, x,
-//					3.9, 0.1, 0.0, 0.0,
-//					u_s, times,
-//					1e-6,
-//					0., tfinal, -L, 0.,
-//					Nx, cfl
-//					);  // stable, simple solution with u_s = 1.
+		solve1DDetonationProfileProblem<numeric_val>(
+					u_res, x,
+					3.9, 0.1, 0.0, 0.0,
+					u_s, times,
+					1e-6,
+					0., tfinal, -L, 0.,
+					N_ghost_points, cfl
+					);  // stable, simple solution with u_s = 1.
 
 //		solve1DDetonationProfileProblem<numeric_val>(
 //					u_res, x,
@@ -354,16 +355,24 @@ int main(int argc, char **argv) {
 //			Nx, cfl, 2
 //		);  // Toro-2
 //		tfinal =  2187. / 4096.;
-		tfinal = .533935;
-////		tfinal = 0.3;
-//		cfl = 0.94;
-		cfl = 1./350.;
-		L = 2. * std::numbers::pi_v<numeric_val>;
-		solve1DInviscidBurgersProblem<numeric_val>(
-			u_res, x,
-			0., tfinal, 0., L,
-			Nx, cfl, 21
-		);  // Evstigneev-21
+//		tfinal = .533935;
+//////		tfinal = 0.3;
+////		cfl = 0.94;
+//		cfl = 1./350.;
+//		L = 2. * std::numbers::pi_v<numeric_val>;
+//		solve1DInviscidBurgersProblem<numeric_val>(
+//			u_res, x,
+//			0., tfinal, 0., L,
+//			Nx, cfl, 21
+//		);  // Evstigneev-21
+//		tfinal = 10.;
+//		cfl = 1.;
+//		L = 2.;
+//		solve1DInviscidBurgersProblem<numeric_val>(
+//			u_res, x,
+//			0., tfinal, -1., 1.,
+//			N_ghost_points, cfl, 0
+//		);  // Jiang-Shu combination of four waves
 //		tfinal = 1. / std::numbers::pi_v<numeric_val>;
 //		cfl = 0.8;
 //		L = 2.;
@@ -375,14 +384,15 @@ int main(int argc, char **argv) {
 
 		std::ofstream outfile;
 
-
-		std::string folder =
-				"./data/hopf/WENO9FM-RK6_5-DX/";
+//		std::string folder =
+//				"./data/det/eBDF5-EF_start-FD-WENO5-FM-CFL-0.16-ext_ord-5D/alpha_3.9_beta_0.1/a_0.0_k_0.0/";
+//		std::string folder =
+//				"./data/det/eBDF5-EF_start-FD-WENO5-FM-CFL-0.16-ext_ord-5/";
 //		std::string folder =
 //				"./data/det/ERK_6_5-FD-WENO7-FM-CFL-1.5-ext_ord-7-corr/alpha_4.5_beta_0.1/a_0.05_k_0.5/";
 //		std::string folder = "./data/";
 //		std::string folder = "./data/det/ext_ord_4/SSPRK_3_3-FD-WENO5-FM-CFL-0.4/alpha_3.9_beta_0.1/a_0.0_k_0.0/";
-//		std::string folder = "./";
+		std::string folder = "./";
 
 		std::string filepath = folder
 				+ "res_n_"
@@ -455,34 +465,34 @@ int main(int argc, char **argv) {
 
 		outfile.close();
 
-//		std::string u_filepath = folder
-//				+ "u_res_n_"
-//				+ std::to_string(j)
-//				+ ".dat";
+		std::string u_filepath = folder
+				+ "u_res_n_"
+				+ std::to_string(j)
+				+ ".dat";
 
-//		outfile.open(u_filepath);
+		outfile.open(u_filepath);
 
-//		k = 0;
-//		if (outfile.is_open()) {
-//			// outfile << "TITLE=\"Riemann Problem 1D slice t="
-//			// 		<< tfinal << "\"" << "\n";
-//			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
-//			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
-//			outfile << "TITLE=\"Detonation Problem u_s time evolution up to t="
-//					<< tfinal << "\"" << "\n";
-//			outfile << "VARIABLES=\"x\",\"u\"" << "\n";
-//			outfile << "ZONE T=\"Numerical\", I="
-//					<< times.size() << ", F=POINT" << "\n";
+		k = 0;
+		if (outfile.is_open()) {
+			// outfile << "TITLE=\"Riemann Problem 1D slice t="
+			// 		<< tfinal << "\"" << "\n";
+			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
+			// outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
+			outfile << "TITLE=\"Detonation Problem u_s time evolution up to t="
+					<< tfinal << "\"" << "\n";
+			outfile << "VARIABLES=\"x\",\"u\"" << "\n";
+			outfile << "ZONE T=\"Numerical\", I="
+					<< times.size() << ", F=POINT" << "\n";
 
-//			for (std::size_t k = 0; k < times.size(); ++ k) {
-//				outfile << std::setprecision(
-//							   std::numeric_limits<numeric_val>::max_digits10 - 1)
-//						<< std::scientific
-//						<< times[k] << " " << u_s[k] << "\n";
-//			}
-//		}
+			for (std::size_t k = 0; k < times.size(); ++ k) {
+				outfile << std::setprecision(
+							   std::numeric_limits<numeric_val>::max_digits10 - 1)
+						<< std::scientific
+						<< times[k] << " " << u_s[k] << "\n";
+			}
+		}
 
-//		outfile.close();
+		outfile.close();
 
 
 		std::cout << j << " Done!" << "\n";
@@ -490,9 +500,9 @@ int main(int argc, char **argv) {
 		std::system((
 			"gnuplot -e \"filename='" + filepath + "'\" plot.gnuplot"
 		).c_str());
-//		std::system((
-//			"gnuplot -e \"filename='" + u_filepath + "'\" plot.gnuplot"
-//		).c_str());
+		std::system((
+			"gnuplot -e \"filename='" + u_filepath + "'\" plot.gnuplot"
+		).c_str());
 	}
 	return 0;
 }

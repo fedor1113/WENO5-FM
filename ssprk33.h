@@ -24,7 +24,7 @@ void advanceTimestepTVDRK3(
 		auto&& calcdSpace,
 		auto&& updateGhostPoints,
 		Args... opts_args) {
-	/* Optimal 3rd Order 3 Stage Explicit Total Variation Diming
+	/* Optimal 3rd Order 3 Stage Explicit Total Variation Dimming
 	 * / Diminishing (Strong Stability Preserving)
 	 * Runge-Kutta Scheme (TVD RK3 / SSPRK(3,3))
 	 * to discretize a method-of-lines (MOL) ODE

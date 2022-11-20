@@ -65,8 +65,8 @@ void polyfit(std::span<T> const argument_data,
 			&function_value_data.front(), function_value_data.size());
 	Eigen::Matrix<T, N + 1, 1> result_vec;
 
-	assert(static_cast<std::size_t>(vandermonde_mat.rows())
-		   == argument_data.size());
+//	assert(static_cast<std::size_t>(vandermonde_mat.rows())
+//		   == argument_data.size());
 	assert(argument_data.size() == function_value_data.size());
 	assert(argument_data.size() >= order + 1);
 
@@ -79,7 +79,10 @@ void polyfit(std::span<T> const argument_data,
 
 	// Solve for linear least square fit
 	result_vec  = vandermonde_mat.householderQr().solve(values_vec);
-	// fitted_polynomial_coefficients.resize(order+1);
+//	result_vec = vandermonde_mat.bdcSvd(
+//				Eigen::ComputeThinU | Eigen::ComputeThinV).solve(
+//					values_vec);
+//	fitted_polynomial_coefficients.resize(order+1);
 
 	for (std::size_t k = 0; k < order + 1; ++ k) {
 		fitted_polynomial_coefficients[k] = result_vec[k];
