@@ -8,8 +8,10 @@
 #include "_vector4.h"
 #include "arithmeticwith.h"
 
+constexpr const numeric_val DEFAULT_GAMMA = 1.4;
+
 template <ArithmeticWith<numeric_val> T>
-T get_enthalpy(T rho, T rho_v, T rho_E, T gamma = 1.4) {
+T get_enthalpy(T rho, T rho_v, T rho_E, T gamma = DEFAULT_GAMMA) {
 	const T E = rho_E / rho;
 	const T u = rho_v / rho;
 	const T h = E + rho * (gamma - 1.) * (E - 0.5 * u * u);
@@ -22,7 +24,7 @@ T get_enthalpy(T rho, T rho_v, T rho_E, T gamma = 1.4) {
 
 
 template <ArithmeticWith<numeric_val> T>
-T gete(T rho, T p, T gamma) {
+T gete(T rho, T p, T gamma = DEFAULT_GAMMA) {
 	// return FEOSMieGruneisenAl<T>::gete(rho, p);
 
 	if (rho != 0.)
@@ -33,7 +35,7 @@ T gete(T rho, T p, T gamma) {
 
 
 template <ArithmeticWith<numeric_val> T>
-T getP(T rho, T e, T gamma) {
+T getP(T rho, T e, T gamma = DEFAULT_GAMMA) {
 	// return FEOSMieGruneisenAl<T>::getp(rho, e);
 
 	return (gamma - 1.) * rho * e;
@@ -47,7 +49,8 @@ T getP(T rho, T e, T gamma) {
 
 
 template <ArithmeticWith<numeric_val> T>
-Vector4<T> calcPhysicalFlux(T rho, T u, T p, T last, T gamma) {
+Vector4<T> calcPhysicalFlux(T rho, T u, T p, T last,
+							T gamma = DEFAULT_GAMMA) {
 	/* Calculate for a Vector4<T> of conserved variables for
 	 * the 1D Euler equations its corresponding flux.
 	 */
@@ -63,7 +66,7 @@ Vector4<T> calcPhysicalFlux(T rho, T u, T p, T last, T gamma) {
 
 
 template <ArithmeticWith<numeric_val> T>
-Vector4<T> primitiveToConservative(Vector4<T> u, T gamma = 1.4) {
+Vector4<T> primitiveToConservative(Vector4<T> u, T gamma = DEFAULT_GAMMA) {
 	// Conservative variables
 	const T e = gete(u[0], u[2], gamma);
 	// const T rho_E = u[2] / (gamma - 1.) + 0.5 * u[0] * u[1] * u[1];
@@ -75,7 +78,7 @@ Vector4<T> primitiveToConservative(Vector4<T> u, T gamma = 1.4) {
 
 
 template <ArithmeticWith<numeric_val> T>
-Vector4<T> conservativeToPrimitive(Vector4<T> q, T gamma) {
+Vector4<T> conservativeToPrimitive(Vector4<T> q, T gamma = DEFAULT_GAMMA) {
 	// Primitive variables
 	const T rho = q[0];
 	const T u = q[1] / rho;
@@ -92,7 +95,7 @@ Vector4<T> conservativeToPrimitive(Vector4<T> q, T gamma) {
 template <ArithmeticWith<numeric_val> T>
 Vector4<T> calcPhysicalFluxFromConservativeVec(
 		Vector4<T> u,
-		T gamma) {
+		T gamma = DEFAULT_GAMMA) {
 	/* Calculate for a Vector4<T> of conserved variables
 	 * for the 1D Euler equations (rho, j=rho*v, rhoE=rho(e+v^2/2), smth)
 	 * its corresponding flux.
@@ -109,7 +112,7 @@ Vector4<T> calcPhysicalFluxFromConservativeVec(
 
 
 template <ArithmeticWith<numeric_val> T>
-T calcSquareSoundSpeed(T rho, T rho_v, T rho_E, T gamma/* = 1.4*/) {
+T calcSquareSoundSpeed(T rho, T rho_v, T rho_E, T gamma = DEFAULT_GAMMA) {
 	/* Compute the square of sound speed. */
 
 	// const T e = (rho_E - .5 * rho_v * rho_v / rho) / rho;
@@ -121,8 +124,20 @@ T calcSquareSoundSpeed(T rho, T rho_v, T rho_E, T gamma/* = 1.4*/) {
 
 
 template <ArithmeticWith<numeric_val> T>
+T calcMaxWaveSpeedDAtPoint(Vector4<T> u_vec_pt, T gamma = DEFAULT_GAMMA) {
+	/* Calculate |df/du| for 1D Euler eq'ns. */
+
+	return (std::sqrt(calcSquareSoundSpeed(
+				u_vec_pt[0],
+				u_vec_pt[1],
+				u_vec_pt[2], gamma))
+					+ std::abs(u_vec_pt[1] / u_vec_pt[0]));
+}
+
+
+template <ArithmeticWith<numeric_val> T>
 Eigen::Matrix<T, 3, 3> EigenLeft1DEulerEigenMatrix(
-		Vector4<T> vec, T gamma) {
+		Vector4<T> vec, T gamma = DEFAULT_GAMMA) {
 	assert(gamma > 1.);
 
 	T gamma_m = gamma - 1.;
@@ -157,7 +172,7 @@ Eigen::Matrix<T, 3, 3> EigenLeft1DEulerEigenMatrix(
 
 template <ArithmeticWith<numeric_val> T>
 Eigen::Matrix<T, 3, 3> EigenRight1DEulerEigenMatrix(
-		Vector4<T> vec, T gamma) {
+		Vector4<T> vec, T gamma = DEFAULT_GAMMA) {
 	assert(gamma > 1.);
 
 	T gamma_m = gamma - 1.;
@@ -206,7 +221,8 @@ Eigen::Matrix<T, 3, 3> EigenRight1DEulerEigenMatrix(
 
 template <ArithmeticWith<numeric_val> T>
 Vector4<T> projectOntoCharacteristics(
-		Vector4<T> conservative_variables, Vector4<T> vec, T gamma) {
+		Vector4<T> conservative_variables, Vector4<T> vec,
+		T gamma = DEFAULT_GAMMA) {
 	return Vector4<T>(EigenRight1DEulerEigenMatrix<T>(
 				conservative_variables, gamma)
 			* Eigen::Matrix<T, 3, 1>{vec[0], vec[1], vec[2]});
@@ -218,7 +234,8 @@ Vector4<T> projectOntoCharacteristics(
 
 template <ArithmeticWith<numeric_val> T>
 Vector4<T> projectCharacteristicVariablesBackOntoConserved(
-		Vector4<T> conservative_variables, Vector4<T> vec, T gamma) {
+		Vector4<T> conservative_variables, Vector4<T> vec,
+		T gamma = DEFAULT_GAMMA) {
 	return Vector4<T>(EigenLeft1DEulerEigenMatrix<T>(
 				conservative_variables, gamma)
 			* Eigen::Matrix<T, 3, 1>{vec[0], vec[1], vec[2]});

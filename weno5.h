@@ -32,6 +32,7 @@
 
 #include "_vector4.h"
 #include "arithmeticwith.h"
+#include "eos.h"
 
 // template class Vector4<double>;
 
@@ -4223,6 +4224,210 @@ void calcHydroStageCharWiseFDWENO(
 }
 
 
+template <ArithmeticWith<numeric_val> T>
+bool w7PORSwitch(const std::ranges::common_range auto& q_stencil,
+				 T dx, T dt) {
+	// r = 4 -> w(2*4 - 1)=WENO7-S predetermined order reduction
+	// use condition
+
+	auto getPressure = [](auto& conservative_var_vec) -> T {
+		const T rho = conservative_var_vec[0];
+		const T rho_v = conservative_var_vec[1];
+		const T e = (conservative_var_vec[2] - 0.5 * rho_v * rho_v / rho) / rho;
+
+		return getP(rho, e);
+	};
+
+	auto getV = [](auto& conservative_var_vec) -> T {
+		return conservative_var_vec[1] / conservative_var_vec[0];
+	};
+
+	T p0 = getPressure(q_stencil[0]);
+	T p1 = getPressure(q_stencil[1]);
+	T p2 = getPressure(q_stencil[2]);
+	T p3 = getPressure(q_stencil[3]);
+	T p4 = getPressure(q_stencil[4]);
+	T p5 = getPressure(q_stencil[5]);
+	T p6 = getPressure(q_stencil[6]);
+	T p7 = getPressure(q_stencil[7]);
+	T a_w11 = -1. * p1 + 1. * p2 + 2. * p3 - 2. * p4 - 1. * p5 + 1. * p6;
+	T b_w11 = +1. * p1 - 3. * p2 + 2. * p3 + 2. * p4 - 3. * p5 + 1. * p6;
+	T c_w11 = -1. * p1 + 5. * p2 -10. * p3 +10. * p4 - 5. * p5 + 1. * p6;
+	T a_w15 = -1. * p0 + 3. * p1 - 1. * p2 - 5. * p3 + 5. * p4 + 1. * p5 - 3. * p6 + 1. * p7;
+	T b_w15 = +1. * p0 - 5. * p1 + 9. * p2 - 5. * p3 - 5. * p4 + 9. * p5 - 5. * p6 + 1. * p7;
+	T c_w15 = -1. * p0 + 7. * p1 -21. * p2 +35. * p3 -35. * p4 +21. * p5 - 7. * p6 + 1. * p7;
+	T beta_s_si_w11 = b_w11 * b_w11 + std::abs(a_w11 * c_w11);
+	T beta_s_si_w15 = b_w15 * b_w15 + std::abs(a_w15 * c_w15);
+
+	bool no_nonlinear_discontinuity = beta_s_si_w15 <= 4. * beta_s_si_w11;
+
+	const T gamma = DEFAULT_GAMMA;
+	T max_p = std::max({p0, p1, p2, p3, p4, p5, p6});
+	T min_p = std::min({p0, p1, p2, p3, p4, p5, p6});
+	auto u_stencil = std::ranges::views::transform(q_stencil, getV);
+	T max_u = std::max({
+				std::abs(u_stencil[0]),
+				std::abs(u_stencil[1]),
+				std::abs(u_stencil[2]),
+				std::abs(u_stencil[3]),
+				std::abs(u_stencil[4]),
+				std::abs(u_stencil[5]),
+				std::abs(u_stencil[6])/*,
+				std::abs(u_stencil[7])*/});
+	T max_du = std::max({
+				std::abs(u_stencil[1]-u_stencil[0]),
+				std::abs(u_stencil[2]-u_stencil[1]),
+				std::abs(u_stencil[3]-u_stencil[2]),
+				std::abs(u_stencil[4]-u_stencil[3]),
+				std::abs(u_stencil[5]-u_stencil[4]),
+				std::abs(u_stencil[6]-u_stencil[5])});
+	T max_dp = std::max({
+				std::abs(p1-p0),
+				std::abs(p2-p1),
+				std::abs(p3-p2),
+				std::abs(p4-p3),
+				std::abs(p5-p4),
+				std::abs(p6-p5)});
+
+	bool p_positivity = gamma * max_p * + max_u * max_dp <= dx / dt * min_p;
+
+	return no_nonlinear_discontinuity && p_positivity;
+}
+
+
+template <ArithmeticWith<numeric_val> T, ArithmeticWith<numeric_val> VT,
+			std::size_t N>
+void calcHydroStageCharWiseFDPORWENO7(
+		const std::ranges::common_range auto&& u,
+		const std::ranges::common_range auto&& q_avg,
+		const std::ranges::common_range auto&& flux,
+		std::ranges::common_range auto&& numerical_flux,
+		T dx, T dt,
+		auto&& project,
+//		auto&& deproject,
+		T alpha,
+		auto&& computeWENOReconstructionKernel,
+		auto&& computeSmallerWENOReconstructionKernel,
+//		auto&& porSwitchCondition,
+		std::size_t n_ghost_cells = (N + 1) / 2,
+		T eps = 1e-100,
+		T p = 2.) {
+	const unsigned order = N;
+	const unsigned reduced_order = N - 2;
+	const std::size_t stencil_size = order;
+	const std::size_t _actual_stencil_size = stencil_size + 1;
+	const std::size_t half_size = order / 2;
+
+	const std::size_t r = (order + 1) / 2;
+	assert(n_ghost_cells >= r);
+	// const std::size_t n_ghost_cells = (stencil_size + 1) / 2;
+	const std::size_t mini = n_ghost_cells;
+	// const std::size_t maxi = n_ghost_cells + n_size - 1;
+	const std::size_t maxi = std::ranges::size(
+				numerical_flux) - n_ghost_cells - 1;
+	// auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 1};
+	auto shifted_index_range = std::ranges::common_view(
+				std::views::iota(mini - 1)
+					| std::views::take(maxi + 1 - (mini - 1)/* + 1*/));
+	VT fhatminus = static_cast<VT>(0.);
+	VT fhatplus = static_cast<VT>(0.);
+
+	auto j_it_q = std::ranges::begin(u);
+	auto j_it_f = std::ranges::begin(flux);
+
+	std::advance(j_it_q, mini - 1 + half_size + 1 - stencil_size);
+	std::advance(j_it_f, mini - 1 + half_size + 1 - stencil_size);
+	auto f_stencil = std::ranges::views::counted(j_it_f,
+												 _actual_stencil_size);
+	auto q_stencil = std::ranges::views::counted(j_it_q,
+												 _actual_stencil_size);
+
+	std::valarray<VT> u_plus(_actual_stencil_size);
+	std::valarray<VT> u_minus(_actual_stencil_size);
+
+	auto components = {
+		std::make_pair(0, &Vector4<T>::x),  // rho * 1
+		std::make_pair(1, &Vector4<T>::y),  // rho * v
+		std::make_pair(2, &Vector4<T>::z)   // rho * E
+//		&Vector4<T>::w
+	};
+
+	std::for_each(
+				std::execution::par_unseq,
+				std::ranges::begin(shifted_index_range),
+				std::ranges::end(shifted_index_range),
+				[&](std::size_t j) {
+		j_it_q = std::ranges::begin(u);
+		j_it_f = std::ranges::begin(flux);
+		std::advance(j_it_q, j + half_size + 1 - stencil_size);
+		q_stencil = std::ranges::views::counted(j_it_q,
+												_actual_stencil_size);
+
+		std::advance(j_it_f, j + half_size + 1 - stencil_size);
+		f_stencil = std::ranges::views::counted(j_it_f,
+												_actual_stencil_size);
+
+		auto proj_u_j = [j, &q_avg, &project](auto u) -> decltype(u) {
+			const auto q = q_avg[j];
+			return project(q, u);
+		};
+
+		T local_alpha = std::max({
+					calcMaxWaveSpeedDAtPoint(q_stencil[2]),
+					calcMaxWaveSpeedDAtPoint(q_stencil[3]),
+					calcMaxWaveSpeedDAtPoint(q_stencil[4]),
+					calcMaxWaveSpeedDAtPoint(q_avg[j])});
+
+		for (std::size_t k = 0; k < _actual_stencil_size; ++ k)
+			u_plus[k] = (proj_u_j(f_stencil[k])
+					+ /*1.1 * */local_alpha * proj_u_j(q_stencil[k])) * 0.5;
+
+		for (std::size_t k = 0; k < _actual_stencil_size; ++ k)
+			u_minus[k] = (proj_u_j(f_stencil[_actual_stencil_size - k - 1])
+					- /*1.1 * */local_alpha * proj_u_j(
+						q_stencil[_actual_stencil_size - k - 1])) * 0.5;
+
+		bool do_not_reduce_order = false;  // w7PORSwitch<T>(q_stencil, dx, dt);
+		if (do_not_reduce_order) {
+			for (auto& comp : components) {
+				fhatplus[comp.first] = computeWENOReconstructionKernel(
+					std::ranges::views::counted(
+								std::ranges::begin(u_plus), order)
+							| std::ranges::views::transform(
+								comp.second), eps, p
+				);
+
+				fhatminus[comp.first] = computeWENOReconstructionKernel(
+					std::ranges::views::counted(
+								std::ranges::begin(u_minus), order)
+							| std::ranges::views::transform(
+								comp.second), eps, p
+				);
+			}
+		} else {
+			for (auto& comp : components) {
+				fhatplus[comp.first] = computeSmallerWENOReconstructionKernel(
+					std::ranges::views::counted(
+								std::ranges::begin(u_plus) + 1, reduced_order)
+							| std::ranges::views::transform(
+								comp.second), eps, p
+				);
+
+				fhatminus[comp.first] = computeSmallerWENOReconstructionKernel(
+					std::ranges::views::counted(
+								std::ranges::begin(u_minus) + 1, reduced_order)
+							| std::ranges::views::transform(
+								comp.second), eps, p
+				);
+			}
+
+		}
+
+		numerical_flux[j] = fhatplus + fhatminus;
+	});
+}
+
+
 template <ArithmeticWith<numeric_val> T, ArithmeticWith<numeric_val> VT>
 void calcHydroStageCharWiseFDWENO7FM(
 		const std::ranges::common_range auto&& u,
@@ -4248,6 +4453,75 @@ void calcHydroStageCharWiseFDWENO7FM(
 							T eps, T p) -> T {
 					return computeFHatWENO7FMReconstructionKernel<T>(
 								std::move(stencil), eps, p);
+				},
+				n_ghost_cells,
+				eps,
+				p);
+}
+
+
+template <ArithmeticWith<numeric_val> T, ArithmeticWith<numeric_val> VT>
+void calcHydroStageCharWiseFDWENO7SM(
+		const std::ranges::common_range auto&& u,
+		const std::ranges::common_range auto&& q_avg,
+		const std::ranges::common_range auto&& flux,
+		std::ranges::common_range auto&& numerical_flux,
+		T t,
+		auto&& project,
+//		auto&& deproject,
+		T alpha,
+		std::size_t n_ghost_cells = 4,
+		T eps = 1e-100,
+		T p = 2.) {
+	calcHydroStageCharWiseFDWENO<T, VT, 7>(
+				std::move(u),
+				std::move(q_avg),
+				std::move(flux),
+				std::move(numerical_flux),
+				t, project,
+				// auto&& deproject,
+				alpha,
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO7SMReconstructionKernel<T>(
+								std::move(stencil), eps, p);
+				},
+				n_ghost_cells,
+				eps,
+				p);
+}
+
+
+template <ArithmeticWith<numeric_val> T, ArithmeticWith<numeric_val> VT>
+void calcHydroStageCharWiseFDPORWENO7SM(
+		const std::ranges::common_range auto&& u,
+		const std::ranges::common_range auto&& q_avg,
+		const std::ranges::common_range auto&& flux,
+		std::ranges::common_range auto&& numerical_flux,
+		T dx, T dt,
+		auto&& project,
+//		auto&& deproject,
+		T alpha,
+		std::size_t n_ghost_cells = 4,
+		T eps = 1e-100,
+		T p = 2.) {
+	calcHydroStageCharWiseFDPORWENO7<T, VT, 7>(
+				std::move(u),
+				std::move(q_avg),
+				std::move(flux),
+				std::move(numerical_flux),
+				dx, dt, project,
+				// auto&& deproject,
+				alpha,
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO7SReconstructionKernel<T>(
+								std::move(stencil), eps, 1.);
+				},
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO5MReconstructionKernel<T>(
+								std::move(stencil), eps, 2.);
 				},
 				n_ghost_cells,
 				eps,

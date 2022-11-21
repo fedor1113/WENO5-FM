@@ -96,7 +96,7 @@ s = []
         #u.append(float(ROWS[2]))
         #p.append(float(ROWS[3]))
         #s.append(float(ROWS[4]))
-n = 100
+n = 501
 filename = f'res_n_{n}.dat'
 df = pd.read_csv(filename,
                  skiprows = 3, sep=' ',

@@ -23,7 +23,7 @@ void advanceTimestepSSPTSERK12_8(
 		std::array<
 			std::reference_wrapper<std::valarray<T>
 		>, 13> interim_fluxes,
-		T t, T dt, T dx,
+		numeric_val t, numeric_val dt, numeric_val dx,
 		const std::ranges::common_range auto& max_eigenvalues,
 		std::size_t n_ghost_points,
 		auto&& calcdSpace,
@@ -41,23 +41,23 @@ void advanceTimestepSSPTSERK12_8(
 	const std::size_t n_size = std::ranges::size(u_curr)
 			- 2 * n_ghost_points;
 
-	T theta = 4.796147528566197e-05;
-	T one_over_C = 1./0.9416;
-	constexpr const static std::array<const T, 13> d {
+	numeric_val theta = 4.796147528566197e-05;
+	numeric_val one_over_C = 1./0.9416;
+	constexpr const static std::array<const numeric_val, 13> d {
 		1.000000000000000, 0.000000000000000, 0.036513886685777,
 		0.000000000000000, 0.004205435886220, 0.000457751617285,
 		0.000000000000000, 0.007407526543898, 0.000486094553850,
 		0.000000000000000, 0.000000000000000, 0.000000000000000,
 		0.000000000000000
 	};
-	constexpr const static std::array<const T, 13> eta {
+	constexpr const static std::array<const numeric_val, 13> eta {
 		0.000000000000000, 0.033190060418244, 0.001567085177702,
 		0.014033053074861, 0.017979737866822, 0.094582502432986,
 		0.082918042281378, 0.020622633348484, 0.033521998905243,
 		0.092066893962539, 0.076089630105122, 0.070505470986376,
 		0.072975312278165
 	};
-	constexpr const static std::array<std::array<const T, 12>, 13> q {{
+	constexpr const static std::array<std::array<const numeric_val, 12>, 13> q {{
 		{{
 			0.000000000000000, 0.000000000000000, 0.000000000000000,
 			0.000000000000000, 0.000000000000000, 0.000000000000000,
