@@ -20,6 +20,7 @@ HEADERS += \
     ebdf5.h \
 		eno3.h \
     eos.h \
+    eos_mg.h \
 		euler1d.h \
     eulerforward.h \
     exactsolver.h \

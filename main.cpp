@@ -1,6 +1,6 @@
-//#pragma GCC optimize("Ofast")
-//#pragma GCC target("avx,avx2,fma")
-//#pragma GCC optimize("unroll-loops")
+#pragma GCC optimize("Ofast")
+#pragma GCC target("avx,avx2,fma")
+#pragma GCC optimize("unroll-loops")
 
 #include <algorithm>
 #include <cstdio>
@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
 //			2001, 2501, 5001,
 //			10001}) {
 //		 : {21, 41, 81, 161, 321, 641}) {
-		 : {401}) {
+		 : {201}) {
 //		 : {1001}) {
 //		 : {26, 51, 101, 201, 401, 801/*, 1601, 3206*/}) {
 //		 : {50, 100, 200, 400, 800, 1600/*, 3200, 6400*/}) {
@@ -224,7 +224,7 @@ int main(int argc, char **argv) {
 		std::valarray<numeric_val> x(0., N_full);
 
 		L = 1.;
-		cfl = 0.15;
+		cfl = 1.;
 //		cfl = 0.3;
 //		cfl = 0.45;
 //		tfinal = 0.15;
@@ -235,14 +235,22 @@ int main(int argc, char **argv) {
 //			t, tfinal, 0., L,
 //			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
 //		);  // Sod's problem (expansion-contact-shock)
-		tfinal = 0.2;
+//		tfinal = 0.2;
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			1., 0.75, 1.,
+//			0.125, 0., 0.1, 0.3,
+//			t, tfinal, 0., L,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // Modified Sod's problem JCP 27:1 1978 (expansion-contact-shock). Toro-1
+		tfinal = 2.e-12;
 		solve1DRiemannProblemForEulerEq<numeric_val>(
 			u_res, x, gamma,
-			1., 0.75, 1.,
-			0.125, 0., 0.1, 0.3,
-			t, tfinal, 0., L,
+			2700., 0., 0.,
+			2700., 0., 300.e9, -50.e-9,
+			t, tfinal, -100.e-9, 0.,
 			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
-		);  // Modified Sod's problem JCP 27:1 1978 (expansion-contact-shock). Toro-1
+		);  // vtAl1MG-1nm-hll
 //		tfinal = 0.12;
 //		solve1DRiemannProblemForEulerEq<numeric_val>(
 //			u_res, x, gamma,
@@ -381,7 +389,7 @@ int main(int argc, char **argv) {
 					<< N_full << ", F=POINT" << "\n";
 
 			for (auto u : u_res) {
-				Vec4 q = conservativeToPrimitive(u, gamma);
+				Vec4 q = conservativeToPrimitive(u/*, gamma*/);
 				// std::cout << u << "\n";
 
 				outfile << std::setprecision(

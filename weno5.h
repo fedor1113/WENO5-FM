@@ -32,7 +32,8 @@
 
 #include "_vector4.h"
 #include "arithmeticwith.h"
-#include "eos.h"
+// #include "eos.h"
+#include "eos_mg.h"
 
 // template class Vector4<double>;
 
@@ -91,6 +92,20 @@ std::valarray<T> vecMatDot(const T1& vec, const T2& mat) {
 //					));
 
 //	return betas;
+//}
+
+
+//template <ArithmeticWith<numeric_val> T>
+//T minmod(T a, T b) {
+//	return .5
+//				* (std::copysign(1., a) + std::copysign(1., b))
+//				* std::min(std::abs(a), std::abs(b));
+//}
+
+
+//template <ArithmeticWith<numeric_val> T>
+//T median(T x, T y, T z) {
+//	return x + minmod(y - x, z - x);
 //}
 
 
@@ -4261,7 +4276,7 @@ bool w7PORSwitch(const std::ranges::common_range auto& q_stencil,
 
 	bool no_nonlinear_discontinuity = beta_s_si_w15 <= 4. * beta_s_si_w11;
 
-	const T gamma = DEFAULT_GAMMA;
+	const T gamma = 1.4/*DEFAULT_GAMMA*/;
 	T max_p = std::max({p0, p1, p2, p3, p4, p5, p6});
 	T min_p = std::min({p0, p1, p2, p3, p4, p5, p6});
 	auto u_stencil = std::ranges::views::transform(q_stencil, getV);
@@ -4584,8 +4599,11 @@ void calcHydroStageCharWiseFDWENO9FM(
 				alpha,
 				[](const std::ranges::sized_range auto&& stencil,
 							T eps, T p) -> T {
-					return computeFHatWENO9FMReconstructionKernel<T>(
+//					return computeFHatWENO9FMReconstructionKernel<T>(
+//								std::move(stencil), eps, p);
+					return computeFHatWENO9SMReconstructionKernel<T>(
 								std::move(stencil), eps, p);
+
 				},
 				n_ghost_cells,
 				eps,

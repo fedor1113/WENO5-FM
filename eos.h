@@ -9,6 +9,7 @@
 #include "arithmeticwith.h"
 
 constexpr const numeric_val DEFAULT_GAMMA = 1.4;
+// constexpr const numeric_val gamma = 1.4;
 
 template <ArithmeticWith<numeric_val> T>
 T get_enthalpy(T rho, T rho_v, T rho_E, T gamma = DEFAULT_GAMMA) {
@@ -66,8 +67,9 @@ Vector4<T> calcPhysicalFlux(T rho, T u, T p, T last,
 
 
 template <ArithmeticWith<numeric_val> T>
-Vector4<T> primitiveToConservative(Vector4<T> u, T gamma = DEFAULT_GAMMA) {
+Vector4<T> primitiveToConservative(Vector4<T> u/*, T gamma = DEFAULT_GAMMA*/) {
 	// Conservative variables
+	T gamma = DEFAULT_GAMMA;
 	const T e = gete(u[0], u[2], gamma);
 	// const T rho_E = u[2] / (gamma - 1.) + 0.5 * u[0] * u[1] * u[1];
 	const T rho_E = u[0] * (e + 0.5 * u[1] * u[1]);

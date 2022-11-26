@@ -35,7 +35,7 @@ void advanceTimestepSSPTSERK12_8(
 	 * to discretize a method-of-lines (MOL) ODE
 	 * du/dt = L[u], where L is some spatial operator.
 	 *
-	 * Only SSP for linear problems!!!
+	 * Inefficient implementation! Esp. mem.
 	 */
 
 	const std::size_t n_size = std::ranges::size(u_curr)
