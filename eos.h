@@ -117,6 +117,8 @@ template <ArithmeticWith<numeric_val> T>
 T calcSquareSoundSpeed(T rho, T rho_v, T rho_E, T gamma = DEFAULT_GAMMA) {
 	/* Compute the square of sound speed. */
 
+	if (rho == static_cast<T>(0.)) return static_cast<T>(0.);
+
 	// const T e = (rho_E - .5 * rho_v * rho_v / rho) / rho;
 	// const T p = FEOSMieGruneisenAl<T>::getp(rho, e);
 	const T p = (gamma - 1.) * (rho_E - rho_v * rho_v * 0.5 / rho);
@@ -148,7 +150,7 @@ Eigen::Matrix<T, 3, 3> EigenLeft1DEulerEigenMatrix(
 	T c_s = std::abs(std::sqrt(c_s_square));
 
 	T u = vec[1];
-	if (vec[0] != 0.)
+	if (vec[0] != static_cast<T>(0.))
 		u /= vec[0];
 
 	T phi_square = 0.5 * gamma_m * u * u;
@@ -188,7 +190,7 @@ Eigen::Matrix<T, 3, 3> EigenRight1DEulerEigenMatrix(
 	T c_s = std::sqrt(c_s_square);
 
 	T u = vec[1];
-	if (vec[0] != 0.)
+	if (vec[0] != static_cast<T>(0.))
 		u /= vec[0];
 
 	T phi_square = 0.5 * gamma_m * u * u;
@@ -210,6 +212,13 @@ Eigen::Matrix<T, 3, 3> EigenRight1DEulerEigenMatrix(
 	r_mat *= gamma_m * beta;
 
 //	Eigen::Matrix<T, 3, 3> r_mat {
+//		{2. * phi_square + c_s * u,       -(gamma_m * u + c_s), gamma_m},
+//		{2. * c_s_square - 4. * phi_square, 2. * gamma_m * u, -2. * gamma_m},
+//		{2. * phi_square - c_s * u,       -gamma_m * u + c_s,   gamma_m},
+//	};
+//	r_mat *= beta;
+
+//	Eigen::Matrix<T, 3, 3> r_mat {
 //		{gamma_m * H + c_s * (u - c_s),       -(gamma_m * u + c_s), 1. * gamma_m},
 //		{-2. * gamma_m * H + 4. * c_s_square, 2. * gamma_m * u,              -2. * gamma_m},
 //		{gamma_m * H - c_s * (u + c_s),       -gamma_m * u + c_s,   1. * gamma_m},
@@ -225,6 +234,9 @@ template <ArithmeticWith<numeric_val> T>
 Vector4<T> projectOntoCharacteristics(
 		Vector4<T> conservative_variables, Vector4<T> vec,
 		T gamma = DEFAULT_GAMMA) {
+	if (vec[0] == static_cast<T>(0.))
+			return Vector4<T>::ZERO;
+
 	return Vector4<T>(EigenRight1DEulerEigenMatrix<T>(
 				conservative_variables, gamma)
 			* Eigen::Matrix<T, 3, 1>{vec[0], vec[1], vec[2]});
@@ -238,6 +250,9 @@ template <ArithmeticWith<numeric_val> T>
 Vector4<T> projectCharacteristicVariablesBackOntoConserved(
 		Vector4<T> conservative_variables, Vector4<T> vec,
 		T gamma = DEFAULT_GAMMA) {
+	if (vec[0] == static_cast<T>(0.))
+			return Vector4<T>::ZERO;
+
 	return Vector4<T>(EigenLeft1DEulerEigenMatrix<T>(
 				conservative_variables, gamma)
 			* Eigen::Matrix<T, 3, 1>{vec[0], vec[1], vec[2]});

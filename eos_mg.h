@@ -12,7 +12,7 @@
 constexpr const numeric_val rho0 = 2750.;
 constexpr const numeric_val p0 = 560.964e9;
 constexpr const numeric_val a = 1.12657;
-constexpr const numeric_val b =0.975511;
+constexpr const numeric_val b = 0.975511;
 constexpr const numeric_val ph = 15.e9;
 
 
@@ -30,7 +30,8 @@ T get_enthalpy(T rho, T rho_v, T rho_E) {
 
 template <ArithmeticWith<numeric_val> T>
 /*constexpr*/ T G([[maybe_unused]] T x) {
-	return static_cast<T>(2.);
+	// return static_cast<T>(2.);
+	return static_cast<T>(1.2);
 }
 
 
@@ -239,7 +240,7 @@ Eigen::Matrix<T, 3, 3> EigenLeft1DEulerEigenMatrix(
 	T c_s = std::abs(std::sqrt(c_s_square));
 
 	T uc = u * c_s;
-	T h = (vec[3] + p) / vec[0];  // total specific enthalpy
+	T h = (vec[2] + p) / vec[0];  // total specific enthalpy
 //	if (vec[0] != 0.)
 //		h = (vec[3] + p) / vec[0];
 
@@ -282,7 +283,7 @@ Eigen::Matrix<T, 3, 3> EigenRight1DEulerEigenMatrix(
 
 	//	double phi_square = 0.5 * gamma_m * u * u;
 	T e = vec[2] / vec[0] - static_cast<T>(.5) * u * u;
-	T p = getP(vec[0],e);
+	T p = getP(vec[0], e);
 	T c = getc(vec[0], p);
 
 	T c_s_square = c * c;
@@ -294,7 +295,7 @@ Eigen::Matrix<T, 3, 3> EigenRight1DEulerEigenMatrix(
 	T c_s = std::sqrt(c_s_square);
 
 	T uc = u * c_s;
-	T h = (vec[3] + p) / vec[0];  // total specific enthalpy
+	T h = (vec[2] + p) / vec[0];  // total specific enthalpy
 
 //	Eigen::Matrix<T, 3, 3> r_mat {
 //		{1.,                   beta,             beta            },
@@ -326,7 +327,7 @@ Eigen::Matrix<T, 3, 3> EigenRight1DEulerEigenMatrix(
 	T dpdrho = c_s_square - p * b / vec[0];
 
 	T theta = u * u
-			- vec[3] / vec[0]
+			- vec[2] / vec[0]
 			+ vec[0] * dpdrho / dpde;
 
 	Eigen::Matrix<T, 3, 3> r_mat {
@@ -341,8 +342,172 @@ Eigen::Matrix<T, 3, 3> EigenRight1DEulerEigenMatrix(
 
 
 template <ArithmeticWith<numeric_val> T>
+Eigen::Matrix<T, 3, 3> EigenLeft1DEulerEigenMatrixRoe(
+		Vector4<T> left, Vector4<T> right) {
+	// assert(gamma > 1.);
+
+	// T gamma_m = gamma - 1.;
+	T sqrt_left_rho = std::sqrt(std::abs(left[0]));
+	T sqrt_right_rho = std::sqrt(std::abs(right[0]));
+	T avg_rho = sqrt_left_rho * sqrt_right_rho;
+	T sqrt_rho_sum = sqrt_left_rho + sqrt_right_rho;
+
+	T left_v = left[1] / left[0];
+	T right_v = right[1] / right[0];
+	T avg_rho_v = avg_rho
+			* (sqrt_left_rho * left_v + sqrt_right_rho * right_v)
+				/ sqrt_rho_sum;
+
+	T left_E = left[2] / left[0];
+	T right_E = right[2] / right[0];
+	T avg_E = (sqrt_left_rho * left_E + sqrt_right_rho * right_E)
+				/ sqrt_rho_sum;
+	T avg_rho_E = avg_rho * avg_E;
+
+	T u = avg_rho_v;
+	if (avg_rho != static_cast<T>(0.))
+		u /= avg_rho;
+
+	T e = avg_rho_E / avg_rho - static_cast<T>(.5) * u * u;
+	T p = getP(avg_rho, e);
+	T c = getc(avg_rho, p);
+
+	T c_s_square = c * c;
+	T c_s = std::abs(std::sqrt(c_s_square));
+
+	T uc = u * c_s;
+	// T h = (avg_rho_E + p) / avg_rho;  // total specific enthalpy
+	T left_p = getP(left[0], left_E / left[0]
+			- static_cast<T>(.5) * left_v * left_v);
+	T left_h = (left_E + left_p) / left[0];
+	T right_p = getP(right[0], right_E / right[0]
+			- static_cast<T>(.5) * right_v * right_v);
+	T right_h = (right_E + right_p) / right[0];
+	T h = (sqrt_left_rho * left_h + sqrt_right_rho * right_h)
+			/ sqrt_rho_sum;
+
+	T b = 0.;
+	if (avg_rho != static_cast<T>(0.))
+		b = getdpde(avg_rho, e) / avg_rho;
+
+	Eigen::Matrix<T, 3, 3> l_mat {
+		{1.,                           1.,        1.},
+		{u - c_s,                  u + 0.,   u + c_s},
+		{h -  uc,      h - c_s_square / b,   h +  uc},
+	};
+
+	return l_mat;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+Eigen::Matrix<T, 3, 3> EigenRight1DEulerEigenMatrixRoe(
+		Vector4<T> left, Vector4<T> right) {
+	// assert(gamma > 1.);
+
+	// T gamma_m = gamma - 1.;
+	T sqrt_left_rho = std::sqrt(std::abs(left[0]));
+	T sqrt_right_rho = std::sqrt(std::abs(right[0]));
+	T avg_rho = sqrt_left_rho * sqrt_right_rho;
+	T sqrt_rho_sum = sqrt_left_rho + sqrt_right_rho;
+
+	T left_v = left[1] / left[0];
+	T right_v = right[1] / right[0];
+	T avg_rho_v = avg_rho
+			* (sqrt_left_rho * left_v + sqrt_right_rho * right_v)
+				/ sqrt_rho_sum;
+
+	T left_E = left[2] / left[0];
+	T right_E = right[2] / right[0];
+	T avg_E = (sqrt_left_rho * left_E + sqrt_right_rho * right_E)
+				/ sqrt_rho_sum;
+	T avg_rho_E = avg_rho * avg_E;
+
+	T u = avg_rho_v;
+	if (avg_rho != static_cast<T>(0.))
+		u /= avg_rho;
+
+	T e = avg_rho_E / avg_rho - static_cast<T>(.5) * u * u;
+	T p = getP(avg_rho, e);
+	T c = getc(avg_rho, p);
+
+	T c_s_square = c * c;
+	T beta = 1.;
+	if (c_s_square != 0.)
+		beta /= (2. * c_s_square);
+	//	else
+	//		beta = 0.;
+	T c_s = std::sqrt(c_s_square);
+
+	T uc = u * c_s;
+	// T h = (avg_rho_E + p) / avg_rho;  // total specific enthalpy
+	T left_p = getP(left[0], left_E / left[0]
+			- static_cast<T>(.5) * left_v * left_v);
+	T left_h = (left_E + left_p) / left[0];
+	T right_p = getP(right[0], right_E / right[0]
+			- static_cast<T>(.5) * right_v * right_v);
+	T right_h = (right_E + right_p) / right[0];
+	T h = (sqrt_left_rho * left_h + sqrt_right_rho * right_h)
+			/ sqrt_rho_sum;
+
+	T dpde = getdpde(avg_rho, e);
+	T b = 0.;
+	if (avg_rho != static_cast<T>(0.))
+		b = dpde / avg_rho;
+
+	// harder to compute for MG
+	// double dpdrho = eos.getdpdrho(vec[0], e);
+	T dpdrho = c_s_square - p * b / avg_rho;
+
+	T theta = u * u
+			- avg_rho_E / avg_rho
+			+ avg_rho * dpdrho / dpde;
+
+	Eigen::Matrix<T, 3, 3> r_mat {
+		{theta  +  uc / b, -(u + c_s / b),    1.},
+		{2. * (h - u * u),         2. * u,   -2.},
+		{theta  -  uc / b,   -u + c_s / b,    1.},
+	};
+	r_mat *= b * beta;
+
+	return r_mat;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+Vector4<T> projectOntoCharacteristicsRoe(
+		Vector4<T> left, Vector4<T> right, Vector4<T> vec) {
+	if (vec[0] == static_cast<T>(0.))
+			return Vector4<T>::ZERO;
+
+	return Vector4<T>(EigenRight1DEulerEigenMatrixRoe<T>(left, right)
+			* Eigen::Matrix<T, 3, 1>{vec[0], vec[1], vec[2]});
+//	return Vector4<T>((Eigen::Matrix<T, 1, 3>{vec[0], vec[1], vec[2]}
+//			* EigenRight1DEulerEigenMatrix(
+//				conservative_variables, gamma)).transpose());
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+Vector4<T> projectCharacteristicVariablesBackOntoConservedRoe(
+		Vector4<T> left, Vector4<T> right, Vector4<T> vec) {
+	if (vec[0] == static_cast<T>(0.))
+			return Vector4<T>::ZERO;
+
+	return Vector4<T>(EigenLeft1DEulerEigenMatrixRoe<T>(left, right)
+			* Eigen::Matrix<T, 3, 1>{vec[0], vec[1], vec[2]});
+//	return Vector4<T>((Eigen::Matrix<T, 1, 3>{vec[0], vec[1], vec[2]}
+//			* EigenLeft1DEulerEigenMatrix(
+//				conservative_variables, gamma)).transpose());
+}
+
+
+template <ArithmeticWith<numeric_val> T>
 Vector4<T> projectOntoCharacteristics(
 		Vector4<T> conservative_variables, Vector4<T> vec) {
+	if (vec[0] == static_cast<T>(0.))
+			return Vector4<T>::ZERO;
+
 	return Vector4<T>(EigenRight1DEulerEigenMatrix<T>(
 				conservative_variables)
 			* Eigen::Matrix<T, 3, 1>{vec[0], vec[1], vec[2]});
@@ -355,6 +520,9 @@ Vector4<T> projectOntoCharacteristics(
 template <ArithmeticWith<numeric_val> T>
 Vector4<T> projectCharacteristicVariablesBackOntoConserved(
 		Vector4<T> conservative_variables, Vector4<T> vec) {
+	if (vec[0] == static_cast<T>(0.))
+			return Vector4<T>::ZERO;
+
 	return Vector4<T>(EigenLeft1DEulerEigenMatrix<T>(
 				conservative_variables)
 			* Eigen::Matrix<T, 3, 1>{vec[0], vec[1], vec[2]});
