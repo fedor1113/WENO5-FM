@@ -12,6 +12,7 @@
 #include <cassert>
 #include <cmath>
 #include <concepts>
+#include <cstdarg>
 #include <ctime>
 #include <execution>
 // #include <fstream>
@@ -95,18 +96,48 @@ std::valarray<T> vecMatDot(const T1& vec, const T2& mat) {
 //}
 
 
-//template <ArithmeticWith<numeric_val> T>
-//T minmod(T a, T b) {
-//	return .5
-//				* (std::copysign(1., a) + std::copysign(1., b))
-//				* std::min(std::abs(a), std::abs(b));
-//}
+template <ArithmeticWith<numeric_val> T>
+T MinMod(T a, T b) {
+	return .5
+				* (std::copysign(1., a) + std::copysign(1., b))
+				* std::min(std::abs(a), std::abs(b));
+}
 
 
-//template <ArithmeticWith<numeric_val> T>
-//T median(T x, T y, T z) {
-//	return x + minmod(y - x, z - x);
-//}
+template <std::size_t N,
+		  ArithmeticWith<numeric_val> T>
+T MinMod(T a, T b...) {
+	T min_val = std::abs(a);
+	if (std::abs(b) < std::abs(a))
+		min_val = std::abs(b);
+
+	T res = .5
+			* (std::copysign(1., a) + std::copysign(1., b));
+
+	std::va_list args;
+	va_start(args, b);
+	for (std::size_t k = 0; k <= N; k += 2) {
+		a = va_arg(args, T);
+		b = va_arg(args, T);
+		res *= .5 * std::abs(
+				(std::copysign(1., a)
+				 + std::copysign(1., b)));
+
+		if (std::abs(a) < min_val)
+			min_val = std::abs(a);
+		if (std::abs(b) < min_val)
+			min_val = std::abs(b);
+	}
+	va_end(args);
+
+	return res * min_val;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T Median(T x, T y, T z) {
+	return x + MinMod(y - x, z - x);
+}
 
 
 template <ArithmeticWith<numeric_val> T>
@@ -3271,7 +3302,7 @@ void calcHydroStageFDWENO(
 				j_it_m, _actual_stencil_size)
 					| std::ranges::views::reverse;
 
-	std::for_each(std::execution::par_unseq,
+	std::for_each(/*std::execution::par_unseq,*/
 				std::ranges::begin(shifted_index_range),
 				std::ranges::end(shifted_index_range),
 				  [&](std::size_t j) {
@@ -3409,7 +3440,7 @@ void calcHydroStageFDWENO5(
 	auto u_minus = std::ranges::views::counted(j_it_m, 6)
 					| std::ranges::views::reverse;
 
-	std::for_each(std::execution::par_unseq,
+	std::for_each(/*std::execution::par_unseq,*/
 				std::ranges::begin(shifted_index_range),
 				std::ranges::end(shifted_index_range),
 				  [&](std::size_t j) {
@@ -4068,7 +4099,7 @@ void calcHydroStageCharWiseFDWENO5FM(
 	};
 
 	std::for_each(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(shifted_index_range),
 				std::ranges::end(shifted_index_range),
 				[&](std::size_t j) {
@@ -4190,7 +4221,7 @@ void calcHydroStageCharWiseFDWENO(
 	};
 
 	std::for_each(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(shifted_index_range),
 				std::ranges::end(shifted_index_range),
 				[&](std::size_t j) {
@@ -4232,6 +4263,352 @@ void calcHydroStageCharWiseFDWENO(
 						| std::ranges::views::transform(
 							comp.second), eps, p
 			);
+		}
+
+		numerical_flux[j] = fhatplus + fhatminus;
+	});
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T MPLimiterMM(
+			T u_j_mn_1,
+			T u_j,
+			T u_j_pl_1,
+			T u_j_pl_2,
+			T u_l_non_mp,
+			T mp_alpha = 2.,
+			T mp_beta = 4.) {
+	/* MM is the least restrictive variant.
+	 * In theory CFL should be < 1. / (1. + alpha).
+	 *
+	 */
+
+	T d_j_pl_0 = u_j_pl_1
+				- 2. * u_j
+				+ u_j_mn_1;
+	T d_j_pl_1 = u_j
+				- 2. * u_j_pl_1
+				+ u_j_pl_2;
+
+	// curvature at the zone boundary
+	// (d_{LC} = d_{MD} = d_{MM} = d):
+	T d = MinMod(d_j_pl_0, d_j_pl_1);  // MM
+	// this variant is the least restrictive
+	// (provides maximal space for local extrema to develop)
+
+	// u with allowance for large curvature:
+	T u_lc = u_j + 0.5 * (u_j - u_j_mn_1) + mp_beta / 3. * d;
+	// u median at x_{j+1/2}:
+	T u_md = 0.5 * (u_j + u_j_pl_1) - 0.5 * d;
+	// left-sided upper limit:
+	T u_ul = u_j + mp_alpha * (u_j - u_j_mn_1);
+
+	T u_l_min = std::max(std::min({u_j, u_j_pl_1, u_md}),
+				std::min({u_j, u_ul, u_lc}));
+	T u_l_max = std::min(std::max({u_j, u_j_pl_1, u_md}),
+				std::max({u_j, u_ul, u_lc}));
+
+	return Median(u_l_non_mp, u_l_min, u_l_max);
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T MPLimiterM4X(
+			T u_j_mn_2,
+			T u_j_mn_1,
+			T u_j,
+			T u_j_pl_1,
+			T u_j_pl_2,
+			T u_j_pl_3,
+			T u_l_non_mp,
+			T mp_alpha = 2.,
+			T mp_beta = 4.) {
+	/* MM is the least restrictive variant.
+	 * In theory CFL should be < 1. / (1. + alpha).
+	 *
+	 */
+
+	T d_j_mn_1 = u_j_mn_2
+				- 2. * u_j_mn_1
+				+ u_j;
+	T d_j_pl_0 = u_j_pl_1
+				- 2. * u_j
+				+ u_j_mn_1;
+	T d_j_pl_1 = u_j
+				- 2. * u_j_pl_1
+				+ u_j_pl_2;
+	T d_j_pl_2 = u_j_pl_1
+				- 2. * u_j_pl_2
+				+ u_j_pl_3;
+
+	// curvature at the zone boundary
+	// (d_{LC} = d_{MD} = d_{MM} = d):
+	T d = MinMod<4, T>(
+				4. * d_j_pl_0 - d_j_pl_1,
+				4. * d_j_pl_1 - d_j_pl_0,
+				d_j_pl_0,
+				d_j_pl_1,
+				d_j_mn_1,
+				d_j_pl_2);  // M4X
+	// this variant has an extended domain of support
+
+	// u with allowance for large curvature:
+	T u_lc = u_j + 0.5 * (u_j - u_j_mn_1) + mp_beta / 3. * d;
+	// u median at x_{j+1/2}:
+	T u_md = 0.5 * (u_j + u_j_pl_1) - 0.5 * d;
+	// left-sided upper limit:
+	T u_ul = u_j + mp_alpha * (u_j - u_j_mn_1);
+
+	T u_l_min = std::max(std::min({u_j, u_j_pl_1, u_md}),
+				std::min({u_j, u_ul, u_lc}));
+	T u_l_max = std::min(std::max({u_j, u_j_pl_1, u_md}),
+				std::max({u_j, u_ul, u_lc}));
+
+	return Median(u_l_non_mp, u_l_min, u_l_max);
+}
+
+
+template <ArithmeticWith<numeric_val> T, ArithmeticWith<numeric_val> VT,
+			std::size_t N>
+void calcHydroStageCharWiseFDMPWENO(
+		const std::ranges::common_range auto&& u,
+		const std::ranges::common_range auto&& q_avg,
+		const std::ranges::common_range auto&& flux,
+		std::ranges::common_range auto&& numerical_flux,
+		T t,
+		auto&& project,
+//		auto&& deproject,
+		T alpha,
+		auto&& computeWENOReconstructionKernel,
+		std::size_t n_ghost_cells = (N + 1) / 2,
+		T eps = 1e-40,
+		T p = 2.) {
+	const unsigned order = N;
+	const std::size_t stencil_size = order;
+	const std::size_t _actual_stencil_size = stencil_size + 1;
+	const std::size_t half_size = order / 2;
+
+	const std::size_t r = (order + 1) / 2;
+	assert(n_ghost_cells >= r);
+	// const std::size_t n_ghost_cells = (stencil_size + 1) / 2;
+	const std::size_t mini = n_ghost_cells;
+	// const std::size_t maxi = n_ghost_cells + n_size - 1;
+	const std::size_t maxi = std::ranges::size(
+				numerical_flux) - n_ghost_cells - 1;
+	// auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 1};
+	auto shifted_index_range = std::ranges::common_view(
+				std::views::iota(mini - 1)
+					| std::views::take(maxi + 1 - (mini - 1)/* + 1*/));
+	VT fhatminus = static_cast<VT>(0.);
+	VT fhatplus = static_cast<VT>(0.);
+
+	auto j_it_q = std::ranges::begin(u);
+	auto j_it_f = std::ranges::begin(flux);
+
+	std::advance(j_it_q, mini - 1 + half_size + 1 - stencil_size);
+	std::advance(j_it_f, mini - 1 + half_size + 1 - stencil_size);
+	auto f_stencil = std::ranges::views::counted(j_it_f,
+												 _actual_stencil_size);
+	auto q_stencil = std::ranges::views::counted(j_it_q,
+												 _actual_stencil_size);
+
+	std::valarray<VT> u_plus(_actual_stencil_size);
+	std::valarray<VT> u_minus(_actual_stencil_size);
+
+	auto components = {
+		std::make_pair(0, &Vector4<T>::x),
+		std::make_pair(1, &Vector4<T>::y),
+		std::make_pair(2, &Vector4<T>::z)
+//		&Vector4<T>::w
+	};
+
+	std::for_each(
+//				std::execution::par_unseq,
+				std::ranges::begin(shifted_index_range),
+				std::ranges::end(shifted_index_range),
+				[&](std::size_t j) {
+		j_it_q = std::ranges::begin(u);
+		j_it_f = std::ranges::begin(flux);
+		std::advance(j_it_q, j + half_size + 1 - stencil_size);
+		q_stencil = std::ranges::views::counted(j_it_q,
+												_actual_stencil_size);
+
+		std::advance(j_it_f, j + half_size + 1 - stencil_size);
+		f_stencil = std::ranges::views::counted(j_it_f,
+												_actual_stencil_size);
+
+		auto proj_u_j = [j, &q_avg, &project](auto u) -> decltype(u) {
+			const auto q = q_avg[j];
+			return project(q, u);
+		};
+//		auto proj_u_j = [j, &u, &project](auto f_pt) -> decltype(f_pt) {
+//			const auto q_left = u[j];
+//			const auto q_right = u[j + 1];
+//			return project(q_left, q_right, f_pt);
+//		};
+
+		Vector4<T> llf_alpha = Vector4<T>::ZERO;
+		T c_s = std::sqrt(calcSquareSoundSpeed(
+							  q_avg[j][0], q_avg[j][1], q_avg[j][2]));
+		T temp = std::abs(q_avg[j][1] / q_avg[j][0]);
+//		Vector4<T> lambda_vec_left = Vector4<T>::ZERO;
+//		Vector4<T> lambda_vec_right = Vector4<T>::ZERO;
+		// T abs_v = std::abs(q_avg[j][1] / q_avg[j][0]);
+//		T abs_v = q_avg[j][1] / q_avg[j][0];
+//		T llf_alpha = std::abs(c_s + abs_v);
+//		for (std::size_t k = 0; k < _actual_stencil_size; ++ k) {
+//			// abs_v = std::abs(q_stencil[k][1] / q_stencil[k][0]);
+//			abs_v = q_stencil[k][1] / q_stencil[k][0];
+//			c_s = std::sqrt(calcSquareSoundSpeed(
+//						q_stencil[k][0], q_stencil[k][1], q_stencil[k][2]));
+//			llf_alpha = std::max(llf_alpha, std::abs(abs_v + c_s));
+//		}
+		llf_alpha[1] = q_avg[j][1] / q_avg[j][0];
+//		llf_alpha[1] = std::abs(q_avg[j][1] / q_avg[j][0]);
+//		llf_alpha[0] = std::abs(llf_alpha[1] + c_s);
+		llf_alpha[0] = std::abs(llf_alpha[1] - c_s);
+		llf_alpha[2] = std::abs(llf_alpha[1] + c_s);
+		llf_alpha[1] = std::abs(llf_alpha[1] + 0.);
+//		llf_alpha[1] = std::abs(llf_alpha[1] + c_s);
+
+		for (std::size_t k = 0; k < _actual_stencil_size; ++ k) {
+			c_s = std::sqrt(calcSquareSoundSpeed(
+						q_stencil[k][0], q_stencil[k][1], q_stencil[k][2]));
+			temp = q_stencil[k][1] / q_stencil[k][0];
+//			temp = std::abs(q_stencil[k][1] / q_stencil[k][0]);
+			if (llf_alpha[0] < std::abs(temp - c_s))
+				llf_alpha[0] = std::abs(temp - c_s);
+//			if (llf_alpha[0] < std::abs(temp + c_s))
+//				llf_alpha[0] = std::abs(temp + c_s);
+			if (llf_alpha[1] < std::abs(temp + 0.))
+				llf_alpha[1] = std::abs(temp + 0.);
+//			if (llf_alpha[1] < std::abs(temp + c_s))
+//				llf_alpha[1] = std::abs(temp + c_s);
+			if (llf_alpha[2] < std::abs(temp + c_s))
+				llf_alpha[2] = std::abs(temp + c_s);
+		}
+//		T c_s_l = std::sqrt(calcSquareSoundSpeed(
+//					q_stencil[j][0], q_stencil[j][1], q_stencil[j][2]));
+//		T v_l = q_stencil[j][1] / q_stencil[j][0];
+//		T c_s_r = std::sqrt(calcSquareSoundSpeed(
+//					q_stencil[j+1][0], q_stencil[j+1][1], q_stencil[j+1][2]));
+//		T v_r = q_stencil[j+1][1] / q_stencil[j+1][0];
+//		lambda_vec_left = {v_l - c_s_l, v_l, v_l + c_s_l, static_cast<T>(0.)};
+//		lambda_vec_right = {v_r - c_s_r, v_r, v_r + c_s_r, static_cast<T>(0.)};
+//		short pl_dis_mn = 0;
+		alpha = std::max({llf_alpha[0], llf_alpha[1], llf_alpha[2]});
+//		lambda_vec_left = Vector4<T>(std::max(lambda_vec_left));
+//		lambda_vec_right = Vector4<T>(std::max(lambda_vec_right));
+		for (auto& comp : components) {
+//			pl_dis_mn = 0;
+////			if (lambda_vec_left[comp.first] * lambda_vec_right[comp.first]
+////					<= static_cast<T>(0.))
+////				pl_dis_mn = 0;
+//			/*else */if (lambda_vec_left[comp.first] > static_cast<T>(0.)
+//					 && lambda_vec_right[comp.first] > static_cast<T>(0.))
+//				pl_dis_mn = +1;
+//			else if (lambda_vec_left[comp.first] < static_cast<T>(0.)
+//					 && lambda_vec_right[comp.first] < static_cast<T>(0.))
+//				pl_dis_mn = /*-1*/2;
+			for (std::size_t k = 0; k < _actual_stencil_size; ++ k) {
+//				if (pl_dis_mn == 0) {
+					u_plus[k][comp.first] = (f_stencil[k][comp.first]
+							+ /*1.1 * */alpha/*1.1 * *//*llf_alpha[comp.first]*/ *
+								q_stencil[k][comp.first]) * static_cast<T>(0.5);
+					u_minus[k][comp.first] = (f_stencil[_actual_stencil_size - k - 1][comp.first]
+							- /*1.1 * */alpha/*1.1 * *//*llf_alpha[comp.first]*/ *
+								q_stencil[_actual_stencil_size - k - 1][comp.first]) * static_cast<T>(0.5);
+//				}
+//				else if (pl_dis_mn == +1) {
+//					u_plus[k][comp.first] = f_stencil[k][comp.first];
+//					u_minus[k][comp.first] = static_cast<T>(0.);
+//				}
+//				else if (pl_dis_mn == /*-1*/2) {
+//					u_plus[k][comp.first] = static_cast<T>(0.);
+//					u_minus[k][comp.first] = f_stencil[_actual_stencil_size - k - 1][comp.first];
+//				}
+			}
+		}
+		for (std::size_t k = 0; k < _actual_stencil_size; ++ k) {
+			u_plus[k][3] = static_cast<T>(0.);
+			u_minus[k][3] = static_cast<T>(0.);
+
+			u_plus[k] = proj_u_j(u_plus[k]);
+			u_minus[k] = proj_u_j(u_minus[k]);
+		}
+//		for (std::size_t k = 0; k < _actual_stencil_size; ++ k) {
+//			if (!((v_l - c_s_l) * (v_r - c_s_r) <= 0.)) {
+//				if (v_l - c_s_l < 0. && v_r - c_s_r < 0.) {
+//					u_plus[k][0] = 0.;
+//					u_minus[k][0] = 0.;
+//				}
+//			}
+//			if (!((v_l + 0.) * (v_r + 0.) <= 0.)) {
+//				if (v_l + 0. < 0. && v_r + 0. < 0.) {
+//					u_plus[k][1] = 0.;
+//					u_minus[k][1] = 0.;
+//				}
+//			}
+//			if (!((v_l + c_s_l) * (v_r + c_s_r) <= 0.)) {
+//				if (v_l + c_s_l < 0. && v_r + c_s_r < 0.) {
+//					u_plus[k][2] = 0.;
+//					u_minus[k][2] = 0.;
+//				}
+//			}
+//		}
+
+		T non_monotonicity_preserving_flux_pl = 0.;
+		T non_monotonicity_preserving_flux_mn = 0.;
+
+		for (auto& comp : components) {
+			non_monotonicity_preserving_flux_pl
+					= computeWENOReconstructionKernel(
+				std::ranges::views::counted(
+							std::ranges::begin(u_plus), order)
+						| std::ranges::views::transform(
+							comp.second), eps, p
+			);
+
+//			fhatplus[comp.first] = MPLimiterMM(
+//						u_plus[stencil_size / 2 - 1][comp.first],
+//						u_plus[stencil_size / 2 + 0][comp.first],
+//						u_plus[stencil_size / 2 + 1][comp.first],
+//						u_plus[stencil_size / 2 + 2][comp.first],
+//						non_monotonicity_preserving_flux_pl);
+			fhatplus[comp.first] = MPLimiterM4X(
+						u_plus[stencil_size / 2 - 2][comp.first],
+						u_plus[stencil_size / 2 - 1][comp.first],
+						u_plus[stencil_size / 2 + 0][comp.first],
+						u_plus[stencil_size / 2 + 1][comp.first],
+						u_plus[stencil_size / 2 + 2][comp.first],
+						u_plus[stencil_size / 2 + 3][comp.first],
+						non_monotonicity_preserving_flux_pl);
+//			fhatplus[comp.first] = non_monotonicity_preserving_flux_pl;
+
+			non_monotonicity_preserving_flux_mn
+					= computeWENOReconstructionKernel(
+				std::ranges::views::counted(
+							std::ranges::begin(u_minus), order)
+						| std::ranges::views::transform(
+							comp.second), eps, p
+			);
+
+//			fhatminus[comp.first] = MPLimiterMM(
+//						u_minus[stencil_size / 2 - 1][comp.first],
+//						u_minus[stencil_size / 2 + 0][comp.first],
+//						u_minus[stencil_size / 2 + 1][comp.first],
+//						u_minus[stencil_size / 2 + 2][comp.first],
+//						non_monotonicity_preserving_flux_mn);
+			fhatminus[comp.first] = MPLimiterM4X(
+						u_minus[stencil_size / 2 - 2][comp.first],
+						u_minus[stencil_size / 2 - 1][comp.first],
+						u_minus[stencil_size / 2 + 0][comp.first],
+						u_minus[stencil_size / 2 + 1][comp.first],
+						u_minus[stencil_size / 2 + 2][comp.first],
+						u_minus[stencil_size / 2 + 3][comp.first],
+						non_monotonicity_preserving_flux_mn);
+//			fhatminus[comp.first] = non_monotonicity_preserving_flux_mn;
 		}
 
 		numerical_flux[j] = fhatplus + fhatminus;
@@ -4368,7 +4745,7 @@ void calcHydroStageCharWiseFDPORWENO7(
 	};
 
 	std::for_each(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(shifted_index_range),
 				std::ranges::end(shifted_index_range),
 				[&](std::size_t j) {
@@ -4499,6 +4876,166 @@ void calcHydroStageCharWiseFDWENO7SM(
 				[](const std::ranges::sized_range auto&& stencil,
 							T eps, T p) -> T {
 					return computeFHatWENO7SMReconstructionKernel<T>(
+								std::move(stencil), eps, p);
+				},
+				n_ghost_cells,
+				eps,
+				p);
+}
+
+
+template <ArithmeticWith<numeric_val> T, ArithmeticWith<numeric_val> VT>
+void calcHydroStageCharWiseFDMPWENO5FM(
+		const std::ranges::common_range auto&& u,
+		const std::ranges::common_range auto&& q_avg,
+		const std::ranges::common_range auto&& flux,
+		std::ranges::common_range auto&& numerical_flux,
+		T t,
+		auto&& project,
+//		auto&& deproject,
+		T alpha,
+		std::size_t n_ghost_cells = 3,
+		T eps = 1e-40,
+		T p = 2.) {
+	calcHydroStageCharWiseFDMPWENO<T, VT, 5>(
+				std::move(u),
+				std::move(q_avg),
+				std::move(flux),
+				std::move(numerical_flux),
+				t, project,
+				// auto&& deproject,
+				alpha,
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO5FMReconstructionKernel<T>(
+								std::move(stencil), eps, p);
+				},
+				n_ghost_cells,
+				eps,
+				p);
+}
+
+
+template <ArithmeticWith<numeric_val> T, ArithmeticWith<numeric_val> VT>
+void calcHydroStageCharWiseFDMPWENO7S(
+		const std::ranges::common_range auto&& u,
+		const std::ranges::common_range auto&& q_avg,
+		const std::ranges::common_range auto&& flux,
+		std::ranges::common_range auto&& numerical_flux,
+		T t,
+		auto&& project,
+//		auto&& deproject,
+		T alpha,
+		std::size_t n_ghost_cells = 4,
+		T eps = 1e-100,
+		T p = 1.) {
+	calcHydroStageCharWiseFDMPWENO<T, VT, 7>(
+				std::move(u),
+				std::move(q_avg),
+				std::move(flux),
+				std::move(numerical_flux),
+				t, project,
+				// auto&& deproject,
+				alpha,
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO7SReconstructionKernel<T>(
+								std::move(stencil), eps, p);
+				},
+				n_ghost_cells,
+				eps,
+				p);
+}
+
+
+template <ArithmeticWith<numeric_val> T, ArithmeticWith<numeric_val> VT>
+void calcHydroStageCharWiseFDMPWENO7SM(
+		const std::ranges::common_range auto&& u,
+		const std::ranges::common_range auto&& q_avg,
+		const std::ranges::common_range auto&& flux,
+		std::ranges::common_range auto&& numerical_flux,
+		T t,
+		auto&& project,
+//		auto&& deproject,
+		T alpha,
+		std::size_t n_ghost_cells = 4,
+		T eps = 1e-100,
+		T p = 2.) {
+	calcHydroStageCharWiseFDMPWENO<T, VT, 7>(
+				std::move(u),
+				std::move(q_avg),
+				std::move(flux),
+				std::move(numerical_flux),
+				t, project,
+				// auto&& deproject,
+				alpha,
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO7SMReconstructionKernel<T>(
+								std::move(stencil), eps, p);
+				},
+				n_ghost_cells,
+				eps,
+				p);
+}
+
+
+template <ArithmeticWith<numeric_val> T, ArithmeticWith<numeric_val> VT>
+void calcHydroStageCharWiseFDMPWENO9SM(
+		const std::ranges::common_range auto&& u,
+		const std::ranges::common_range auto&& q_avg,
+		const std::ranges::common_range auto&& flux,
+		std::ranges::common_range auto&& numerical_flux,
+		T t,
+		auto&& project,
+//		auto&& deproject,
+		T alpha,
+		std::size_t n_ghost_cells = 5,
+		T eps = 1e-100,
+		T p = 2.) {
+	calcHydroStageCharWiseFDMPWENO<T, VT, 9>(
+				std::move(u),
+				std::move(q_avg),
+				std::move(flux),
+				std::move(numerical_flux),
+				t, project,
+				// auto&& deproject,
+				alpha,
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO9SMReconstructionKernel<T>(
+								std::move(stencil), eps, p);
+				},
+				n_ghost_cells,
+				eps,
+				p);
+}
+
+
+template <ArithmeticWith<numeric_val> T, ArithmeticWith<numeric_val> VT>
+void calcHydroStageCharWiseFDMPWENO11SM(
+		const std::ranges::common_range auto&& u,
+		const std::ranges::common_range auto&& q_avg,
+		const std::ranges::common_range auto&& flux,
+		std::ranges::common_range auto&& numerical_flux,
+		T t,
+		auto&& project,
+//		auto&& deproject,
+		T alpha,
+		std::size_t n_ghost_cells = 6,
+		T eps = 1e-100,
+		T p = 2.) {
+	calcHydroStageCharWiseFDMPWENO<T, VT, 11>(
+				std::move(u),
+				std::move(q_avg),
+				std::move(flux),
+				std::move(numerical_flux),
+				t, project,
+				// auto&& deproject,
+				alpha,
+				[](const std::ranges::sized_range auto&& stencil,
+							T eps, T p) -> T {
+					return computeFHatWENO11SMReconstructionKernel<T>(
 								std::move(stencil), eps, p);
 				},
 				n_ghost_cells,
