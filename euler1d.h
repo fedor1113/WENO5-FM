@@ -24,10 +24,36 @@
 // #include "eulerforward.h"
 #include "weno5.h"
 
-template <ArithmeticWith<numeric_val> T>
+//template <ArithmeticWith<numeric_val> T>
+//T average(T left, T right) {
+//	/* A simple arithmetic mean average of 2 values. */
+//	return (left + right) * 0.5;
+//}
+
+
+template <ArithmeticWith<numeric_val> T,
+			ArithmeticWith<numeric_val> T2=numeric_val>
 T average(T left, T right) {
 	/* A simple arithmetic mean average of 2 values. */
-	return (left + right) * 0.5;
+
+	T2 sqrt_left_rho = std::sqrt(std::abs(left[0]));
+	T2 sqrt_right_rho = std::sqrt(std::abs(right[0]));
+	T2 avg_rho = sqrt_left_rho * sqrt_right_rho;
+	T2 sqrt_rho_sum = sqrt_left_rho + sqrt_right_rho;
+
+	T2 left_v = left[1] / left[0];
+	T2 right_v = right[1] / right[0];
+	T2 avg_rho_v = avg_rho
+			* (sqrt_left_rho * left_v + sqrt_right_rho * right_v)
+				/ sqrt_rho_sum;
+
+	T2 left_E = left[2] / left[0];
+	T2 right_E = right[2] / right[0];
+	T2 avg_E = (sqrt_left_rho * left_E + sqrt_right_rho * right_E)
+				/ sqrt_rho_sum;
+	T2 avg_rho_E = avg_rho * avg_E;
+
+	return {avg_rho, avg_rho_v, avg_rho_E, 0.};
 }
 
 
@@ -113,7 +139,7 @@ std::valarray<Vector4<T>> calcFluxComponentWiseFDWENO5(
 		&Vector4<T>::w
 	};
 	std::for_each(
-			std::execution::par_unseq,
+//			std::execution::par_unseq,
 			std::ranges::begin(components),
 			std::ranges::end(components),
 			[&](auto kth_vector_component) {
@@ -183,7 +209,7 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO5(
 //		return average<Vector4<T>>(q_l, q_r);
 //	});
 	std::transform(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(u) + 1,
 				std::ranges::end(u),
 				std::ranges::begin(u),
@@ -204,7 +230,14 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO5(
 //		return projectCharacteristicVariablesBackOntoConserved<T>(q_ast, vec, gamma);
 //	};
 
-	calcHydroStageCharWiseFDWENO5FM<T, Vector4<T>>(
+//	calcHydroStageCharWiseFDWENO5FM<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, t,
+//				project, /*deproject,*/ lam[0],
+//				ghost_point_number, eps, p);
+	calcHydroStageCharWiseFDMPWENO5FM<T, Vector4<T>>(
 				std::ranges::views::all(u),
 				std::ranges::views::all(avg),
 				std::ranges::views::all(flux),
@@ -232,7 +265,7 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO5(
 //	});
 
 	std::transform(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(avg),
 				std::ranges::end(avg),
 				std::ranges::begin(res),
@@ -250,7 +283,7 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO5(
 template <ArithmeticWith<numeric_val> T>
 std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO7(
 		const std::ranges::common_range auto& u,
-		T dx, T dt, T t, const std::ranges::common_range auto& lam,
+		/*T dx, T dt, */T t, const std::ranges::common_range auto& lam,
 		std::size_t ghost_point_number = 4,
 		T gamma = 1.4,
 		T eps = 1e-40,
@@ -265,7 +298,7 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO7(
 	std::valarray<Vector4<T>> flux = calcPhysFlux(u/*, gamma*/);
 
 	std::transform(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(u) + 1,
 				std::ranges::end(u),
 				std::ranges::begin(u),
@@ -295,16 +328,30 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO7(
 //				res, t,
 //				project, lam[0],
 //				ghost_point_number, eps, p);
-	calcHydroStageCharWiseFDPORWENO7SM<T, Vector4<T>>(
+//calcHydroStageCharWiseFDMPWENO7SM<T, Vector4<T>>(
+//			std::ranges::views::all(u),
+//			std::ranges::views::all(avg),
+//			std::ranges::views::all(flux),
+//			res, t,
+//			project, lam[0],
+//			ghost_point_number, eps, p);
+	calcHydroStageCharWiseFDMPWENO7SM<T, Vector4<T>>(
 				std::ranges::views::all(u),
 				std::ranges::views::all(avg),
 				std::ranges::views::all(flux),
-				res, dx, dt,
+				res, t,
 				project, lam[0],
 				ghost_point_number, eps, p);
+//	calcHydroStageCharWiseFDPORWENO7SM<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, dx, dt,
+//				project, lam[0],
+//				ghost_point_number, eps, p);
 
 	std::transform(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(avg),
 				std::ranges::end(avg),
 				std::ranges::begin(res),
@@ -337,7 +384,7 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO9(
 	std::valarray<Vector4<T>> flux = calcPhysFlux(u/*, gamma*/);
 
 	std::transform(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(u) + 1,
 				std::ranges::end(u),
 				std::ranges::begin(u),
@@ -352,8 +399,27 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO9(
 			Vector4<T> q_ast, Vector4<T> vec) -> Vector4<T> {
 		return projectOntoCharacteristics<T>(q_ast, vec/*, gamma*/);
 	};
+//	auto project = [gamma](
+//			Vector4<T> left, Vector4<T> right, Vector4<T> vec) -> Vector4<T> {
+//		return projectOntoCharacteristicsRoe<T>(left, right, vec);
+//	};
 
-	calcHydroStageCharWiseFDWENO9FM<T, Vector4<T>>(
+//	calcHydroStageCharWiseFDWENO9FM<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, t,
+//				project, lam[0],
+//				ghost_point_number, eps, p);
+//	calcHydroStageCharWiseFDMPWENO9SM<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, t,
+//				project, lam[0],
+//				ghost_point_number, eps, p);
+
+	calcHydroStageCharWiseFDMPWENO11SM<T, Vector4<T>>(
 				std::ranges::views::all(u),
 				std::ranges::views::all(avg),
 				std::ranges::views::all(flux),
@@ -362,7 +428,7 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO9(
 				ghost_point_number, eps, p);
 
 	std::transform(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(avg),
 				std::ranges::end(avg),
 				std::ranges::begin(res),
@@ -371,6 +437,10 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO9(
 		return projectCharacteristicVariablesBackOntoConserved<T>(
 					q_ast, f/*, gamma*/);
 	});
+//	for (std::size_t k = 1; k < std::ranges::size(u) - 1; ++ k) {
+//		res[k] = projectCharacteristicVariablesBackOntoConservedRoe(
+//					u[k], u[k + 1], res[k]);
+//	}
 	// updateGhostPointsPeriodic(res);
 
 	return res;
@@ -523,6 +593,117 @@ std::valarray<Vector4<T>> calcFluxComponentWiseFVENO3(
 }
 
 
+template <ArithmeticWith<numeric_val> T>
+std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDENO3(
+		const std::ranges::common_range auto& u,
+		T t, const std::ranges::common_range auto& lam,
+		std::size_t ghost_point_number = 3,
+		T gamma = 1.4,
+		T eps = 1e-40,
+		T p = 2.) {
+//	const std::size_t n_size = std::ranges::size(u)
+//			- 2 * ghost_point_number;
+
+	std::valarray<Vector4<T>> avg(std::ranges::size(u));
+	std::valarray<Vector4<T>> proj_u(std::ranges::size(u));
+	std::valarray<Vector4<T>> proj_f(std::ranges::size(u));
+	std::valarray<Vector4<T>> res(std::ranges::size(u));
+	std::valarray<Vector4<T>> flux = calcPhysFlux(u/*, gamma*/);
+
+//	auto interior_view = std::ranges::views::drop(ghost_point_number)
+//			| std::ranges::views::take(n_size)
+//			| std::ranges::views::common;
+//	auto interior_view_shifted_by_neg_1
+//			= std::ranges::views::drop(ghost_point_number - 1)
+//				| std::ranges::views::take(n_size)
+//				| std::ranges::views::common;
+
+//	auto u_view = std::ranges::views::all(u);
+//	auto avg_view = std::ranges::views::all(avg);
+//	auto u_proj_view = std::ranges::views::all(proj_u);
+//	auto f_proj_view = std::ranges::views::all(proj_f);
+//	auto res_view = std::ranges::views::all(res);
+
+//	std::transform(
+//				std::execution::par_unseq,
+//				std::ranges::begin(u_view) | interior_view,
+//				std::ranges::end(u_view) | interior_view,
+//				std::ranges::begin(u_view) | interior_view_shifted_by_neg_1,
+//				std::ranges::begin(avg_view) | interior_view,
+//				[](auto q_l, auto q_r) {
+//		return average<Vector4<T>>(q_l, q_r);
+//	});
+	std::transform(
+//				std::execution::par_unseq,
+				std::ranges::begin(u) + 1,
+				std::ranges::end(u),
+				std::ranges::begin(u),
+				std::ranges::begin(avg) + 1,
+				[](auto q_l, auto q_r) {
+		return average<Vector4<T>>(q_l, q_r);
+	});
+	// updateGhostPointsTransmissive(avg);
+	// updateGhostPointsPeriodic(avg);
+
+	auto project = [gamma](
+			Vector4<T> q_ast, Vector4<T> vec) -> Vector4<T> {
+		return projectOntoCharacteristics<T>(q_ast, vec/*, gamma*/);
+	};
+
+//	auto deproject = [gamma](
+//			Vector4<T> q_ast, Vector4<T> vec) -> Vector4<T> {
+//		return projectCharacteristicVariablesBackOntoConserved<T>(q_ast, vec, gamma);
+//	};
+
+	calcHydroStageCharWiseFDENO3<T, Vector4<T>>(
+				std::ranges::views::all(u),
+				std::ranges::views::all(avg),
+				std::ranges::views::all(flux),
+				res, t,
+				project, /*deproject,*/ lam[0],
+				ghost_point_number);
+//	calcHydroStageCharWiseFDMPENO3<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, t,
+//				project, /*deproject,*/ lam[0],
+//				ghost_point_number);
+//	calcHydroStageCharWiseFDENO2<T, Vector4<T>>(
+//			std::ranges::views::all(u),
+//			std::ranges::views::all(avg),
+//			std::ranges::views::all(flux),
+//			res, t,
+//			project, /*deproject,*/ lam[0],
+//			ghost_point_number);
+
+//	std::transform(
+//				std::execution::par_unseq,
+//				std::ranges::begin(avg_view) | interior_view,
+//				std::ranges::end(avg_view) | interior_view,
+//				std::ranges::begin(res_view) | interior_view,
+//				std::ranges::begin(res_view) | interior_view,
+//				[gamma](auto q_ast, auto f) {
+//		return projectCharacteristicVariablesBackOntoConserved<Vector4<T>>(
+//					q_ast, f, gamma);
+//	});
+
+	std::transform(
+//				std::execution::par_unseq,
+				std::ranges::begin(avg),
+				std::ranges::end(avg),
+				std::ranges::begin(res),
+				std::ranges::begin(res),
+				[gamma](auto q_ast, auto f) {
+		return projectCharacteristicVariablesBackOntoConserved<T>(
+					q_ast, f/*, gamma*/);
+	});
+	// updateGhostPointsPeriodic(res);
+
+	return res;
+}
+
+
 template <ArithmeticWith<numeric_val> T, typename... Args>
 std::valarray<Vector4<T>> calcdSpaceEu1D(
 	const std::valarray<Vector4<T>>& U,
@@ -636,7 +817,8 @@ void integrateRiemannProblem(
 		return calcMaxWaveSpeedD<T>(u);
 	};
 	auto dt_upd = [](T dx, T lam) -> T {
-		return std::pow(.1 * dx / lam, /*5./3.*/10.);
+		// return std::pow(.1 * dx / lam, /*5./3.*/10.);
+		return std::pow(dx, 8./3.);
 	};
 
 	auto find_max_lam_init = find_max_lam;
@@ -1153,12 +1335,14 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 //						u, t, lam, ghost_point_number, gamma, eps, p);
 //					return calcFluxComponentWiseFVWENO5<T>(
 //						u, t, lam, ghost_point_number, gamma, eps, p);
-					return calcFluxCharacteristicWiseFDWENO5<T>(
-						u, t, lam, ghost_point_number, gamma, eps, p);
+//					return calcFluxCharacteristicWiseFDWENO5<T>(
+//						u, t, lam, ghost_point_number, gamma, eps, p);
 //					T dt = 0.00054;
 //					return calcFluxCharacteristicWiseFDWENO7<T>(
-//						u, dx, dt, t, lam, ghost_point_number, gamma, eps, p);
-//					return calcFluxCharacteristicWiseFDWENO9<T>(
+//						u, t, lam, ghost_point_number, gamma, eps, p);
+					return calcFluxCharacteristicWiseFDWENO9<T>(
+						u, t, lam, ghost_point_number, gamma, eps, p);
+//					return calcFluxCharacteristicWiseFDENO3<T>(
 //						u, t, lam, ghost_point_number, gamma, eps, p);
 //					return calcFluxComponentWiseFVENO3<T>(
 //						u, t, lam, n_size, gamma);
@@ -1169,7 +1353,7 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 						std::valarray<Vector4<T>>&& x = {}) {
 					addEmptySource<T>(u, f, x);
 				},
-				/*1e-4*//*1e-6*//*1e-8*/1e-100,
+				/*1e-4*//*1e-6*//*1e-8*//*1e-40*/1e-100,
 				/*1.*/2./*3.*//*4.*//*5.*//*6.*/
 			);
 		},

@@ -71,7 +71,7 @@ https://github.com/fergu/EulerWeno5/blob/master/Python/eulerweno_LF.py
             #ypts[0,i] = rho1;
             #ypts[1,i] = rho1*u1;
             #ypts[2,i] = p1/(gamma-1)+rho1*np.power(u1,2.0)/2;
-	#return [xpts,ypts];
+    #return [xpts,ypts];
 
 #[xex,yex] = SodsExact(1.,0,1.,0.125,0.,.1, t)
 
@@ -96,11 +96,20 @@ s = []
         #u.append(float(ROWS[2]))
         #p.append(float(ROWS[3]))
         #s.append(float(ROWS[4]))
-n = 201
-filename = f'res_n_{n}.dat'
+n = 101
+# filename = f'./data/laser_prob/SSPERK-3_3-ChW-FD-ENO2-LF-CFL-0.2/res_n_{n}.dat'
+# filename = f'./data/laser_prob/SSPERK-3_3-ChW-FD-WENO5-FM-eps-1e-40-LF-CFL-0.2/res_n_{n}.dat'
+# filename = f'./data/laser_prob/SSPERK-3_3-ChW-FD-MP-WENO5-FM-eps-1e-40-LF-CFL-0.2/res_n_{n}.dat'
+# filename = f'./data/laser_prob/SSPTSERK-12_8-ChW-FD-MP-WENO9-SM-eps-1e-100-LF-CFL-1./res_n_{n}.dat'
+# filename = f'./data/laser_prob/SSPTSERK-12_8-ChW-FD-MP-WENO7-SM-eps-1e-100-LF-CFL-1./res_n_{n}.dat'
+# filename = f'./data/laser_prob/SSPTSERK-12_8-ChW-FD-MP-WENO7-S-eps-1e-100-LF-CFL-1./res_n_{n}.dat'
+# filename = f'./data/laser_prob/SSPERK-3_3-ChW-FD-MP-WENO7-S-eps-1e-100-LF-CFL-0.2/res_n_{n}.dat'
+# filename = f'./data/laser_prob/SSPERK-3_3-ChW-FD-MP-M4X-WENO7-S-eps-1e-100-LF-CFL-0.2/res_n_{n}.dat'
+# filename = f'./data/laser_prob/24.12.2022/SSPERK-3_3-ChW-FD-ENO3-LF-CFL-0.2/res_n_{n}.dat'
+filename = f'./data/prVTAlMGTestArt1-1nm/LLF-1alpha-MP-WENO11-SM-ChW/res_n_{n}.dat'
 df = pd.read_csv(filename,
                  skiprows = 3, sep=' ',
-				 names = ['x', 'rho', 'u', 'p', 'e'])
+                 names = ['x', 'rho', 'u', 'p', 'e'])
 
 with open(filename, 'r') as datafile:
     title = datafile.readline()
@@ -109,15 +118,15 @@ with open(filename, 'r') as datafile:
 # L = 1250
 L = 1
 
-x = list(map(float, df['x'].tolist()))
-rho = list(map(float, df['rho'].tolist()))
-u = list(map(float, df['u'].tolist()))
-p = list(map(float, df['p'].tolist()))
-e = list(map(float, df['e'].tolist()))
+x = list(map(float, df['x'].tolist()))[6:-6]
+rho = np.asarray(list(map(float, df['rho'].tolist())))[6:-6]
+u = np.asarray(list(map(float, df['u'].tolist())))[6:-6]
+p = np.asarray(list(map(float, df['p'].tolist())))[6:-6]
+e = np.asarray(list(map(float, df['e'].tolist())))[6:-6]
 
 
 
-plt.figure(1)
+"""plt.figure(1)
 plt.subplot(4, 1, 1)
 # plt.subplot(3, 1, 1)
 plt.title("t={:0.4f}".format(t))
@@ -156,10 +165,119 @@ plt.plot(x, e, 'b-');
 #plt.plot(x, [1 - dp for dp in s], 'r-');
 #plt.xlim([0,L])
 #plt.ylabel('Species Fraction')
-plt.ylabel('Energy e')
+plt.ylabel('Energy e')"""
 
 
+cm = 1/2.54  # centimeters in inches
+# , figsize=(192.0*cm, 101.3*cm)
+f, axarr = plt.subplots(3, 2)
+axarr[0, 0].set_title("Density")
+axarr[0, 1].set_title("Pressure")
+# axarr[1, 0].set_title("Temperature")
+axarr[1, 0].set_title("Internal energy")
+axarr[1, 1].set_title("Velocity")
+# axarr[2, 0].set_title("Mach number")
+axarr[2, 0].set_title("Sound speed")
+axarr[2, 1].set_title("Total energy")
+
+# c_s = np.sqrt(1.4 * p / rho)  # ideal gas with gamma=1.4
+
+
+# _G = 2.
+_G = 1.2
+_pe = rho * _G  # dp/de
+
+rho0 = 2750.
+a = 1.12657
+b = 0.975511
+p0 = 560.964e9
+ph = 15.e9
+
+def eCold(rho):  # [J/kg]
+    x = rho / rho0
+    ec = 0.
+
+    if x >= 1.:
+        ec = 2.03987e8 * (x**a / a - x**b / b)
+    else:
+        n = p0 * (a - b) / ph
+        ec = 2.03987e8 * (a - b) * (1. / n * (x**(n-1.) / (n - 1.) + 1. / x) - 1. / (n - 1.) - 1. / a / b)
+
+    return ec
+
+
+def pCold(rho):
+    x = rho / rho0
+    pc = 0.
+    if x >= 1.:
+        pc = p0 * x * (x**a - x**b)
+    else:
+        n = p0 * (a - b) / ph
+        pc = ph * (x**n - 1.)
+
+    return pc
+
+
+def pColdPrime(rho):
+    x = rho / rho0;
+    pcx = 0.
+    if x >= 1.:
+        pcx = p0 * ((a + 1.) * x**a - (b + 1.) * x**b)
+    else:
+        n = p0 * (a - b) / ph
+        pcx = p0 * (a - b) * x**(n-1.)
+
+    return pcx
+
+
+_pc = np.array(list(map(pCold, rho)))
+_pcx = np.array(list(map(pColdPrime, rho)))
+_ec = np.array(list(map(eCold, rho)))
+_prho = 1. / rho0 * (_pcx + _G * rho0 * (e - _ec) - _G / (rho / rho0) * _pc)
+
+c_s = p * _pe / rho / rho + _prho  # M-G
+
+axarr[0, 0].plot(x, rho, '.')
+axarr[0, 0].grid(True, ls=':')
+axarr[0, 1].plot(x, p, '.')
+axarr[0, 1].grid(True, ls=':')
+# axarr[1, 0].plot(x, p / rho, '.')
+axarr[1, 0].plot(x, e, '.')
+axarr[1, 0].grid(True, ls=':')
+axarr[1, 1].plot(x, u, '.')
+axarr[1, 1].grid(True, ls=':')
+# axarr[2, 0].plot(x, u / c_s, '.')
+axarr[2, 0].plot(x, c_s, '.')
+axarr[2, 0].grid(True, ls=':')
+axarr[2, 1].plot(x, e + 0.5 * u * u, '.')
+axarr[2, 1].grid(True, ls=':')
+
+#axarr[0, 0].plot(x, rho)
+#axarr[0, 0].grid(True, ls=':')
+#axarr[0, 1].plot(x, p)
+#axarr[0, 1].grid(True, ls=':')
+## axarr[1, 0].plot(x, p / rho, '.')
+#axarr[1, 0].plot(x, e)
+#axarr[1, 0].grid(True, ls=':')
+#axarr[1, 1].plot(x, u)
+#axarr[1, 1].grid(True, ls=':')
+## axarr[2, 0].plot(x, u / c_s, '.')
+#axarr[2, 0].plot(x, c_s)
+#axarr[2, 0].grid(True, ls=':')
+#axarr[2, 1].plot(x, e + 0.5 * u * u)
+#axarr[2, 1].grid(True, ls=':')
+
+
+plt.gcf().set_size_inches(20, 10)
 plt.tight_layout()
 
-plt.savefig(filename[:-4] + '.svg', format='svg', transparent=True)
+plt.savefig(filename[:-4] + '.svg', format='svg', transparent=True, dpi=200)
+plt.show();
+
+
+plt.plot(x, rho)
+plt.grid(True, ls=':')
+plt.gcf().set_size_inches(20, 10)
+plt.tight_layout()
+plt.savefig(filename[:-4] + '_rho.svg', format='svg', transparent=True, dpi=200)
 plt.show();

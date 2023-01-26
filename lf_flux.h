@@ -85,7 +85,7 @@ SplitFluxes<T> splitFluxAsLaxFriedrichs(
 		std::valarray<T>(std::ranges::size(f))
 	};
 
-	std::transform(std::execution::par_unseq,
+	std::transform(/*std::execution::par_unseq,*/
 		std::ranges::begin(f), std::ranges::end(f),
 		std::ranges::begin(u),
 		std::ranges::begin(monotone_lf_flux_components.f_plus),
@@ -93,7 +93,7 @@ SplitFluxes<T> splitFluxAsLaxFriedrichs(
 		return 0.5 * (f_pt + alpha * u_pt);
 	});
 
-	std::transform(std::execution::par_unseq,
+	std::transform(/*std::execution::par_unseq,*/
 		std::ranges::begin(f), std::ranges::end(f),
 		std::ranges::begin(u),
 		std::ranges::begin(monotone_lf_flux_components.f_minus),

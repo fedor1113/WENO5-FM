@@ -152,7 +152,7 @@ void advanceTimestepSSPTSERK12_8(
 	);
 	for (std::size_t k = 1; k <= 12; ++ k) {
 		std::for_each(
-					std::execution::par_unseq,
+//					std::execution::par_unseq,
 					std::ranges::begin(iv),
 					std::ranges::end(iv),
 					[&](std::size_t pt_idx) {
@@ -174,11 +174,11 @@ void advanceTimestepSSPTSERK12_8(
 					t, dx, max_eigenvalues,
 					n_size, opts_args...);
 
-		updateGhostPoints(interim_us[k].get());
+//		updateGhostPoints(interim_us[k].get());
 	}
 
 	std::for_each(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(iv),
 				std::ranges::end(iv),
 				[&](std::size_t pt_idx) {

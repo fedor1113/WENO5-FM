@@ -1,6 +1,6 @@
-#pragma GCC optimize("Ofast")
-#pragma GCC target("avx,avx2,fma")
-#pragma GCC optimize("unroll-loops")
+//#pragma GCC optimize("Ofast")
+//#pragma GCC target("avx,avx2,fma")
+//#pragma GCC optimize("unroll-loops")
 
 #include <algorithm>
 #include <cstdio>
@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
 	std::size_t k = 0;
 
 	std::size_t Nx = 201;
-	const std::size_t N_ghost_points = 5;
+	const std::size_t N_ghost_points = 6;
 	std::size_t N_full = Nx + 2*N_ghost_points;
 	// Nx = Nx + 6;  // Add in ghost cells
 	numeric_val L = 1.;  // [L]
@@ -202,14 +202,14 @@ int main(int argc, char **argv) {
 //			2001, 2501, 5001,
 //			10001}) {
 //		 : {21, 41, 81, 161, 321, 641}) {
-		 : {201}) {
+		 : {101/*401*/}) {
 //		 : {1001}) {
 //		 : {26, 51, 101, 201, 401, 801/*, 1601, 3206*/}) {
 //		 : {50, 100, 200, 400, 800, 1600/*, 3200, 6400*/}) {
 		Nx = j; N_full = Nx + 2 * N_ghost_points;
 		L = 10.;
 		// L = 1.;
-		cfl = 1.;
+		cfl = 0.2;
 		tfinal = 3000.;
 		// tfinal = 1.5;
 
@@ -224,7 +224,7 @@ int main(int argc, char **argv) {
 		std::valarray<numeric_val> x(0., N_full);
 
 		L = 1.;
-		cfl = 1.;
+//		cfl = 0.2;
 //		cfl = 0.3;
 //		cfl = 0.45;
 //		tfinal = 0.15;
@@ -243,14 +243,23 @@ int main(int argc, char **argv) {
 //			t, tfinal, 0., L,
 //			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
 //		);  // Modified Sod's problem JCP 27:1 1978 (expansion-contact-shock). Toro-1
+//		tfinal = 2.e-12;
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			2700., 0., 0.,
+//			2700., 0., 300.e9, -50.e-9,
+//			t, tfinal, -100.e-9, 0.,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // vtAl1MG-1nm-hll
 		tfinal = 2.e-12;
 		solve1DRiemannProblemForEulerEq<numeric_val>(
 			u_res, x, gamma,
-			2700., 0., 0.,
-			2700., 0., 300.e9, -50.e-9,
-			t, tfinal, -100.e-9, 0.,
+			2413., 0., 0.,
+			2413., 0., 35.6e9, -80.e-9,
+			t, tfinal, -100.e-9, -60.e-9,
 			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
-		);  // vtAl1MG-1nm-hll
+		);  // hot-cold Al interaction
+		// "x[nm]","ro[kg/m3]","u[m/s]","p[GPa]","e[MJ/kg]"
 //		tfinal = 0.12;
 //		solve1DRiemannProblemForEulerEq<numeric_val>(
 //			u_res, x, gamma,
@@ -326,11 +335,19 @@ int main(int argc, char **argv) {
 //		tfinal = 0.035;
 //		solve1DRiemannProblemForEulerEq<numeric_val>(
 //			u_res, x, gamma,
+//			1., 0., .01,
+//			1., 0., 100., 0.5,
+//			t, tfinal, 0., L,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // Toro-4
+//		tfinal = 0.035;
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
 //			5.99924, 19.5975, 460.894,
 //			5.99242, -6.19633, 46.0950, 0.4,
 //			t, tfinal, 0., L,
 //			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
-//		);  // Toro-4
+//		);  // Toro-5
 
 //		solve1DHighGradientLaserProblem<numeric_val>(
 //			u_res,
@@ -367,7 +384,8 @@ int main(int argc, char **argv) {
 
 		std::ofstream outfile;
 
-		std::string folder = "./";
+		std::string folder = "./data/prVTAlMGTestArt1-1nm/LLF-1alpha-MP-WENO11-SM-ChW/";
+//		std::string folder = "./data/toro/toro-5/LF-WENO5-JS-ChW/";
 
 		std::string filepath = folder
 				+ "res_n_"
@@ -377,10 +395,13 @@ int main(int argc, char **argv) {
 		outfile.open(filepath);
 
 		k = 0;
+		numeric_val dx = std::abs(
+					x[N_ghost_points + 1] - x[N_ghost_points]);
 		if (outfile.is_open()) {
 			outfile << "TITLE=\"Riemann Problem 1D slice t="
 					<< tfinal << "\"" << "\n";
-			outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
+//			outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\",\"e\"" << "\n";
+			outfile << "VARIABLES=\"x[nm]\",\"ro[kg/m3]\",\"u[m/s]\",\"p[GPa]\",\"e[MJ/kg]\"" << "\n";
 //			outfile << "VARIABLES=\"x\",\"rho\",\"u\",\"p\"" << "\n";
 //			outfile << "TITLE=\"Detonation Problem 1D slice t="
 //					<< tfinal << "\"" << "\n";
@@ -392,14 +413,24 @@ int main(int argc, char **argv) {
 				Vec4 q = conservativeToPrimitive(u/*, gamma*/);
 				// std::cout << u << "\n";
 
+//				outfile << std::setprecision(
+//							   std::numeric_limits<numeric_val>::max_digits10 - 1)
+//						<< std::scientific
+//						<< x[k] + 0.5 * dx
+//						<< " " << q[0]
+//						<< " " << q[1]
+//						<< " " << q[2]
+//						<< " " << q[3] << "\n";
+				// "x[nm]","ro[kg/m3]","u[m/s]","p[GPa]","e[MJ/kg]"
 				outfile << std::setprecision(
 							   std::numeric_limits<numeric_val>::max_digits10 - 1)
 						<< std::scientific
-						<< x[k]
+						<< (x[k] + 0.5 * dx) * 1.e+9
 						<< " " << q[0]
 						<< " " << q[1]
-						<< " " << q[2]
-						<< " " << q[3] << "\n";
+						<< " " << q[2] * 1.e-9
+						<< " " << q[3] * 1.e-6 << "\n";
+
 //				outfile << std::format("{}", x[k])
 //						<< " " << std::format("{}", u) << "\n";
 //				outfile << std::setprecision(

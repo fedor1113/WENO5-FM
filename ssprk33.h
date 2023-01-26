@@ -58,7 +58,7 @@ void advanceTimestepTVDRK3(
 
 	// Y2 = U + Vector4<T>(dt) * dflux;
 	std::transform(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(U/* | interior_view*/),
 				std::ranges::end(U/* | interior_view*/),
 				std::ranges::begin(dflux/* | interior_view*/),
@@ -82,7 +82,7 @@ void advanceTimestepTVDRK3(
 				| std::views::take(std::ranges::size(U))
 	);
 	std::for_each(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(iv/* | interior_view*/),
 				std::ranges::end(iv/* | interior_view*/),
 				[dt, &Y3, &U, &dflux_temp, &Y2](std::size_t k) {
@@ -101,7 +101,7 @@ void advanceTimestepTVDRK3(
 	// U += Vector4<T>(2.) * (Y3 + Vector4<T>(dt) * dflux);
 	// U *= Vector4<T>(1./3.);
 	std::transform(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(Y3/* | interior_view*/),
 				std::ranges::end(Y3/* | interior_view*/),
 				std::ranges::begin(dflux_temp/* | interior_view*/),
@@ -110,7 +110,7 @@ void advanceTimestepTVDRK3(
 		return 2. * (u + dt * df);
 	});
 	std::transform(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(U/* | interior_view*/),
 				std::ranges::end(U/* | interior_view*/),
 				std::ranges::begin(Y3/* | interior_view*/),
