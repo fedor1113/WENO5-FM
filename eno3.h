@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "arithmeticwith.h"
-// #include "weno5.h"
+#include "weno5.h"
 
 
 // template <ArithmeticWith<numeric_val> T>
@@ -32,6 +32,40 @@
 // 		divided_difference(x1, x2, u1, u2),
 // 		divided_difference(x0, x1, u0, u1));
 // }
+
+
+template <ArithmeticWith<numeric_val> T>
+bool chooseENO2Stencil(const std::ranges::sized_range auto&& u_stencil) {
+	/* TO DO */
+
+	if (std::abs(u_stencil[1] - u_stencil[0])
+			<= std::abs(u_stencil[2] - u_stencil[1]))
+		return true;
+
+	return false;
+}
+
+
+template <ArithmeticWith<numeric_val> T>
+T computeENO2ReconstructionKernel(
+		const std::ranges::sized_range auto&& u_stencil,
+		bool use_left_substencil) {
+	/* 2nd order ENO reconstructions of f(j) from all the 2 2-element
+	 * substencils of `f_stencil` (f_plus or reversed f_minus:
+	 * receives 4 values [j-1, j+0, j+1, j+2, ...] for '+'
+	 *               (or [j+2, j+1, j+0, j-1, ...] for '-').
+	 *                     ^    ^    ^    ^    ^    ^
+	 *                     0    1    2    3    4    |
+	 * Choose a stencil with `which_stencil`:
+	 * 	 true: [j-1, j+0          ]
+	 * 	false: [          j+1, j+2]
+	 */
+
+	if (use_left_substencil)
+		return (-1. * u_stencil[0] + 3. * u_stencil[1]) * 0.5;
+
+	return (1. * u_stencil[1] + 1. * u_stencil[2]) * 0.5;
+}
 
 
 template <ArithmeticWith<numeric_val> T>
@@ -202,7 +236,7 @@ void calcHydroStageFDENO3(
 						std::begin(u_minus),
 						std::end(u_minus) - 1
 					),
-					2 - which_stencil_mn
+					which_stencil_mn/*2 - which_stencil_mn*/
 					);
 
 		numerical_flux[j] = uhatplus + uhatminus;
@@ -289,6 +323,365 @@ void calcHydroStageFVENO3(
 //		std::cout << (u_minus_rec[j]-u_plus_rec[j])*(u[j]-u[j+1])
 //					<< "\n";
 	}
+}
+
+
+template <ArithmeticWith<numeric_val> T, ArithmeticWith<numeric_val> VT,
+			std::size_t N=5>
+void calcHydroStageCharWiseFDENO3(
+		const std::ranges::common_range auto&& u,
+		const std::ranges::common_range auto&& q_avg,
+		const std::ranges::common_range auto&& flux,
+		std::ranges::common_range auto&& numerical_flux,
+		T t,
+		auto&& project,
+//		auto&& deproject,
+		T alpha,
+		std::size_t n_ghost_cells = (N + 1) / 2) {
+	const unsigned order = N;
+	const std::size_t stencil_size = order;
+	const std::size_t _actual_stencil_size = stencil_size + 1;
+	const std::size_t half_size = order / 2;
+
+	const std::size_t r = (order + 1) / 2;
+	assert(n_ghost_cells >= r);
+	// const std::size_t n_ghost_cells = (stencil_size + 1) / 2;
+	const std::size_t mini = n_ghost_cells;
+	// const std::size_t maxi = n_ghost_cells + n_size - 1;
+	const std::size_t maxi = std::ranges::size(
+				numerical_flux) - n_ghost_cells - 1;
+	// auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 1};
+	auto shifted_index_range = std::ranges::common_view(
+				std::views::iota(mini - 1)
+					| std::views::take(maxi + 1 - (mini - 1)/* + 1*/));
+	VT fhatminus = static_cast<VT>(0.);
+	VT fhatplus = static_cast<VT>(0.);
+
+	auto j_it_q = std::ranges::begin(u);
+	auto j_it_f = std::ranges::begin(flux);
+
+	std::advance(j_it_q, mini - 1 + half_size + 1 - stencil_size);
+	std::advance(j_it_f, mini - 1 + half_size + 1 - stencil_size);
+	auto f_stencil = std::ranges::views::counted(j_it_f,
+												 _actual_stencil_size);
+	auto q_stencil = std::ranges::views::counted(j_it_q,
+												 _actual_stencil_size);
+
+	std::valarray<VT> u_plus(_actual_stencil_size);
+	std::valarray<VT> u_minus(_actual_stencil_size);
+
+	auto components = {
+		std::make_pair(0, &Vector4<T>::x),
+		std::make_pair(1, &Vector4<T>::y),
+		std::make_pair(2, &Vector4<T>::z)
+//		&Vector4<T>::w
+	};
+
+	short which_stencil_pl;
+	short which_stencil_mn;
+
+	std::for_each(
+				std::execution::par_unseq,
+				std::ranges::begin(shifted_index_range),
+				std::ranges::end(shifted_index_range),
+				[&](std::size_t j) {
+		j_it_q = std::ranges::begin(u);
+		j_it_f = std::ranges::begin(flux);
+		std::advance(j_it_q, j + half_size + 1 - stencil_size);
+		q_stencil = std::ranges::views::counted(j_it_q,
+												_actual_stencil_size);
+
+		std::advance(j_it_f, j + half_size + 1 - stencil_size);
+		f_stencil = std::ranges::views::counted(j_it_f,
+												_actual_stencil_size);
+
+		auto proj_u_j = [j, &q_avg, &project](auto u) -> decltype(u) {
+			const auto q = q_avg[j];
+			return project(q, u);
+		};
+
+		for (std::size_t k = 0; k < _actual_stencil_size; ++ k)
+			u_plus[k] = (proj_u_j(f_stencil[k])
+					+ /*1.1 * */alpha * proj_u_j(q_stencil[k])) * 0.5;
+
+		for (std::size_t k = 0; k < _actual_stencil_size; ++ k)
+			u_minus[k] = (proj_u_j(f_stencil[_actual_stencil_size - k - 1])
+					- /*1.1 * */alpha * proj_u_j(
+						q_stencil[_actual_stencil_size - k - 1])) * 0.5;
+
+		for (auto& comp : components) {
+			which_stencil_pl = chooseENO3Stencil<T>(
+							std::ranges::views::counted(
+								std::ranges::begin(u_plus), order)
+						| std::ranges::views::transform(
+							comp.second)
+							);
+			fhatplus[comp.first] = computeENO3ReconstructionKernel<T>(
+				std::ranges::views::counted(
+							std::ranges::begin(u_plus), order)
+						| std::ranges::views::transform(
+							comp.second), which_stencil_pl
+			);
+
+			which_stencil_mn = chooseENO3Stencil<T>(
+							std::ranges::views::counted(
+								std::ranges::begin(u_minus), order)
+						| std::ranges::views::transform(
+							comp.second)
+							);
+			fhatminus[comp.first] = computeENO3ReconstructionKernel<T>(
+				std::ranges::views::counted(
+							std::ranges::begin(u_minus), order)
+						| std::ranges::views::transform(
+							comp.second), which_stencil_mn
+			);
+		}
+
+		numerical_flux[j] = fhatplus + fhatminus;
+	});
+}
+
+
+template <ArithmeticWith<numeric_val> T, ArithmeticWith<numeric_val> VT>
+void calcHydroStageCharWiseFDENO2(
+		const std::ranges::common_range auto&& u,
+		const std::ranges::common_range auto&& q_avg,
+		const std::ranges::common_range auto&& flux,
+		std::ranges::common_range auto&& numerical_flux,
+		T t,
+		auto&& project,
+//		auto&& deproject,
+		T alpha,
+		std::size_t n_ghost_cells = 2) {
+	const unsigned order = 2;
+	const std::size_t stencil_size = 3;
+	const std::size_t _actual_stencil_size = stencil_size + 1;
+	const std::size_t half_size = order / 2;  // 1
+
+	const std::size_t r = (order + 1) / 2;  // 1
+	assert(n_ghost_cells > r);
+	// const std::size_t n_ghost_cells = (stencil_size + 1) / 2;
+	const std::size_t mini = n_ghost_cells;
+	// const std::size_t maxi = n_ghost_cells + n_size - 1;
+	const std::size_t maxi = std::ranges::size(
+				numerical_flux) - n_ghost_cells - 1;
+	// auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 1};
+	auto shifted_index_range = std::ranges::common_view(
+				std::views::iota(mini - 1)
+					| std::views::take(maxi + 1 - (mini - 1)/* + 1*/));
+	VT fhatminus = static_cast<VT>(0.);
+	VT fhatplus = static_cast<VT>(0.);
+
+	auto j_it_q = std::ranges::begin(u);
+	auto j_it_f = std::ranges::begin(flux);
+
+	std::advance(j_it_q, mini - 1 + half_size + 1 - stencil_size);
+	std::advance(j_it_f, mini - 1 + half_size + 1 - stencil_size);
+	auto f_stencil = std::ranges::views::counted(j_it_f,
+												 _actual_stencil_size);
+	auto q_stencil = std::ranges::views::counted(j_it_q,
+												 _actual_stencil_size);
+
+	std::valarray<VT> u_plus(_actual_stencil_size);
+	std::valarray<VT> u_minus(_actual_stencil_size);
+
+	auto components = {
+		std::make_pair(0, &Vector4<T>::x),
+		std::make_pair(1, &Vector4<T>::y),
+		std::make_pair(2, &Vector4<T>::z)
+//		&Vector4<T>::w
+	};
+
+	bool which_stencil_pl;
+	bool which_stencil_mn;
+
+	std::for_each(
+				std::execution::par_unseq,
+				std::ranges::begin(shifted_index_range),
+				std::ranges::end(shifted_index_range),
+				[&](std::size_t j) {
+		j_it_q = std::ranges::begin(u);
+		j_it_f = std::ranges::begin(flux);
+		std::advance(j_it_q, j + half_size + 1 - stencil_size);
+		q_stencil = std::ranges::views::counted(j_it_q,
+												_actual_stencil_size);
+
+		std::advance(j_it_f, j + half_size + 1 - stencil_size);
+		f_stencil = std::ranges::views::counted(j_it_f,
+												_actual_stencil_size);
+
+		auto proj_u_j = [j, &q_avg, &project](auto u) -> decltype(u) {
+			const auto q = q_avg[j];
+			return project(q, u);
+		};
+
+		for (std::size_t k = 0; k < _actual_stencil_size; ++ k)
+			u_plus[k] = (proj_u_j(f_stencil[k])
+					+ /*1.1 * */alpha * proj_u_j(q_stencil[k])) * 0.5;
+
+		for (std::size_t k = 0; k < _actual_stencil_size; ++ k)
+			u_minus[k] = (proj_u_j(f_stencil[_actual_stencil_size - k - 1])
+					- /*1.1 * */alpha * proj_u_j(
+						q_stencil[_actual_stencil_size - k - 1])) * 0.5;
+
+		for (auto& comp : components) {
+			which_stencil_pl = chooseENO2Stencil<T>(
+							std::ranges::views::counted(
+								std::ranges::begin(u_plus), stencil_size)
+						| std::ranges::views::transform(
+							comp.second)
+							);
+			fhatplus[comp.first] = computeENO2ReconstructionKernel<T>(
+				std::ranges::views::counted(
+							std::ranges::begin(u_plus), stencil_size)
+						| std::ranges::views::transform(
+							comp.second), which_stencil_pl
+			);
+
+			which_stencil_mn = chooseENO2Stencil<T>(
+							std::ranges::views::counted(
+								std::ranges::begin(u_minus), stencil_size)
+						| std::ranges::views::transform(
+							comp.second)
+							);
+			fhatminus[comp.first] = computeENO2ReconstructionKernel<T>(
+				std::ranges::views::counted(
+							std::ranges::begin(u_minus), stencil_size)
+						| std::ranges::views::transform(
+							comp.second), /*1 - */which_stencil_mn
+			);
+		}
+
+		numerical_flux[j] = fhatplus + fhatminus;
+	});
+}
+
+
+template <ArithmeticWith<numeric_val> T, ArithmeticWith<numeric_val> VT,
+			std::size_t N=5>
+void calcHydroStageCharWiseFDMPENO3(
+		const std::ranges::common_range auto&& u,
+		const std::ranges::common_range auto&& q_avg,
+		const std::ranges::common_range auto&& flux,
+		std::ranges::common_range auto&& numerical_flux,
+		T t,
+		auto&& project,
+//		auto&& deproject,
+		T alpha,
+		std::size_t n_ghost_cells = (N + 1) / 2) {
+	const unsigned order = N;
+	const std::size_t stencil_size = order;
+	const std::size_t _actual_stencil_size = stencil_size + 1;
+	const std::size_t half_size = order / 2;
+
+	const std::size_t r = (order + 1) / 2;
+	assert(n_ghost_cells >= r);
+	// const std::size_t n_ghost_cells = (stencil_size + 1) / 2;
+	const std::size_t mini = n_ghost_cells;
+	// const std::size_t maxi = n_ghost_cells + n_size - 1;
+	const std::size_t maxi = std::ranges::size(
+				numerical_flux) - n_ghost_cells - 1;
+	// auto shifted_index_range = std::ranges::iota_view{mini - 1, maxi + 1};
+	auto shifted_index_range = std::ranges::common_view(
+				std::views::iota(mini - 1)
+					| std::views::take(maxi + 1 - (mini - 1)/* + 1*/));
+	VT fhatminus = static_cast<VT>(0.);
+	VT fhatplus = static_cast<VT>(0.);
+
+	auto j_it_q = std::ranges::begin(u);
+	auto j_it_f = std::ranges::begin(flux);
+
+	std::advance(j_it_q, mini - 1 + half_size + 1 - stencil_size);
+	std::advance(j_it_f, mini - 1 + half_size + 1 - stencil_size);
+	auto f_stencil = std::ranges::views::counted(j_it_f,
+												 _actual_stencil_size);
+	auto q_stencil = std::ranges::views::counted(j_it_q,
+												 _actual_stencil_size);
+
+	std::valarray<VT> u_plus(_actual_stencil_size);
+	std::valarray<VT> u_minus(_actual_stencil_size);
+
+	auto components = {
+		std::make_pair(0, &Vector4<T>::x),
+		std::make_pair(1, &Vector4<T>::y),
+		std::make_pair(2, &Vector4<T>::z)
+//		&Vector4<T>::w
+	};
+
+	short which_stencil_pl;
+	short which_stencil_mn;
+
+	std::for_each(
+				std::execution::par_unseq,
+				std::ranges::begin(shifted_index_range),
+				std::ranges::end(shifted_index_range),
+				[&](std::size_t j) {
+		j_it_q = std::ranges::begin(u);
+		j_it_f = std::ranges::begin(flux);
+		std::advance(j_it_q, j + half_size + 1 - stencil_size);
+		q_stencil = std::ranges::views::counted(j_it_q,
+												_actual_stencil_size);
+
+		std::advance(j_it_f, j + half_size + 1 - stencil_size);
+		f_stencil = std::ranges::views::counted(j_it_f,
+												_actual_stencil_size);
+
+		auto proj_u_j = [j, &q_avg, &project](auto u) -> decltype(u) {
+			const auto q = q_avg[j];
+			return project(q, u);
+		};
+
+		for (std::size_t k = 0; k < _actual_stencil_size; ++ k)
+			u_plus[k] = (proj_u_j(f_stencil[k])
+					+ /*1.1 * */alpha * proj_u_j(q_stencil[k])) * 0.5;
+
+		for (std::size_t k = 0; k < _actual_stencil_size; ++ k)
+			u_minus[k] = (proj_u_j(f_stencil[_actual_stencil_size - k - 1])
+					- /*1.1 * */alpha * proj_u_j(
+						q_stencil[_actual_stencil_size - k - 1])) * 0.5;
+
+		for (auto& comp : components) {
+			which_stencil_pl = chooseENO3Stencil<T>(
+							std::ranges::views::counted(
+								std::ranges::begin(u_plus), order)
+						| std::ranges::views::transform(
+							comp.second)
+							);
+			fhatplus[comp.first] = computeENO3ReconstructionKernel<T>(
+				std::ranges::views::counted(
+							std::ranges::begin(u_plus), order)
+						| std::ranges::views::transform(
+							comp.second), which_stencil_pl
+			);
+			fhatplus[comp.first] = MPLimiterMM(
+						u_plus[stencil_size / 2 - 1][comp.first],
+						u_plus[stencil_size / 2 + 0][comp.first],
+						u_plus[stencil_size / 2 + 1][comp.first],
+						u_plus[stencil_size / 2 + 2][comp.first],
+						fhatplus[comp.first]);
+
+			which_stencil_mn = chooseENO3Stencil<T>(
+							std::ranges::views::counted(
+								std::ranges::begin(u_minus), order)
+						| std::ranges::views::transform(
+							comp.second)
+							);
+			fhatminus[comp.first] = computeENO3ReconstructionKernel<T>(
+				std::ranges::views::counted(
+							std::ranges::begin(u_minus), order)
+						| std::ranges::views::transform(
+							comp.second), which_stencil_mn
+			);
+			fhatminus[comp.first] = MPLimiterMM(
+						u_minus[stencil_size / 2 - 1][comp.first],
+						u_minus[stencil_size / 2 + 0][comp.first],
+						u_minus[stencil_size / 2 + 1][comp.first],
+						u_minus[stencil_size / 2 + 2][comp.first],
+						fhatminus[comp.first]);
+		}
+
+		numerical_flux[j] = fhatplus + fhatminus;
+	});
 }
 
 #endif // ENO3_H
