@@ -88,7 +88,7 @@ p = []
 s = []
 
 #with open('res.dat', 'r') as datafile:
-    #plotting = csv.reader(datafile, delimiter=' ')
+	#plotting = csv.reader(datafile, delimiter=' ')
 
     #for ROWS in plotting:
         #x.append(float(ROWS[0]))
@@ -96,7 +96,7 @@ s = []
         #u.append(float(ROWS[2]))
         #p.append(float(ROWS[3]))
         #s.append(float(ROWS[4]))
-n = 101
+n = 1001
 # filename = f'./data/laser_prob/SSPERK-3_3-ChW-FD-ENO2-LF-CFL-0.2/res_n_{n}.dat'
 # filename = f'./data/laser_prob/SSPERK-3_3-ChW-FD-WENO5-FM-eps-1e-40-LF-CFL-0.2/res_n_{n}.dat'
 # filename = f'./data/laser_prob/SSPERK-3_3-ChW-FD-MP-WENO5-FM-eps-1e-40-LF-CFL-0.2/res_n_{n}.dat'
@@ -106,7 +106,15 @@ n = 101
 # filename = f'./data/laser_prob/SSPERK-3_3-ChW-FD-MP-WENO7-S-eps-1e-100-LF-CFL-0.2/res_n_{n}.dat'
 # filename = f'./data/laser_prob/SSPERK-3_3-ChW-FD-MP-M4X-WENO7-S-eps-1e-100-LF-CFL-0.2/res_n_{n}.dat'
 # filename = f'./data/laser_prob/24.12.2022/SSPERK-3_3-ChW-FD-ENO3-LF-CFL-0.2/res_n_{n}.dat'
-filename = f'./data/prVTAlMGTestArt1-1nm/LLF-1alpha-MP-WENO11-SM-ChW/res_n_{n}.dat'
+# filename = f'./data/prVTAlMGTestArt1-1nm/LLF-1alpha-MP-WENO11-SM-ChW/res_n_{n}.dat'
+# filename = f'./data/laser_article/HighGradientLaserStepProblem/res_n_{n}.dat'
+# filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDWENO5FM/res_n_{n}.dat'
+# filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO5FM/res_n_{n}.dat'
+filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO5FIM/res_n_{n}.dat'
+# filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO7S/res_n_{n}.dat'
+# filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO9S/res_n_{n}.dat'
+# filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO11S/res_n_{n}.dat'
+# filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO11SM/res_n_{n}.dat'
 df = pd.read_csv(filename,
                  skiprows = 3, sep=' ',
                  names = ['x', 'rho', 'u', 'p', 'e'])
@@ -275,9 +283,9 @@ plt.savefig(filename[:-4] + '.svg', format='svg', transparent=True, dpi=200)
 plt.show();
 
 
-plt.plot(x, rho)
+plt.plot(x, p)
 plt.grid(True, ls=':')
 plt.gcf().set_size_inches(20, 10)
 plt.tight_layout()
-plt.savefig(filename[:-4] + '_rho.svg', format='svg', transparent=True, dpi=200)
+plt.savefig(filename[:-4] + '_p.svg', format='svg', transparent=True, dpi=200)
 plt.show();

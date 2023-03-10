@@ -372,7 +372,7 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO9(
 		T t, const std::ranges::common_range auto& lam,
 		std::size_t ghost_point_number = 5,
 		T gamma = 1.4,
-		T eps = 1e-40,
+		T eps = 1e-100,
 		T p = 2.) {
 //	const std::size_t n_size = std::ranges::size(u)
 //			- 2 * ghost_point_number;
@@ -404,6 +404,27 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO9(
 //		return projectOntoCharacteristicsRoe<T>(left, right, vec);
 //	};
 
+//	calcHydroStageCharWiseFDMPWENO5FM<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, t,
+//				project, /*deproject,*/ lam[0],
+//				ghost_point_number, eps, p);
+//	calcHydroStageCharWiseFDWENO5FIM<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, t,
+//				project, /*deproject,*/ lam[0],
+//				ghost_point_number, eps, p);
+//	calcHydroStageCharWiseFDMPWENO5FIM<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, t,
+//				project, /*deproject,*/ lam[0],
+//				ghost_point_number, eps, p);
 //	calcHydroStageCharWiseFDWENO9FM<T, Vector4<T>>(
 //				std::ranges::views::all(u),
 //				std::ranges::views::all(avg),
@@ -411,21 +432,41 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO9(
 //				res, t,
 //				project, lam[0],
 //				ghost_point_number, eps, p);
-//	calcHydroStageCharWiseFDMPWENO9SM<T, Vector4<T>>(
+//	calcHydroStageCharWiseFDMPWENO7S<T, Vector4<T>>(
 //				std::ranges::views::all(u),
 //				std::ranges::views::all(avg),
 //				std::ranges::views::all(flux),
 //				res, t,
 //				project, lam[0],
 //				ghost_point_number, eps, p);
-
-	calcHydroStageCharWiseFDMPWENO11SM<T, Vector4<T>>(
+//	calcHydroStageCharWiseFDMPWENO9S<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, t,
+//				project, lam[0],
+//				ghost_point_number, eps, p);
+	calcHydroStageCharWiseFDMPWENO9SM<T, Vector4<T>>(
 				std::ranges::views::all(u),
 				std::ranges::views::all(avg),
 				std::ranges::views::all(flux),
 				res, t,
 				project, lam[0],
 				ghost_point_number, eps, p);
+//	calcHydroStageCharWiseFDMPWENO11SM<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, t,
+//				project, lam[0],
+//				ghost_point_number, eps, p);
+//	calcHydroStageCharWiseFDMPWENO11S<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, t,
+//				project, lam[0],
+//				ghost_point_number, eps, p);
 
 	std::transform(
 //				std::execution::par_unseq,
@@ -1069,227 +1110,231 @@ void addEmptySource(auto& u, auto& flux, auto&& x) {
 }
 
 
-//template <ArithmeticWith<numeric_val> T>
-//void prepareHighGradientLaserProblem(
-//	std::ranges::common_range auto& u_init,
-//	std::ranges::common_range auto& x,
-//	std::function<Vector4<T>(Vector4<T>)> primitiveToConservativeU,
-//	T q0 = 1000., T q1 = 1050., T l_min = 0., T l_max = 1250.,
-//	std::size_t n_ghost_points = 5/*, T gamma = 1.4*/
-//) {
-//	/* ... */
+template <ArithmeticWith<numeric_val> T>
+void prepareHighGradientLaserProblem(
+	std::ranges::common_range auto& u_init,
+	std::ranges::common_range auto& x,
+	std::function<Vector4<T>(Vector4<T>)> primitiveToConservativeU,
+	T q0 = 1000.e-9, T q1 = 1050.e-9, T l_min = 0., T l_max = 1250.e-9,
+	std::size_t n_ghost_points = 6/*, T gamma = 1.4*/
+) {
+	/* ... */
 
-//	const std::size_t mesh_size = std::ranges::size(u_init)
-//			- 2 * n_ghost_points;
-//	std::size_t computational_domain_size = mesh_size;
-//	std::size_t full_mesh_size = computational_domain_size
-//		+ 2*n_ghost_points;
-//	T dx = (l_max - l_min) / (mesh_size-1.);  // [L]
+	const std::size_t mesh_size = std::ranges::size(u_init)
+			- 2 * n_ghost_points;
+	std::size_t computational_domain_size = mesh_size;
+	std::size_t full_mesh_size = computational_domain_size
+		+ 2*n_ghost_points;
+	T dx = (l_max - l_min) / (mesh_size-1.);  // [L]
 
-//	x = std::valarray<T>(0., full_mesh_size);
-//	u_init = std::valarray<Vector4<T>>(
-//				Vector4<T>::ZERO,
-//				full_mesh_size);
+	x = std::valarray<T>(0., full_mesh_size);
+	u_init = std::valarray<Vector4<T>>(
+				Vector4<T>::ZERO,
+				full_mesh_size);
 
-//	std::size_t k = 0;
-//	for (k = 0; k < n_ghost_points; ++ k)
-//		x[k] = l_min/* + dx * 0.5*/ - dx * (n_ghost_points - k);
+	std::size_t k = 0;
+	for (k = 0; k < n_ghost_points; ++ k)
+		x[k] = l_min/* + dx * 0.5*/ - dx * (n_ghost_points - k);
 
-//	x[n_ghost_points] = l_min/* + dx * 0.5*/;
-//	for (k = n_ghost_points + 1; k < full_mesh_size; ++ k)
-//		x[k] = x[k-1] + dx;
+	x[n_ghost_points] = l_min/* + dx * 0.5*/;
+	for (k = n_ghost_points + 1; k < full_mesh_size; ++ k)
+		x[k] = x[k-1] + dx;
 
-//	std::size_t x0_index = 0;
-//	while (x[x0_index] < q0)
-//		++ x0_index;
+	std::size_t x0_index = 0;
+	while (x[x0_index] < q0)
+		++ x0_index;
 
-//	Vector4<T> vec(2700., 0., 0., 0.);
-//	vec = primitiveToConservativeU(vec);
-//	for (k = 0; k < x0_index; ++ k) {
-//		u_init[k] = vec;
-//	}
+	Vector4<T> vec(2413., 0., 0., 0.);
+	vec = primitiveToConservativeU(vec);
+	for (k = 0; k < x0_index; ++ k) {
+		u_init[k] = vec;
+	}
 
-//	std::size_t x1_index = x0_index;
-//	while (x[x1_index] < q1 && x1_index < full_mesh_size)
-//		++ x1_index;
+	std::size_t x1_index = x0_index;
+	while (x[x1_index] < q1 && x1_index < full_mesh_size)
+		++ x1_index;
 
-//	vec = Vector4<T>(2700., 0., 300.e9, 0.);
-//	vec = primitiveToConservativeU(vec);
-//	for (k = x0_index; k < x1_index; ++ k) {
-//		u_init[k] = vec;
-//	}
+	vec = Vector4<T>(2413., 0., 35.6e9, 0.);
+	vec = primitiveToConservativeU(vec);
+	for (k = x0_index; k < x1_index; ++ k) {
+		u_init[k] = vec;
+	}
 
-//	vec = Vector4<T>(-100.e-9, 0., 0., 0.);
-//	vec = primitiveToConservativeU(vec);
-//	for (k = x1_index; k < full_mesh_size; ++ k) {
-//		u_init[k] = vec;
-//	}
-//}
+	vec = Vector4<T>(2., 0., 0., 0.);
+	vec = primitiveToConservativeU(vec);
+	for (k = x1_index; k < full_mesh_size; ++ k) {
+		u_init[k] = vec;
+	}
+}
 
 
+template <ArithmeticWith<numeric_val> T>
+std::valarray<Vector4<T>> solve1DHighGradientLaserProblem(
+	std::ranges::common_range auto& u_init,
+	std::ranges::common_range auto& x,
+	std::function<Vector4<T>(Vector4<T>/*, T*/)> primitiveToConservativeU,
+	std::size_t ghost_point_number = 6, T cfl = 0.4, T t_max = 1.e-12,
+	T gamma = 1.4,
+	T q0 = 1000.e-9, T q1 = 1050.e-9, T t0 = 0.,
+	T l_min = 0., T l_max = 1250.e-9
+) {
+	/* ... */
 
-//template <ArithmeticWith<numeric_val> T>
-//std::valarray<Vector4<T>> solve1DHighGradientLaserProblem(
-//	std::ranges::common_range auto& u_init,
-//	std::ranges::common_range auto& x,
-//	std::function<Vector4<T>(Vector4<T>, T)> primitiveToConservativeU,
-//	std::size_t ghost_point_number = 4, T cfl = 0.4, T t_max = 0.1,
-//	T gamma = 1.4,
-//	T q0 = 1000., T q1 = 1050., T t0 = 0.,
-//	T l_min = 0., T l_max = 1250.
-//) {
-//	/* ... */
+	const std::size_t mesh_size = std::ranges::size(u_init)
+			- 2 * ghost_point_number;
 
-//	const std::size_t mesh_size = std::ranges::size(u_init)
-//			- 2 * ghost_point_number;
+	prepareHighGradientLaserProblem<T>(
+		u_init, x, primitiveToConservativeU,
+		q0, q1, l_min, l_max, ghost_point_number
+	);
 
-//	prepareHighGradientLaserProblem<T>(
-//		u_init, x, primitiveToConservativeU,
-//		q0, q1, l_min, l_max, mesh_size
-//	);
+	std::valarray<Vector4<T>> flux(Vector4<T>::ZERO,
+		std::ranges::size(u_init));
 
-//	std::valarray<Vector4<T>> flux(Vector4<T>::ZERO,
-//		std::ranges::size(u_init));
-
-//	auto calcdSpace = [gamma, ghost_point_number](
-//			std::valarray<Vector4<T>>& u,
-//			T t, T dx, const std::valarray<T>& max_eigenvalues,
-//			std::size_t n_size) {
-//		return calcdSpaceEu1D<T>(
-//			u, t, dx, max_eigenvalues, ghost_point_number,
-//			[gamma, ghost_point_number](
-//					const std::valarray<Vector4<T>>& u,
-//					T t, const std::valarray<T>& lam,
-//					std::size_t n_size,
-//					T eps = 1e-40, T p = 2.) {
-////				return calcFluxComponentWiseFDWENO5<T>(
-////					u, t, lam, ghost_point_number, gamma, eps, p);
-////					return calcFluxComponentWiseFVWENO5<T>(
-////						u, t, lam, n_size, gamma, eps, p);
+	auto calcdSpace = [gamma, ghost_point_number](
+			std::valarray<Vector4<T>>& u,
+			T t, T dx, const std::valarray<T>& max_eigenvalues,
+			std::size_t n_size) {
+		return calcdSpaceEu1D<T>(
+			u, t, dx, max_eigenvalues, ghost_point_number,
+			[gamma, ghost_point_number, dx](
+					const std::valarray<Vector4<T>>& u,
+					T t, const std::valarray<T>& lam,
+					std::size_t n_size,
+					T eps = 1e-100, T p = 2.) {
+//				return calcFluxComponentWiseFDWENO5<T>(
+//					u, t, lam, ghost_point_number, gamma, eps, p);
+//				return calcFluxComponentWiseFVWENO5<T>(
+//					u, t, lam, ghost_point_number, gamma, eps, p);
 //				return calcFluxCharacteristicWiseFDWENO5<T>(
 //					u, t, lam, ghost_point_number, gamma, eps, p);
-////				return calcFluxCharacteristicWiseFDWENO7<T>(
-////					u, t, lam, ghost_point_number, gamma, eps, 3.);
-////					return calcFluxComponentWiseFVENO3<T>(
-////						u, t, lam, n_size, gamma);
-//			},
-//			[](
-//					const std::valarray<Vector4<T>>& u,
-//					std::valarray<Vector4<T>>& f,
-//					std::valarray<Vector4<T>>&& x = {}) {
-//				addEmptySource<T>(u, f, x);
-//			},
-//			1e-100, 2.
-//		);
-//	};
+//				T dt = 0.00054;
+//				return calcFluxCharacteristicWiseFDWENO7<T>(
+//					u, t, lam, ghost_point_number, gamma, eps, p);
+				return calcFluxCharacteristicWiseFDWENO9<T>(
+					u, t, lam, ghost_point_number, gamma, eps, p);
+//				return calcFluxCharacteristicWiseFDENO3<T>(
+//					u, t, lam, ghost_point_number, gamma, eps, p);
+//				return calcFluxComponentWiseFVENO3<T>(
+//					u, t, lam, n_size, gamma);
+			},
+			[](
+					const std::valarray<Vector4<T>>& u,
+					std::valarray<Vector4<T>>& f,
+					std::valarray<Vector4<T>>&& x = {}) {
+				addEmptySource<T>(u, f, x);
+			},
+			1e-100, 2.
+		);
+	};
 
-//	auto updateGhostPoints = [ghost_point_number](
-//			std::valarray<Vector4<T>>& u) {
-//		updateGhostPointsTransmissive(u, ghost_point_number);
-//		// updateGhostPointsPeriodic(u);
-//	};
+	auto updateGhostPoints = [ghost_point_number](
+			std::valarray<Vector4<T>>& u) {
+		updateGhostPointsTransmissive(u, ghost_point_number);
+		// updateGhostPointsPeriodic(u);
+	};
 
-//	integrateRiemannProblem<T>(u_init, flux,
-//		t0, (l_max-l_min) / (mesh_size-1.), mesh_size, t_max,
-//	   [&calcdSpace, &updateGhostPoints](
-//		   std::valarray<Vector4<T>>& u,
-//		   std::valarray<Vector4<T>>& dflux,
-//		   std::array<
-//			   std::reference_wrapper<std::valarray<Vector4<T>>
-//		   >, 28>& fluxes,
-//		   T t, T dt, T dx,
-//		   const std::valarray<T>& lam,
-//		   std::size_t n_ghost_points = 5
-//	   ) {
-//		   /*advanceTimestepSSPRK10_4<T>(
-//			   u, dflux, fluxes[0].get(),
-//			   t, dt, dx, lam, n_size,
-//			   calcdSpace, updateGhostPoints);*/
-////			advanceTimestepTVDRK3<T>(
-////				u, dflux, fluxes[3].get(),
-////				fluxes[0].get(), fluxes[1].get(),
-////				t, dt, dx, lam, n_ghost_points,
-////				calcdSpace, updateGhostPoints);
-////			advanceTimestepRK6_5<T>(
-////				u,
-////				dflux,
-////				fluxes[0].get(), fluxes[1].get(),
-////				fluxes[2].get(), fluxes[3].get(),
-////				fluxes[4].get(), fluxes[5].get(),
-////				fluxes[6].get(), fluxes[7].get(),
-////				fluxes[8].get(), fluxes[9].get(),
-////				t, dt, dx, lam,
-////				n_ghost_points, calcdSpace, updateGhostPoints);
-////			advanceTimestep_eBDF5<T>(
-////				u, dflux,
-////				fluxes[0].get(), fluxes[1].get(),
-////				fluxes[2].get(), fluxes[3].get(),
-////				fluxes[4].get(), fluxes[5].get(),
-////				fluxes[6].get(), fluxes[7].get(),
-////				fluxes[8].get(),
-////				t, dt, dx, lam,
-////				n_ghost_points, calcdSpace, updateGhostPoints);
-//		   std::array<std::reference_wrapper<
-//				   std::valarray<Vector4<T>>>, 13> us = {
-//			   fluxes[2],
-//			   fluxes[4],
-//			   fluxes[6],
-//			   fluxes[8],
-//			   fluxes[10],
-//			   fluxes[12],
-//			   fluxes[14],
-//			   fluxes[16],
-//			   fluxes[18],
-//			   fluxes[20],
-//			   fluxes[22],
-//			   fluxes[24],
-//			   fluxes[26]
-//		   };
-//		   std::array<std::reference_wrapper<
-//				   std::valarray<Vector4<T>>>, 13> fs = {
-//			   fluxes[3],
-//			   fluxes[5],
-//			   fluxes[7],
-//			   fluxes[9],
-//			   fluxes[11],
-//			   fluxes[13],
-//			   fluxes[15],
-//			   fluxes[17],
-//			   fluxes[19],
-//			   fluxes[21],
-//			   fluxes[23],
-//			   fluxes[25],
-//			   fluxes[27]
-//		   };
-//		   advanceTimestepSSPTSERK12_8(
-//			   u, fluxes[0].get(), dflux,
-//			   us, fs,
-//			   t, dt, dx, lam,
-//			   n_ghost_points, calcdSpace, updateGhostPoints);
-//		   /*EulerForward<T>(
-//			   u, dflux,
-//			   t, dt, dx, lam, n_ghost_points,
-//			   calcdSpace, updateGhostPoints);*/
-//	   },
-//	   [&calcdSpace, &updateGhostPoints](
-//		   std::valarray<Vector4<T>>& u,
-//		   std::valarray<Vector4<T>>& dflux,
-//		   std::array<
-//			   std::reference_wrapper<std::valarray<Vector4<T>>
-//		   >, 28>& fluxes,
-//		   T t, T dt, T dx,
-//		   const std::valarray<T>& lam,
-//		   std::size_t n_ghost_points = 5
-//	   ) {
-//		   advanceTimestepTVDRK3<T>(
-//			   u, dflux, fluxes[10].get(),
-//			   fluxes[8].get(), fluxes[9].get(),
-//			   t, dt, dx, lam, n_ghost_points,
-//			   calcdSpace, updateGhostPoints);
-//	   }, cfl);
+	integrateRiemannProblem<T>(u_init, flux,
+		t0, (l_max-l_min) / (mesh_size-1.), mesh_size, t_max,
+	   [&calcdSpace, &updateGhostPoints](
+		   std::valarray<Vector4<T>>& u,
+		   std::valarray<Vector4<T>>& dflux,
+		   std::array<
+			   std::reference_wrapper<std::valarray<Vector4<T>>
+		   >, 28>& fluxes,
+		   T t, T dt, T dx,
+		   const std::valarray<T>& lam,
+		   std::size_t n_ghost_points = 6
+	   ) {
+		   /*advanceTimestepSSPRK10_4<T>(
+			   u, dflux, fluxes[0].get(),
+			   t, dt, dx, lam, n_size,
+			   calcdSpace, updateGhostPoints);*/
+//			advanceTimestepTVDRK3<T>(
+//				u, dflux, fluxes[3].get(),
+//				fluxes[0].get(), fluxes[1].get(),
+//				t, dt, dx, lam, n_ghost_points,
+//				calcdSpace, updateGhostPoints);
+//			advanceTimestepRK6_5<T>(
+//				u,
+//				dflux,
+//				fluxes[0].get(), fluxes[1].get(),
+//				fluxes[2].get(), fluxes[3].get(),
+//				fluxes[4].get(), fluxes[5].get(),
+//				fluxes[6].get(), fluxes[7].get(),
+//				fluxes[8].get(), fluxes[9].get(),
+//				t, dt, dx, lam,
+//				n_ghost_points, calcdSpace, updateGhostPoints);
+//			advanceTimestep_eBDF5<T>(
+//				u, dflux,
+//				fluxes[0].get(), fluxes[1].get(),
+//				fluxes[2].get(), fluxes[3].get(),
+//				fluxes[4].get(), fluxes[5].get(),
+//				fluxes[6].get(), fluxes[7].get(),
+//				fluxes[8].get(),
+//				t, dt, dx, lam,
+//				n_ghost_points, calcdSpace, updateGhostPoints);
+		   std::array<std::reference_wrapper<
+				   std::valarray<Vector4<T>>>, 13> us = {
+			   fluxes[2],
+			   fluxes[4],
+			   fluxes[6],
+			   fluxes[8],
+			   fluxes[10],
+			   fluxes[12],
+			   fluxes[14],
+			   fluxes[16],
+			   fluxes[18],
+			   fluxes[20],
+			   fluxes[22],
+			   fluxes[24],
+			   fluxes[26]
+		   };
+		   std::array<std::reference_wrapper<
+				   std::valarray<Vector4<T>>>, 13> fs = {
+			   fluxes[3],
+			   fluxes[5],
+			   fluxes[7],
+			   fluxes[9],
+			   fluxes[11],
+			   fluxes[13],
+			   fluxes[15],
+			   fluxes[17],
+			   fluxes[19],
+			   fluxes[21],
+			   fluxes[23],
+			   fluxes[25],
+			   fluxes[27]
+		   };
+		   advanceTimestepSSPTSERK12_8(
+			   u, fluxes[0].get(), dflux,
+			   us, fs,
+			   t, dt, dx, lam,
+			   n_ghost_points, calcdSpace, updateGhostPoints);
+		   /*EulerForward<T>(
+			   u, dflux,
+			   t, dt, dx, lam, n_ghost_points,
+			   calcdSpace, updateGhostPoints);*/
+	   },
+	   [&calcdSpace, &updateGhostPoints](
+		   std::valarray<Vector4<T>>& u,
+		   std::valarray<Vector4<T>>& dflux,
+		   std::array<
+			   std::reference_wrapper<std::valarray<Vector4<T>>
+		   >, 28>& fluxes,
+		   T t, T dt, T dx,
+		   const std::valarray<T>& lam,
+		   std::size_t n_ghost_points = 6
+	   ) {
+		   advanceTimestepTVDRK3<T>(
+			   u, dflux, fluxes[10].get(),
+			   fluxes[8].get(), fluxes[9].get(),
+			   t, dt, dx, lam, n_ghost_points,
+			   calcdSpace, updateGhostPoints);
+	   }, cfl);
 
-//	return u_init;
-//}
+	return u_init;
+}
 
 
 template <ArithmeticWith<numeric_val> T>

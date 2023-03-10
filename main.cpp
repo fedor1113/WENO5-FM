@@ -202,7 +202,7 @@ int main(int argc, char **argv) {
 //			2001, 2501, 5001,
 //			10001}) {
 //		 : {21, 41, 81, 161, 321, 641}) {
-		 : {101/*401*/}) {
+		 : {201, 301, 401, 1001/*1001*//*401*/}) {
 //		 : {1001}) {
 //		 : {26, 51, 101, 201, 401, 801/*, 1601, 3206*/}) {
 //		 : {50, 100, 200, 400, 800, 1600/*, 3200, 6400*/}) {
@@ -251,14 +251,14 @@ int main(int argc, char **argv) {
 //			t, tfinal, -100.e-9, 0.,
 //			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
 //		);  // vtAl1MG-1nm-hll
-		tfinal = 2.e-12;
+		/*tfinal = 2.e-12;
 		solve1DRiemannProblemForEulerEq<numeric_val>(
 			u_res, x, gamma,
 			2413., 0., 0.,
 			2413., 0., 35.6e9, -80.e-9,
 			t, tfinal, -100.e-9, -60.e-9,
 			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
-		);  // hot-cold Al interaction
+		);*/  // hot-cold Al interaction
 		// "x[nm]","ro[kg/m3]","u[m/s]","p[GPa]","e[MJ/kg]"
 //		tfinal = 0.12;
 //		solve1DRiemannProblemForEulerEq<numeric_val>(
@@ -349,14 +349,20 @@ int main(int argc, char **argv) {
 //			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
 //		);  // Toro-5
 
-//		solve1DHighGradientLaserProblem<numeric_val>(
-//			u_res,
-//			x,
-//			primitiveToConservativeU<numeric_val>,
-//			Nx,
-//			cfl,
-//			tfinal
-//		);
+		tfinal = 1.e-12;
+		cfl = 1.;
+		solve1DHighGradientLaserProblem<numeric_val>(
+			u_res,
+			x,
+			primitiveToConservativeU<numeric_val>,
+			N_ghost_points,
+			cfl,
+			tfinal,
+			1.4,
+			1000.e-9, 1050.e-9,
+			0.,
+			/*0.*/800.e-9, 1250.e-9
+		);
 
 //		solve1DDetonationProfileProblem<numeric_val>(
 //					u_res, x,
@@ -384,7 +390,7 @@ int main(int argc, char **argv) {
 
 		std::ofstream outfile;
 
-		std::string folder = "./data/prVTAlMGTestArt1-1nm/LLF-1alpha-MP-WENO11-SM-ChW/";
+		std::string folder = "./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO9SM/";
 //		std::string folder = "./data/toro/toro-5/LF-WENO5-JS-ChW/";
 
 		std::string filepath = folder
