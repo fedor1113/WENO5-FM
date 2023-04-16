@@ -202,7 +202,8 @@ int main(int argc, char **argv) {
 //			2001, 2501, 5001,
 //			10001}) {
 //		 : {21, 41, 81, 161, 321, 641}) {
-		 : {201, 301, 401, 1001/*1001*//*401*/}) {
+//		 : {100/*, 301, 401, 1001*//*1001*//*401*/}) {
+		 : {50, 100, 200, 400, 800, 1600, 3200, 6400}) {
 //		 : {1001}) {
 //		 : {26, 51, 101, 201, 401, 801/*, 1601, 3206*/}) {
 //		 : {50, 100, 200, 400, 800, 1600/*, 3200, 6400*/}) {
@@ -224,17 +225,20 @@ int main(int argc, char **argv) {
 		std::valarray<numeric_val> x(0., N_full);
 
 		L = 1.;
-//		cfl = 0.2;
+		cfl = 0.4;
 //		cfl = 0.3;
 //		cfl = 0.45;
-//		tfinal = 0.15;
-//		solve1DRiemannProblemForEulerEq<numeric_val>(
-//			u_res, x, gamma,
-//			1., 0., 1.,
-//			0.125, 0., 0.1, 0.5,
-//			t, tfinal, 0., L,
-//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
-//		);  // Sod's problem (expansion-contact-shock)
+		// tfinal = 0.15;
+		// tfinal = 0.2;
+		tfinal = 0.1;
+		solve1DRiemannProblemForEulerEq<numeric_val>(
+			u_res, x, gamma,
+			0.125, 0., 0.1,
+			1., 0., 1.,
+			0.5,
+			t, tfinal, 0., L,
+			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+		);  // Sod's problem (expansion-contact-shock)
 //		tfinal = 0.2;
 //		solve1DRiemannProblemForEulerEq<numeric_val>(
 //			u_res, x, gamma,
@@ -251,14 +255,15 @@ int main(int argc, char **argv) {
 //			t, tfinal, -100.e-9, 0.,
 //			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
 //		);  // vtAl1MG-1nm-hll
-		/*tfinal = 2.e-12;
-		solve1DRiemannProblemForEulerEq<numeric_val>(
-			u_res, x, gamma,
-			2413., 0., 0.,
-			2413., 0., 35.6e9, -80.e-9,
-			t, tfinal, -100.e-9, -60.e-9,
-			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
-		);*/  // hot-cold Al interaction
+//		cfl = 1.;
+//		tfinal = 2.e-12;
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			2413., 0., 0.,
+//			2413., 0., 35.6e9, -80.e-9,
+//			t, tfinal, -100.e-9, -60.e-9,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // hot-cold Al interaction
 		// "x[nm]","ro[kg/m3]","u[m/s]","p[GPa]","e[MJ/kg]"
 //		tfinal = 0.12;
 //		solve1DRiemannProblemForEulerEq<numeric_val>(
@@ -349,20 +354,20 @@ int main(int argc, char **argv) {
 //			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
 //		);  // Toro-5
 
-		tfinal = 1.e-12;
-		cfl = 1.;
-		solve1DHighGradientLaserProblem<numeric_val>(
-			u_res,
-			x,
-			primitiveToConservativeU<numeric_val>,
-			N_ghost_points,
-			cfl,
-			tfinal,
-			1.4,
-			1000.e-9, 1050.e-9,
-			0.,
-			/*0.*/800.e-9, 1250.e-9
-		);
+//		tfinal = 1.e-12;
+//		cfl = 1.;
+//		solve1DHighGradientLaserProblem<numeric_val>(
+//			u_res,
+//			x,
+//			primitiveToConservativeU<numeric_val>,
+//			N_ghost_points,
+//			cfl,
+//			tfinal,
+//			1.4,
+//			1000.e-9, 1050.e-9,
+//			0.,
+//			800.e-9, 1250.e-9
+//		);
 
 //		solve1DDetonationProfileProblem<numeric_val>(
 //					u_res, x,
@@ -390,7 +395,7 @@ int main(int argc, char **argv) {
 
 		std::ofstream outfile;
 
-		std::string folder = "./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO9SM/";
+		std::string folder = "./data/toro/toro-1/LF-FD-TENO5-ChW-ERK6_5-CFL-1/";
 //		std::string folder = "./data/toro/toro-5/LF-WENO5-JS-ChW/";
 
 		std::string filepath = folder
@@ -419,23 +424,23 @@ int main(int argc, char **argv) {
 				Vec4 q = conservativeToPrimitive(u/*, gamma*/);
 				// std::cout << u << "\n";
 
-//				outfile << std::setprecision(
-//							   std::numeric_limits<numeric_val>::max_digits10 - 1)
-//						<< std::scientific
-//						<< x[k] + 0.5 * dx
-//						<< " " << q[0]
-//						<< " " << q[1]
-//						<< " " << q[2]
-//						<< " " << q[3] << "\n";
-				// "x[nm]","ro[kg/m3]","u[m/s]","p[GPa]","e[MJ/kg]"
 				outfile << std::setprecision(
 							   std::numeric_limits<numeric_val>::max_digits10 - 1)
 						<< std::scientific
-						<< (x[k] + 0.5 * dx) * 1.e+9
+						<< x[k] + 0.5 * dx
 						<< " " << q[0]
 						<< " " << q[1]
-						<< " " << q[2] * 1.e-9
-						<< " " << q[3] * 1.e-6 << "\n";
+						<< " " << q[2]
+						<< " " << q[3] << "\n";
+//				// "x[nm]","ro[kg/m3]","u[m/s]","p[GPa]","e[MJ/kg]"
+//				outfile << std::setprecision(
+//							   std::numeric_limits<numeric_val>::max_digits10 - 1)
+//						<< std::scientific
+//						<< (x[k] + 0.5 * dx) * 1.e+9
+//						<< " " << q[0]
+//						<< " " << q[1]
+//						<< " " << q[2] * 1.e-9
+//						<< " " << q[3] * 1.e-6 << "\n";
 
 //				outfile << std::format("{}", x[k])
 //						<< " " << std::format("{}", u) << "\n";

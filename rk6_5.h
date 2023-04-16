@@ -70,7 +70,7 @@ void advanceTimestepRK6_5(
 	updateGhostPoints(L0);
 
 	std::transform(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(U/* | interior_view*/),
 				std::ranges::end(U/* | interior_view*/),
 				std::ranges::begin(L0/* | interior_view*/),
@@ -87,7 +87,7 @@ void advanceTimestepRK6_5(
 		n_size, opts_args...);
 
 	std::for_each(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(iv/* | interior_view*/),
 				std::ranges::end(iv/* | interior_view*/),
 				[dt, &U, &L0, &L1, &Y2](std::size_t k) {
@@ -102,7 +102,7 @@ void advanceTimestepRK6_5(
 		n_size, opts_args...);
 
 	std::for_each(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(iv/* | interior_view*/),
 				std::ranges::end(iv/* | interior_view*/),
 				[dt, &U, &L0, &L1, &L2, &Y3](std::size_t k) {
@@ -119,7 +119,7 @@ void advanceTimestepRK6_5(
 		n_size, opts_args...);
 
 	std::for_each(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(iv/* | interior_view*/),
 				std::ranges::end(iv/* | interior_view*/),
 				[dt, &U, &L0, &L1, &L2, &L3, &Y4](std::size_t k) {
@@ -137,7 +137,7 @@ void advanceTimestepRK6_5(
 		n_size, opts_args...);
 
 	std::for_each(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(iv/* | interior_view*/),
 				std::ranges::end(iv/* | interior_view*/),
 				[dt, &U, &L0, &L1, &L2, &L3, &L4, &Y5](std::size_t k) {
@@ -157,7 +157,7 @@ void advanceTimestepRK6_5(
 		n_size, opts_args...);
 
 	std::for_each(
-				std::execution::par_unseq,
+//				std::execution::par_unseq,
 				std::ranges::begin(iv/* | interior_view*/),
 				std::ranges::end(iv/* | interior_view*/),
 				[dt, &U, &L0, &L1, &L2, &L3, &L4, &L5](std::size_t k) {

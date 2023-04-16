@@ -96,7 +96,7 @@ s = []
         #u.append(float(ROWS[2]))
         #p.append(float(ROWS[3]))
         #s.append(float(ROWS[4]))
-n = 1001
+n = 100
 # filename = f'./data/laser_prob/SSPERK-3_3-ChW-FD-ENO2-LF-CFL-0.2/res_n_{n}.dat'
 # filename = f'./data/laser_prob/SSPERK-3_3-ChW-FD-WENO5-FM-eps-1e-40-LF-CFL-0.2/res_n_{n}.dat'
 # filename = f'./data/laser_prob/SSPERK-3_3-ChW-FD-MP-WENO5-FM-eps-1e-40-LF-CFL-0.2/res_n_{n}.dat'
@@ -110,11 +110,14 @@ n = 1001
 # filename = f'./data/laser_article/HighGradientLaserStepProblem/res_n_{n}.dat'
 # filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDWENO5FM/res_n_{n}.dat'
 # filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO5FM/res_n_{n}.dat'
-filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO5FIM/res_n_{n}.dat'
+# filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO5FIM/res_n_{n}.dat'
 # filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO7S/res_n_{n}.dat'
 # filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO9S/res_n_{n}.dat'
 # filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO11S/res_n_{n}.dat'
 # filename = f'./data/laser_article/HighGradientLaserStepProblem/CharWiseFDMPWENO11SM/res_n_{n}.dat'
+# filename = f'./new/res_n_{n}.dat'
+# filename = f'./new/LF-FD-MP-WENO5-FM-ChW-ERK6_5-CFL-1/res_n_{n}.dat'
+filename = f'./data/toro/toro-1/LF-FD-TENO5-ChW-ERK6_5-CFL-1/res_n_{n}.dat'
 df = pd.read_csv(filename,
                  skiprows = 3, sep=' ',
                  names = ['x', 'rho', 'u', 'p', 'e'])

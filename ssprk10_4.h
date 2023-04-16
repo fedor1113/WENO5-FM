@@ -15,6 +15,7 @@ template<ArithmeticWith<numeric_val> T, typename... Args>
 void advanceTimestepSSPRK10_4(
 		std::ranges::common_range auto& u,
 		std::ranges::common_range auto& dflux,
+		std::ranges::common_range auto& ddflux,
 		std::ranges::common_range auto& u_temp,
 		T t, T dt, T dx,
 		const std::ranges::common_range auto& max_eigenvalues,
@@ -44,18 +45,21 @@ void advanceTimestepSSPRK10_4(
 	const std::size_t n_size = std::ranges::size(u)
 			- 2 * n_ghost_points;
 	dflux.resize(std::ranges::size(u));
+	ddflux.resize(std::ranges::size(u));
 	u_temp = u;
 
 	// ------------------------First Five Stages------------------------
 	// L[u] = (-) dF[u]/dx
+	dflux = calcdSpace(u, t, dx, max_eigenvalues,
+		n_size, opts_args...);
 
 	for (const int k [[maybe_unused]] : std::ranges::iota_view{0, 5}) {
-		dflux = calcdSpace(u, t, dx, max_eigenvalues,
+		ddflux = calcdSpace(u, t, dx, max_eigenvalues,
 			n_size, opts_args...);  // L1 = L[u^n]
 		std::transform(
-					std::execution::par_unseq,
+//					std::execution::par_unseq,
 					std::ranges::begin(u), std::ranges::end(u),
-					std::ranges::begin(dflux),
+					std::ranges::begin(ddflux),
 					std::ranges::begin(u),
 					[dt](const auto u, const auto df) {
 			return u + dt * df / 6.;
@@ -65,7 +69,7 @@ void advanceTimestepSSPRK10_4(
 
 	// ----------------------------Interim------------------------------
 	std::transform(
-		std::execution::par_unseq,
+//		std::execution::par_unseq,
 		std::ranges::begin(u), std::ranges::end(u),
 		std::ranges::begin(u_temp),
 		std::ranges::begin(u_temp),
@@ -74,7 +78,7 @@ void advanceTimestepSSPRK10_4(
 	});
 
 	std::transform(
-		std::execution::par_unseq,
+//		std::execution::par_unseq,
 		std::ranges::begin(u), std::ranges::end(u),
 		std::ranges::begin(u_temp),
 		std::ranges::begin(u),
@@ -84,12 +88,12 @@ void advanceTimestepSSPRK10_4(
 
 	// ------------------------Next Four Stages-------------------------
 	for (const int k [[maybe_unused]] : std::ranges::iota_view{5, 9}) {
-		dflux = calcdSpace(u, t, dx, max_eigenvalues,
+		ddflux = calcdSpace(u, t, dx, max_eigenvalues,
 			n_size, opts_args...);  // L1 = L[u^n]
 		std::transform(
-					std::execution::par_unseq,
+//					std::execution::par_unseq,
 					std::ranges::begin(u), std::ranges::end(u),
-					std::ranges::begin(dflux),
+					std::ranges::begin(ddflux),
 					std::ranges::begin(u),
 					[dt](const auto u, const auto df) {
 			return u + dt * df / 6.;
@@ -98,17 +102,19 @@ void advanceTimestepSSPRK10_4(
 	}
 
 	// ------------------------The Final Stage--------------------------
+	ddflux = calcdSpace(u, t, dx, max_eigenvalues,
+		n_size, opts_args...);
 	std::transform(
-		std::execution::par_unseq,
+//		std::execution::par_unseq,
 		std::ranges::begin(u), std::ranges::end(u),
-		std::ranges::begin(dflux),
+		std::ranges::begin(ddflux),
 		std::ranges::begin(u),
 		[dt](const auto q1, const auto df) {
 			return 0.6 * q1 + 0.1 * dt * df;
 	});
 
 	std::transform(
-		std::execution::par_unseq,
+//		std::execution::par_unseq,
 		std::ranges::begin(u), std::ranges::end(u),
 		std::ranges::begin(u_temp),
 		std::ranges::begin(u),

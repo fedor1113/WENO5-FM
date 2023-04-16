@@ -16,9 +16,9 @@
 #include "lf_flux.h"
 // #include "miegruneisen.h"
 #include "roe.h"
-// #include "rk6_5.h"
+#include "rk6_5.h"
 #include "ssprk33.h"
-// #include "ssprk10_4.h"
+#include "ssprk10_4.h"
 #include "ssptserk12_8.h"
 #include "ebdf5.h"
 // #include "eulerforward.h"
@@ -156,6 +156,12 @@ std::valarray<Vector4<T>> calcFluxComponentWiseFDWENO5(
 			res | std::ranges::views::transform(kth_vector_component),
 			number_of_ghost_points, eps, p
 			);
+//		calcHydroStageFDTENO5LXSH<T>(
+//			std::ranges::views::all(f_plus),
+//			std::ranges::views::all(f_minus), t,
+//			res | std::ranges::views::transform(kth_vector_component),
+//			number_of_ghost_points, 1.e-40L, 6.L
+//			);
 //		calcHydroStageFDWENO7FM<T>(
 //			std::ranges::views::all(f_plus),
 //			std::ranges::views::all(f_minus), t,
@@ -404,6 +410,13 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO9(
 //		return projectOntoCharacteristicsRoe<T>(left, right, vec);
 //	};
 
+//	calcHydroStageCharWiseFDWENO5FM<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, t,
+//				project, /*deproject,*/ lam[0],
+//				ghost_point_number, eps, p);
 //	calcHydroStageCharWiseFDMPWENO5FM<T, Vector4<T>>(
 //				std::ranges::views::all(u),
 //				std::ranges::views::all(avg),
@@ -418,13 +431,20 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO9(
 //				res, t,
 //				project, /*deproject,*/ lam[0],
 //				ghost_point_number, eps, p);
-//	calcHydroStageCharWiseFDMPWENO5FIM<T, Vector4<T>>(
-//				std::ranges::views::all(u),
-//				std::ranges::views::all(avg),
-//				std::ranges::views::all(flux),
-//				res, t,
-//				project, /*deproject,*/ lam[0],
-//				ghost_point_number, eps, p);
+//    calcHydroStageCharWiseFDMPWENO5FIM<T, Vector4<T>>(
+//                std::ranges::views::all(u),
+//                std::ranges::views::all(avg),
+//                std::ranges::views::all(flux),
+//                res, t,
+//                project, /*deproject,*/ lam[0],
+//                ghost_point_number, eps, p);
+	calcHydroStageCharWiseFDTENO5<T, Vector4<T>>(
+				std::ranges::views::all(u),
+				std::ranges::views::all(avg),
+				std::ranges::views::all(flux),
+				res, t,
+				project, /*deproject,*/ lam[0],
+				ghost_point_number, 1.e-40, 6.);
 //	calcHydroStageCharWiseFDWENO9FM<T, Vector4<T>>(
 //				std::ranges::views::all(u),
 //				std::ranges::views::all(avg),
@@ -446,13 +466,13 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO9(
 //				res, t,
 //				project, lam[0],
 //				ghost_point_number, eps, p);
-	calcHydroStageCharWiseFDMPWENO9SM<T, Vector4<T>>(
-				std::ranges::views::all(u),
-				std::ranges::views::all(avg),
-				std::ranges::views::all(flux),
-				res, t,
-				project, lam[0],
-				ghost_point_number, eps, p);
+//	calcHydroStageCharWiseFDMPWENO9SM<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, t,
+//				project, lam[0],
+//				ghost_point_number, eps, p);
 //	calcHydroStageCharWiseFDMPWENO11SM<T, Vector4<T>>(
 //				std::ranges::views::all(u),
 //				std::ranges::views::all(avg),
@@ -1013,25 +1033,25 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 			const std::valarray<T>& lam,
 			std::size_t n_ghost_points = 5
 		) {
-			/*advanceTimestepSSPRK10_4<T>(
-				u, dflux, fluxes[0].get(),
-				t, dt, dx, lam, n_size,
-				calcdSpace, updateGhostPoints);*/
-//			advanceTimestepTVDRK3<T>(
-//				u, dflux, fluxes[3].get(),
-//				fluxes[0].get(), fluxes[1].get(),
+//			advanceTimestepSSPRK10_4<T>(
+//				u, dflux, fluxes[26].get(), fluxes[27].get(),
 //				t, dt, dx, lam, n_ghost_points,
 //				calcdSpace, updateGhostPoints);
-//			advanceTimestepRK6_5<T>(
-//				u,
-//				dflux,
-//				fluxes[0].get(), fluxes[1].get(),
-//				fluxes[2].get(), fluxes[3].get(),
-//				fluxes[4].get(), fluxes[5].get(),
-//				fluxes[6].get(), fluxes[7].get(),
-//				fluxes[8].get(), fluxes[9].get(),
-//				t, dt, dx, lam,
-//				n_ghost_points, calcdSpace, updateGhostPoints);
+			advanceTimestepTVDRK3<T>(
+				u, dflux, fluxes[3].get(),
+				fluxes[0].get(), fluxes[1].get(),
+				t, dt, dx, lam, n_ghost_points,
+				calcdSpace, updateGhostPoints);
+//            advanceTimestepRK6_5<T>(
+//                u,
+//                dflux,
+//                fluxes[0].get(), fluxes[1].get(),
+//                fluxes[2].get(), fluxes[3].get(),
+//                fluxes[4].get(), fluxes[5].get(),
+//                fluxes[6].get(), fluxes[7].get(),
+//                fluxes[8].get(), fluxes[9].get(),
+//                t, dt, dx, lam,
+//                n_ghost_points, calcdSpace, updateGhostPoints);
 //			advanceTimestep_eBDF5<T>(
 //				u, dflux,
 //				fluxes[0].get(), fluxes[1].get(),
@@ -1041,43 +1061,43 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 //				fluxes[8].get(),
 //				t, dt, dx, lam,
 //				n_ghost_points, calcdSpace, updateGhostPoints);
-			std::array<std::reference_wrapper<
-					std::valarray<Vector4<T>>>, 13> us = {
-				fluxes[2],
-				fluxes[4],
-				fluxes[6],
-				fluxes[8],
-				fluxes[10],
-				fluxes[12],
-				fluxes[14],
-				fluxes[16],
-				fluxes[18],
-				fluxes[20],
-				fluxes[22],
-				fluxes[24],
-				fluxes[26]
-			};
-			std::array<std::reference_wrapper<
-					std::valarray<Vector4<T>>>, 13> fs = {
-				fluxes[3],
-				fluxes[5],
-				fluxes[7],
-				fluxes[9],
-				fluxes[11],
-				fluxes[13],
-				fluxes[15],
-				fluxes[17],
-				fluxes[19],
-				fluxes[21],
-				fluxes[23],
-				fluxes[25],
-				fluxes[27]
-			};
-			advanceTimestepSSPTSERK12_8(
-				u, fluxes[0].get(), dflux,
-				us, fs,
-				t, dt, dx, lam,
-				n_ghost_points, calcdSpace, updateGhostPoints);
+//			std::array<std::reference_wrapper<
+//					std::valarray<Vector4<T>>>, 13> us = {
+//				fluxes[2],
+//				fluxes[4],
+//				fluxes[6],
+//				fluxes[8],
+//				fluxes[10],
+//				fluxes[12],
+//				fluxes[14],
+//				fluxes[16],
+//				fluxes[18],
+//				fluxes[20],
+//				fluxes[22],
+//				fluxes[24],
+//				fluxes[26]
+//			};
+//			std::array<std::reference_wrapper<
+//					std::valarray<Vector4<T>>>, 13> fs = {
+//				fluxes[3],
+//				fluxes[5],
+//				fluxes[7],
+//				fluxes[9],
+//				fluxes[11],
+//				fluxes[13],
+//				fluxes[15],
+//				fluxes[17],
+//				fluxes[19],
+//				fluxes[21],
+//				fluxes[23],
+//				fluxes[25],
+//				fluxes[27]
+//			};
+//			advanceTimestepSSPTSERK12_8(
+//				u, fluxes[0].get(), dflux,
+//				us, fs,
+//				t, dt, dx, lam,
+//				n_ghost_points, calcdSpace, updateGhostPoints);
 			/*EulerForward<T>(
 				u, dflux,
 				t, dt, dx, lam, n_ghost_points,
@@ -1098,6 +1118,10 @@ std::valarray<Vector4<T>> solve1DRiemannProblemForEulerEq(
 				fluxes[8].get(), fluxes[9].get(),
 				t, dt, dx, lam, n_ghost_points,
 				calcdSpace, updateGhostPoints);
+//			advanceTimestepSSPRK10_4<T>(
+//				u, dflux, fluxes[26].get(), fluxes[27].get(),
+//				t, dt, dx, lam, n_ghost_points,
+//				calcdSpace, updateGhostPoints);
 		}, cfl);
 
 	return u_init;
