@@ -33,8 +33,8 @@
 
 #include "_vector4.h"
 #include "arithmeticwith.h"
-#include "eos.h"
-// #include "eos_mg.h"
+// #include "eos.h"
+#include "eos_mg.h"
 
 // template class Vector4<double>;
 
@@ -1174,28 +1174,28 @@ std::valarray<T> prediscretizeWENO5LambdaMapping(
 
 
 std::valarray<numeric_val> DISCRETE_LAMBDA3
-			= prediscretizeWENO5LambdaMapping<numeric_val>(100/*0000*//*00*/,
+			= prediscretizeWENO5LambdaMapping<numeric_val>(10/*0*//*0000*//*00*/,
 														   1./2.);
 
 std::valarray<numeric_val> DISCRETE_LAMBDA5
-			= prediscretizeWENO5LambdaMapping<numeric_val>(1000000/*00*/,
+			= prediscretizeWENO5LambdaMapping<numeric_val>(10/*00000*//*00*/,
 														   1./3.);
 
 
 std::valarray<numeric_val> IM_DISCRETE_LAMBDA5
-			= prediscretizeWENO5LambdaMapping<numeric_val>(1000000/*00*/,
+			= prediscretizeWENO5LambdaMapping<numeric_val>(10/*00000*//*00*/,
 														   1./3., imMap);
 
 std::valarray<numeric_val> DISCRETE_LAMBDA7
-			= prediscretizeWENO5LambdaMapping<numeric_val>(100/*000000*/,
+			= prediscretizeWENO5LambdaMapping<numeric_val>(10/*0*//*000000*/,
 														   1./4.);
 
 std::valarray<numeric_val> DISCRETE_LAMBDA9
-			= prediscretizeWENO5LambdaMapping<numeric_val>(100/*000000*/,
+			= prediscretizeWENO5LambdaMapping<numeric_val>(6666666667,
 														   1./5.);
 
 std::valarray<numeric_val> DISCRETE_LAMBDA11
-			= prediscretizeWENO5LambdaMapping<numeric_val>(100/*000000*/,
+			= prediscretizeWENO5LambdaMapping<numeric_val>(10/*0*//*000000*/,
 														   1./6.);
 
 

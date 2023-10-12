@@ -1,6 +1,7 @@
-//#pragma GCC optimize("Ofast")
+#pragma GCC optimize("Ofast")
+#pragma GCC optimize("unroll-loops")
 //#pragma GCC target("avx,avx2,fma")
-//#pragma GCC optimize("unroll-loops")
+
 
 #include <algorithm>
 #include <cstdio>
@@ -203,7 +204,7 @@ int main(int argc, char **argv) {
 //			10001}) {
 //		 : {21, 41, 81, 161, 321, 641}) {
 //		 : {100/*, 301, 401, 1001*//*1001*//*401*/}) {
-		 : {50, 100, 200, 400, 800, 1600, 3200, 6400}) {
+		 : {3000}) {
 //		 : {1001}) {
 //		 : {26, 51, 101, 201, 401, 801/*, 1601, 3206*/}) {
 //		 : {50, 100, 200, 400, 800, 1600/*, 3200, 6400*/}) {
@@ -230,15 +231,15 @@ int main(int argc, char **argv) {
 //		cfl = 0.45;
 		// tfinal = 0.15;
 		// tfinal = 0.2;
-		tfinal = 0.1;
-		solve1DRiemannProblemForEulerEq<numeric_val>(
-			u_res, x, gamma,
-			0.125, 0., 0.1,
-			1., 0., 1.,
-			0.5,
-			t, tfinal, 0., L,
-			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
-		);  // Sod's problem (expansion-contact-shock)
+//		tfinal = 0.1;
+//		solve1DRiemannProblemForEulerEq<numeric_val>(
+//			u_res, x, gamma,
+//			0.125, 0., 0.1,
+//			1., 0., 1.,
+//			0.5,
+//			t, tfinal, 0., L,
+//			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
+//		);  // Sod's problem (expansion-contact-shock)
 //		tfinal = 0.2;
 //		solve1DRiemannProblemForEulerEq<numeric_val>(
 //			u_res, x, gamma,
@@ -354,7 +355,7 @@ int main(int argc, char **argv) {
 //			primitiveToConservativeU<numeric_val>, N_ghost_points, cfl
 //		);  // Toro-5
 
-//		tfinal = 1.e-12;
+//		tfinal = 2.e-3;
 //		cfl = 1.;
 //		solve1DHighGradientLaserProblem<numeric_val>(
 //			u_res,
@@ -364,9 +365,9 @@ int main(int argc, char **argv) {
 //			cfl,
 //			tfinal,
 //			1.4,
-//			1000.e-9, 1050.e-9,
+//			1000., 1050.,
 //			0.,
-//			800.e-9, 1250.e-9
+//			800., 1250.
 //		);
 
 //		solve1DDetonationProfileProblem<numeric_val>(
@@ -395,7 +396,7 @@ int main(int argc, char **argv) {
 
 		std::ofstream outfile;
 
-		std::string folder = "./data/toro/toro-1/LF-FD-TENO5-ChW-ERK6_5-CFL-1/";
+		std::string folder = "./data/laser_article/HighGradientLaserStepProblem/time_benchmark/";
 //		std::string folder = "./data/toro/toro-5/LF-WENO5-JS-ChW/";
 
 		std::string filepath = folder
@@ -487,9 +488,9 @@ int main(int argc, char **argv) {
 
 		std::cout << j << " Done!" << "\n";
 
-		std::system((
-			"gnuplot -e \"filename='" + filepath + "'\" plot.gnuplot"
-		).c_str());
+//		std::system((
+//			"gnuplot -e \"filename='" + filepath + "'\" plot.gnuplot"
+//		).c_str());
 //		std::system((
 //			"gnuplot -e \"filename='" + u_filepath + "'\" plot.gnuplot"
 //		).c_str());

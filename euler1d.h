@@ -438,13 +438,13 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO9(
 //                res, t,
 //                project, /*deproject,*/ lam[0],
 //                ghost_point_number, eps, p);
-	calcHydroStageCharWiseFDTENO5<T, Vector4<T>>(
-				std::ranges::views::all(u),
-				std::ranges::views::all(avg),
-				std::ranges::views::all(flux),
-				res, t,
-				project, /*deproject,*/ lam[0],
-				ghost_point_number, 1.e-40, 6.);
+//	calcHydroStageCharWiseFDTENO5<T, Vector4<T>>(
+//				std::ranges::views::all(u),
+//				std::ranges::views::all(avg),
+//				std::ranges::views::all(flux),
+//				res, t,
+//				project, /*deproject,*/ lam[0],
+//				ghost_point_number, 1.e-40, 6.);
 //	calcHydroStageCharWiseFDWENO9FM<T, Vector4<T>>(
 //				std::ranges::views::all(u),
 //				std::ranges::views::all(avg),
@@ -466,13 +466,13 @@ std::valarray<Vector4<T>> calcFluxCharacteristicWiseFDWENO9(
 //				res, t,
 //				project, lam[0],
 //				ghost_point_number, eps, p);
-//	calcHydroStageCharWiseFDMPWENO9SM<T, Vector4<T>>(
-//				std::ranges::views::all(u),
-//				std::ranges::views::all(avg),
-//				std::ranges::views::all(flux),
-//				res, t,
-//				project, lam[0],
-//				ghost_point_number, eps, p);
+	calcHydroStageCharWiseFDMPWENO9SM<T, Vector4<T>>(
+				std::ranges::views::all(u),
+				std::ranges::views::all(avg),
+				std::ranges::views::all(flux),
+				res, t,
+				project, lam[0],
+				ghost_point_number, eps, p);
 //	calcHydroStageCharWiseFDMPWENO11SM<T, Vector4<T>>(
 //				std::ranges::views::all(u),
 //				std::ranges::views::all(avg),
@@ -889,6 +889,7 @@ void integrateRiemannProblem(
 	dt = dt_upd(dx, max_lam[0]);
 
 	std::size_t init_steps = 2 - 1;
+	// std::size_t init_steps = 0;
 	fluxes[0].get() = u;
 
 	for (std::size_t k = 2; k <= 2 * init_steps; k += 2) {
@@ -1355,6 +1356,16 @@ std::valarray<Vector4<T>> solve1DHighGradientLaserProblem(
 			   fluxes[8].get(), fluxes[9].get(),
 			   t, dt, dx, lam, n_ghost_points,
 			   calcdSpace, updateGhostPoints);
+//			advanceTimestepRK6_5<T>(
+//				u,
+//				dflux,
+//				fluxes[0].get(), fluxes[1].get(),
+//				fluxes[2].get(), fluxes[3].get(),
+//				fluxes[4].get(), fluxes[5].get(),
+//				fluxes[6].get(), fluxes[7].get(),
+//				fluxes[8].get(), fluxes[9].get(),
+//				t, dt, dx, lam,
+//				n_ghost_points, calcdSpace, updateGhostPoints);
 	   }, cfl);
 
 	return u_init;
